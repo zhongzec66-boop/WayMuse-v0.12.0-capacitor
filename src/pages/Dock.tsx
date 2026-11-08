@@ -13,6 +13,8 @@ import {
 import { useRef } from "react";
 import type { ChangeEvent, Dispatch, SetStateAction } from "react";
 import BotAvatar from "../BotAvatar";
+import { haptic } from "../nativeExtras";
+import { useSpeechInput } from "../useSpeechInput";
 import type { Kind, Overlay, Page } from "../types";
 import {
   COMPOSE_SLOT_ID,
@@ -63,6 +65,8 @@ export default function Dock({
             ? "和助理说点什么…"
             : "点击输入或录制语音…";
   const fileRef = useRef<HTMLInputElement | null>(null);
+  // 右侧麦克风：原生本地识别，逐字回填到输入框，不跳页
+  const speech = useSpeechInput(setDraft);
 
   // 文本类文件直接把内容带进对话；其它类型只带文件名，不假装能解析。
   const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -121,6 +125,17 @@ export default function Dock({
           </button>
         </div>
       )}
+      {speech.listening && (
+        <div className="wr-listening" role="status">
+          <span className="wr-listening-dot" />
+          正在听…再点一下麦克风结束
+        </div>
+      )}
+      {speech.error && !speech.listening && (
+        <div className="wr-listening error" role="alert">
+          {speech.error}
+        </div>
+      )}
       <input
         ref={fileRef}
         type="file"
@@ -150,8 +165,28 @@ export default function Dock({
           placeholder={placeholder}
         />
         <button
-          aria-label={draft ? "发送" : "录制语音"}
-          onClick={draft ? submit : () => openIntake("语音")}
+          className={speech.listening ? "wr-compose-mic listening" : undefined}
+          aria-label={
+            draft
+              ? "发送"
+              : speech.supported
+                ? speech.listening
+                  ? "结束语音输入"
+                  : "语音输入"
+                : "录制语音"
+          }
+          onClick={() => {
+            if (draft) {
+              void haptic("light");
+              submit();
+              return;
+            }
+            if (speech.supported) {
+              speech.toggle();
+              return;
+            }
+            openIntake("语音");
+          }}
         >
           {draft ? (
             <Send size={20} />

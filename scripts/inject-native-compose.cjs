@@ -26,7 +26,11 @@ const target = path.join(
   "LiquidGlassPlugin",
 );
 
-const files = ["NativeComposePlugin.swift", "NativeComposeOverlay.swift"];
+const files = [
+  "NativeComposePlugin.swift",
+  "NativeComposeOverlay.swift",
+  "NativeExtrasPlugin.swift",
+];
 
 if (!fs.existsSync(target)) {
   console.warn(
