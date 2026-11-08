@@ -123,6 +123,8 @@
   --tab-highlight-height: 46px;
   --tile-height: 56px;
   --content-bottom: calc(var(--dock-height) + var(--space-16));
+  /* 原生 Tab 栏的真实高度，由 useNativeTabs 运行时写入；Web 保持 0。 */
+  --native-tabbar: 0px;
   --z-base: 1;
   --z-sticky: 10;
   --z-dock: 20;
