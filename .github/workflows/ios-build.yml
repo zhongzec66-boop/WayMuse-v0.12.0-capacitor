@@ -52,7 +52,11 @@ jobs:
 
       - name: Resolve Swift package dependencies
         run: |
-          for attempt in 1 2 3 4; do
+          # GitHub 的 release CDN 会间歇性 504。用递增退避拉长重试窗口，
+          # 而不是在同一个故障窗口里密集重试。
+          delays=(15 30 45 60 90 120 150 180)
+          for i in "${!delays[@]}"; do
+            attempt=$((i + 1))
             if xcodebuild \
                  -project ios/App/App.xcodeproj \
                  -scheme App \
@@ -61,11 +65,21 @@ jobs:
               echo "SPM resolved on attempt $attempt"
               exit 0
             fi
-            echo "::warning::SPM resolve failed (attempt $attempt), retrying in 20s"
-            sleep 20
+            wait=${delays[$i]}
+            echo "::warning::SPM resolve failed (attempt $attempt), retrying in ${wait}s"
+            sleep "$wait"
           done
-          echo "::error::SPM resolve failed after 4 attempts"
+          echo "::error::SPM resolve failed after ${#delays[@]} attempts"
           exit 1
+
+      # 解析成功就立即存盘：后续编译失败也不影响下次复用，
+      # 避免每轮都重新下载 xcframework。
+      - name: Save Swift package cache
+        if: success()
+        uses: actions/cache/save@v4
+        with:
+          path: build/DerivedData/SourcePackages
+          key: spm-${{ runner.os }}-${{ hashFiles('ios/App/CapApp-SPM/Package.swift') }}-${{ github.run_id }}
 
       - name: Build unsigned iPhone app
         run: |
