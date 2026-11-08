@@ -1,12 +1,12 @@
 import { PLAN_INSTRUCTION } from "../agent";
 import { BRAND } from "../brand";
 import type { UserProfile } from "../profile";
-import type { Course, Task } from "../types";
+import type { Course, Memory, Task } from "../types";
 
 export const DEFAULT_SYSTEM_PROMPT = `你是 ${BRAND}，一个陪伴大学生、辅助学习的 AI Agent。以自然的聊天陪伴用户，先理解用户当下的感受和问题，再决定是否需要建议；闲聊不强行转成任务。学习时通过解释、例子和适量追问帮助用户理解，必要时一起拆解下一步。用简体中文回答。不要编造用户没有提供的经历；不确定时直接说明。回答保持具体、简短，必要时用列表。`;
 
 export type AssistantContext = {
-  memories: string[];
+  memories: Memory[];
   courses: Course[];
   tasks: Task[];
 };
@@ -74,7 +74,15 @@ export function buildSystemPrompt(
   const lines = ["", profileSection(profile)];
 
   if (memories.length) {
-    lines.push(`【记忆】${memories.join("；")}`);
+    // 重要的记忆排前面并标出来，让模型知道哪些是「这个人的底色」。
+    const ordered = memories
+      .slice()
+      .sort((a, b) => b.weight - a.weight || b.createdAt - a.createdAt);
+    lines.push(
+      `【记忆】${ordered
+        .map((m) => (m.weight === 3 ? `${m.text}（重要）` : m.text))
+        .join("；")}`,
+    );
   }
   if (courses.length) {
     lines.push("【课程】");

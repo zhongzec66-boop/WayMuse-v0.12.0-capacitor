@@ -15,12 +15,11 @@ import TaskPage from "./pages/TaskPage";
 import TodayPage from "./pages/TodayPage";
 import { DEFAULT_PROFILE } from "./profile";
 import type { UserProfile } from "./profile";
-import { storage } from "./storage";
-import type { Course, Kind, Overlay, Page, Task } from "./types";
+import { storage, createMemory } from "./storage";
+import type { Course, Kind, Memory, Overlay, Page, Task } from "./types";
 import { useNativeTabs } from "./useNativeTabs";
 
 const seedTasks: Task[] = [];
-const seedMemories: string[] = [];
 const oldSeedMemories = new Set([
   "大二，计算机相关专业",
   "希望明年暑假找到第一份实习",
@@ -53,10 +52,8 @@ export default function WayMuseReference() {
   const [tasks, setTasks] = useState<Task[]>(() =>
     storage.getTasks(seedTasks).filter((task) => !task.id.startsWith("seed-")),
   );
-  const [memories, setMemories] = useState<string[]>(() =>
-    storage
-      .getMemories(seedMemories)
-      .filter((memory) => !oldSeedMemories.has(memory)),
+  const [memories, setMemories] = useState<Memory[]>(() =>
+    storage.getMemories().filter((memory) => !oldSeedMemories.has(memory.text)),
   );
   const [draft, setDraft] = useState("");
   const [pendingChat, setPendingChat] = useState<{
@@ -121,7 +118,7 @@ export default function WayMuseReference() {
       setTasks([{ id: newId(), text: draft.trim(), done: false }, ...tasks]);
       setOverlay("");
     } else if (overlay === "添加记忆") {
-      setMemories([draft.trim(), ...memories]);
+      setMemories([createMemory(draft.trim()), ...memories]);
       setOverlay("");
     } else {
       setPendingChat({ id: Date.now(), text: draft.trim() });
@@ -290,7 +287,9 @@ export default function WayMuseReference() {
             initialKind={intakeKind}
             onClose={() => setOverlay("")}
             onSaveCourse={(course) => setCourses([...courses, course])}
-            onSaveNote={(note) => setMemories([note, ...memories])}
+            onSaveNote={(note) =>
+              setMemories([createMemory(note), ...memories])
+            }
           />
         )}
         {overlay === "设置" && (

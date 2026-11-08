@@ -1,7 +1,7 @@
 import { ChevronRight, Clock3, Plus, SlidersHorizontal } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import { BRAND } from "../brand";
-import type { Course, Kind, Overlay, Page, Task } from "../types";
+import type { Course, Kind, Memory, Overlay, Page, Task } from "../types";
 
 /** 全站统一 Asia/Shanghai。 */
 function shanghaiParts() {
@@ -50,7 +50,7 @@ export default function TodayPage({
 }: {
   profileName: string;
   date: string;
-  memories: string[];
+  memories: Memory[];
   tasks: Task[];
   todayCourses: Course[];
   courses: Course[];
@@ -248,7 +248,7 @@ export default function TodayPage({
         ) : (
           <div className="wr-memory-chips">
             {memories.slice(0, 3).map((m) => (
-              <span key={m}>{m}</span>
+              <span key={m.id}>{m.text}</span>
             ))}
           </div>
         )}

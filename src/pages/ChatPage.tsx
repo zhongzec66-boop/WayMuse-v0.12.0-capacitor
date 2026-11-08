@@ -17,7 +17,7 @@ import {
 import { localSuggestions, parseReply, planTasks } from "../agent";
 import { BRAND } from "../brand";
 import BotAvatar from "../BotAvatar";
-import { storage } from "../storage";
+import { storage, createMemory } from "../storage";
 import { newId } from "../id";
 import {
   DeepSeekError,
@@ -35,7 +35,7 @@ import type {
   DeepSeekMessage,
   DeepSeekUsage,
 } from "../deepseek/types";
-import type { Course, Task } from "../types";
+import type { Course, Memory, Task } from "../types";
 
 type ConnectState = "idle" | "testing" | "ok" | "error";
 
@@ -86,12 +86,12 @@ export default function ChatPage({
   pendingMessage: { id: number; text: string } | null;
   onPendingConsumed: () => void;
   profile: UserProfile;
-  memories: string[];
+  memories: Memory[];
   courses: Course[];
   tasks: Task[];
   onSettings: () => void;
   onTasksChange: (tasks: Task[]) => void;
-  onMemoriesChange: (memories: string[]) => void;
+  onMemoriesChange: (memories: Memory[]) => void;
   onViewPlans: () => void;
 }) {
   const [config, setConfig] = useState<DeepSeekConfig>(() =>
@@ -867,7 +867,9 @@ export default function ChatPage({
                         (() => {
                           const proposed = parseReply(
                             message.content,
-                          ).memories.filter((item) => !memories.includes(item));
+                          ).memories.filter(
+                            (item) => !memories.some((m) => m.text === item),
+                          );
                           if (!proposed.length) return null;
                           return (
                             <section
@@ -883,7 +885,12 @@ export default function ChatPage({
                               <button
                                 className="wr-ai-primary"
                                 onClick={() =>
-                                  onMemoriesChange([...proposed, ...memories])
+                                  onMemoriesChange([
+                                    ...proposed.map((text) =>
+                                      createMemory(text),
+                                    ),
+                                    ...memories,
+                                  ])
                                 }
                               >
                                 记住这些

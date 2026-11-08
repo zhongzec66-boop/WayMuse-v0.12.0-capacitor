@@ -3,7 +3,7 @@ import { normalizeConfig } from "./deepseek/config";
 import type { DeepSeekConfig, DeepSeekMessage } from "./deepseek/types";
 import { normalizeProfile } from "./profile";
 import type { UserProfile } from "./profile";
-import type { Course, Task } from "./types";
+import type { Course, Memory, MemoryWeight, Task } from "./types";
 import { newId } from "./id";
 
 const PREFIX = "waymuse-demo-";
@@ -123,49 +123,77 @@ function readCourses(): Course[] {
   return readList("courses", sanitizeCourse, []);
 }
 
-function readMemories(fallback: string[]): string[] {
-  const value = readJson("memories");
-  if (Array.isArray(value)) {
-    const parsed = value.reduce<string[]>((items, entry) => {
-      if (typeof entry !== "string") return items;
-      const text = entry.trim();
-      if (text) items.push(text);
-      return items;
-    }, []);
-    if (parsed.length) return parsed;
-  }
+/**
+ * 记忆存储。
+ *
+ * 老版本是 `string[]`，新版本带分量与创建时间。迁移策略：
+ * 老字符串转成 `{ weight: 2, createdAt: 递增的固定基准时间 }`，
+ * 这样顺序不变、也不会凭空变成「重要」。
+ */
+const LEGACY_MEMORY_BASE = Date.UTC(2024, 0, 1);
 
-  // Retired PersonalShell stored structured memory entries here. Import them
-  // into the classic string[] store once so archived shell data is not lost.
-  const entries = readJson("memory-entries");
-  if (Array.isArray(entries)) {
-    const migrated = entries.reduce<string[]>((items, entry) => {
-      if (typeof entry === "string") {
-        const text = entry.trim();
-        if (text) items.push(text);
-        return items;
-      }
-      if (
-        isRecord(entry) &&
-        typeof entry.text === "string" &&
-        entry.text.trim()
-      ) {
-        items.push(entry.text.trim());
-      }
-      return items;
-    }, []);
-    if (migrated.length) {
-      writeJson("memories", migrated);
-      try {
-        localStorage.removeItem(PREFIX + "memory-entries");
-      } catch {
-        // Migration already wrote the classic store; keep going.
-      }
-      return migrated;
+function sanitizeMemory(value: unknown, index: number): Memory | null {
+  if (typeof value === "string") {
+    const text = value.trim();
+    return text
+      ? {
+          id: newId(),
+          text: text.slice(0, 120),
+          weight: 2,
+          createdAt: LEGACY_MEMORY_BASE + index,
+        }
+      : null;
+  }
+  if (!isRecord(value) || typeof value.text !== "string") return null;
+  const text = value.text.trim();
+  if (!text) return null;
+  const weight: MemoryWeight =
+    value.weight === 1 || value.weight === 3 ? value.weight : 2;
+  return {
+    id: typeof value.id === "string" && value.id ? value.id : newId(),
+    text: text.slice(0, 120),
+    weight,
+    createdAt:
+      typeof value.createdAt === "number" ? value.createdAt : Date.now(),
+  };
+}
+
+function readMemoryList(name: string): Memory[] {
+  const value = readJson(name);
+  if (!Array.isArray(value)) return [];
+  return value.reduce<Memory[]>((items, entry) => {
+    const item = sanitizeMemory(entry, items.length);
+    if (item) items.push(item);
+    return items;
+  }, []);
+}
+
+function readMemories(): Memory[] {
+  const current = readMemoryList("memories");
+  if (current.length) return current;
+
+  // 旧 PersonalShell 把结构化记忆存在 memory-entries，一次性搬过来。
+  const legacy = readMemoryList("memory-entries");
+  if (legacy.length) {
+    writeJson("memories", legacy);
+    try {
+      localStorage.removeItem(PREFIX + "memory-entries");
+    } catch {
+      // 已经写入新键，删旧键失败也不影响使用。
     }
+    return legacy;
   }
 
-  return Array.isArray(value) ? [] : fallback;
+  return current;
+}
+
+export function createMemory(text: string, weight: MemoryWeight = 2): Memory {
+  return {
+    id: newId(),
+    text: text.trim().slice(0, 120),
+    weight,
+    createdAt: Date.now(),
+  };
 }
 
 function readTasks(fallback: Task[]): Task[] {
@@ -271,7 +299,7 @@ export const storage = {
   getCourses: readCourses,
   setCourses: (courses: Course[]) => writeJson("courses", courses),
   getMemories: readMemories,
-  setMemories: (memories: string[]) => writeJson("memories", memories),
+  setMemories: (memories: Memory[]) => writeJson("memories", memories),
   getTasks: readTasks,
   setTasks: (tasks: Task[]) => writeJson("tasks", tasks),
   getProfile: (): UserProfile => {
@@ -341,7 +369,7 @@ export const storage = {
     },
     userProfile: normalizeProfile(readJson("profile")),
     courses: readCourses(),
-    memories: readMemories([]),
+    memories: readMemories(),
     tasks: readTasks([]),
   }),
 };

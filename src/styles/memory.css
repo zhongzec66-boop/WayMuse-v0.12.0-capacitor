@@ -230,3 +230,256 @@
   font-size: var(--text-13);
   line-height: var(--leading-body);
 }
+
+/* ── 记忆星链 ───────────────────────────────────────────
+   一块深色「天窗」放在浅色页面里，记忆是沿弧线排布的胶囊：
+   分量越大越亮，重要的会呼吸发光。点开是详情。 */
+
+.wr-starfield {
+  position: relative;
+  margin-top: var(--space-16);
+  padding: var(--space-16);
+  overflow: hidden;
+  border-radius: var(--radius-28);
+  background: radial-gradient(
+    120% 90% at 18% 0%,
+    #2b3566 0%,
+    #1b2144 52%,
+    #131832 100%
+  );
+  box-shadow: 0 18px 44px rgba(20, 26, 60, 0.28);
+}
+
+.wr-starfield-sky {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.wr-starfield-sky i {
+  position: absolute;
+  border-radius: 50%;
+  background: #dfe8ff;
+  animation: wm-star-twinkle 4.5s ease-in-out infinite;
+}
+
+@keyframes wm-star-twinkle {
+  0%,
+  100% {
+    opacity: 0.22;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+.wr-starfield-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-12);
+  color: #dfe6ff;
+  font-size: var(--text-13);
+  font-weight: var(--weight-semibold);
+}
+
+.wr-starfield-head em {
+  color: rgba(223, 230, 255, 0.55);
+  font-size: var(--text-11);
+  font-style: normal;
+  font-weight: var(--weight-regular);
+}
+
+.wr-starfield-empty {
+  position: relative;
+  margin: 0;
+  color: rgba(223, 230, 255, 0.6);
+  font-size: var(--text-13);
+  line-height: var(--leading-body);
+}
+
+.wr-chain {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  margin: 0;
+  padding: var(--space-8) 0 var(--space-4);
+  list-style: none;
+}
+
+/* 串起胶囊的那条虚线 */
+.wr-chain::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(160, 190, 255, 0.3) 12%,
+    rgba(160, 190, 255, 0.3) 88%,
+    transparent
+  );
+}
+
+.wr-chain-node {
+  display: flex;
+  justify-content: center;
+  transform: translateX(var(--offset, 0));
+  animation: wm-chain-float 6s ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+@keyframes wm-chain-float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -3px;
+  }
+}
+
+.wr-chain-node button {
+  max-width: 78%;
+  padding: 7px 12px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.13);
+  color: #eef2ff;
+  font-size: var(--text-13);
+  line-height: 1.4;
+  text-align: left;
+}
+
+/* 小事：更小更暗 */
+.wr-chain-node[data-weight="1"] button {
+  padding: 5px 10px;
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(238, 242, 255, 0.7);
+  font-size: var(--text-12);
+}
+
+/* 重要：发光 + 外圈呼吸 */
+.wr-chain-node[data-weight="3"] button {
+  position: relative;
+  background: rgba(140, 170, 255, 0.22);
+  font-weight: var(--weight-medium);
+  animation: wm-memory-glow 3.4s ease-in-out infinite;
+}
+
+/* 光晕贴着胶囊本身，而不是整行 */
+.wr-chain-node[data-weight="3"] button::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border: 1px solid rgba(150, 180, 255, 0.38);
+  border-radius: var(--radius-pill);
+  pointer-events: none;
+  animation: wm-memory-halo 3.4s ease-in-out infinite;
+}
+
+@keyframes wm-memory-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(160, 190, 255, 0.35),
+      0 0 12px rgba(120, 160, 255, 0.4);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(190, 215, 255, 0.6),
+      0 0 26px rgba(140, 180, 255, 0.72);
+  }
+}
+
+@keyframes wm-memory-halo {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.97);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.04);
+  }
+}
+
+/* ── 记忆详情弹层 ─────────────────────────────────────── */
+
+.wr-memo-field {
+  display: grid;
+  gap: var(--space-8);
+  margin-bottom: var(--space-16);
+  color: var(--ink-2);
+  font-size: var(--text-13);
+}
+
+.wr-memo-field textarea {
+  width: 100%;
+  padding: var(--space-12);
+  border: var(--border-1) solid var(--field-line);
+  border-radius: var(--radius-16);
+  background: var(--field-bg);
+  color: var(--ink);
+  font-size: var(--text-16);
+  line-height: var(--leading-body);
+  resize: none;
+}
+
+.wr-memo-weight {
+  display: grid;
+  gap: var(--space-8);
+  margin-bottom: var(--space-12);
+  color: var(--ink-2);
+  font-size: var(--text-13);
+}
+
+.wr-memo-weight > div {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-8);
+}
+
+.wr-memo-weight button {
+  min-height: var(--control-44);
+  border-radius: var(--radius-16);
+  background: var(--surface-muted);
+  color: var(--ink-2);
+  font-size: var(--text-14);
+}
+
+.wr-memo-weight button.selected {
+  background: var(--primary);
+  color: var(--on-primary);
+  font-weight: var(--weight-medium);
+}
+
+.wr-memo-note {
+  margin: 0 0 var(--space-16);
+  color: var(--ink-3);
+  font-size: var(--text-12);
+  line-height: var(--leading-body);
+}
+
+.wr-memo-save {
+  width: 100%;
+  min-height: var(--control-44);
+  border-radius: var(--radius-16);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: var(--text-16);
+  font-weight: var(--weight-medium);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wr-starfield-sky i,
+  .wr-chain-node,
+  .wr-chain-node[data-weight="3"] button,
+  .wr-chain-node[data-weight="3"]::after {
+    animation: none;
+  }
+}

@@ -30,3 +30,13 @@ export type Course = {
 };
 
 export type Kind = "课表" | "文档" | "图片" | "语音";
+
+/** 记忆的分量：1 = 小事，2 = 一般，3 = 重要（星空里会发光） */
+export type MemoryWeight = 1 | 2 | 3;
+
+export type Memory = {
+  id: string;
+  text: string;
+  weight: MemoryWeight;
+  createdAt: number;
+};
