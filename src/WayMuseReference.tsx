@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { BRAND } from "./brand";
 import { newId } from "./id";
 import Onboarding from "./Onboarding";
+import { useKeyboardInset } from "./useKeyboardInset";
 import WayMuseIntake from "./WayMuseIntake";
 import ChatPage from "./pages/ChatPage";
 import Dock from "./pages/Dock";
@@ -42,6 +43,8 @@ function getShanghaiWeekday(now = new Date()): number {
 }
 
 export default function WayMuseReference() {
+  // 键盘弹起时把被遮挡的高度写进 --kb-inset，弹层才能躲开键盘。
+  useKeyboardInset();
   const [page, setPage] = useState<Page>("聊天");
   const [overlay, setOverlay] = useState<Overlay>("");
   const [attachmentMenu, setAttachmentMenu] = useState(false);

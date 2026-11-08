@@ -190,23 +190,70 @@
   animation: wm-bot-gaze 9s ease-in-out infinite;
 }
 
-.wr-bot-eye {
+.wr-eye {
   transform-box: fill-box;
   transform-origin: center;
   animation: wm-bot-blink 5.6s ease-in-out infinite;
 }
 
-/* 回复中：节奏加快 + 眯眼（思考感），并轻微歪头 */
-.wr-bot-avatar.replying .wr-bot-body {
+/* ── 情绪：同一双眼睛在变形，不是换图 ───────────────────── */
+
+/* 回复中：呼吸变快 + 眯眼 + 快速扫视 = 专注 */
+.wr-bot-avatar[data-mood="thinking"] .wr-bot-body {
   animation: wm-bot-breathe 2.6s ease-in-out infinite;
 }
 
-.wr-bot-avatar.replying .wr-bot-eyes {
+.wr-bot-avatar[data-mood="thinking"] .wr-bot-eyes {
   animation: wm-bot-gaze-active 3.2s ease-in-out infinite;
 }
 
-.wr-bot-avatar.replying .wr-bot-eye {
+.wr-bot-avatar[data-mood="thinking"] .wr-eye {
   animation: wm-bot-think 1.8s ease-in-out infinite;
+}
+
+/* 开心：眯成两道弯 + 身体轻轻弹 */
+.wr-bot-avatar[data-mood="happy"] .wr-bot-body {
+  animation: wm-bot-bounce 1.8s ease-in-out infinite;
+}
+
+.wr-bot-avatar[data-mood="happy"] .wr-eye {
+  animation: wm-bot-happy 1.8s ease-in-out infinite;
+}
+
+/* 好奇：右眼半闭 + 歪头打量 */
+.wr-bot-avatar[data-mood="curious"] .wr-bot-eyes {
+  animation: wm-bot-tilt 5s ease-in-out infinite;
+}
+
+.wr-bot-avatar[data-mood="curious"] .wr-eye-r {
+  animation: wm-bot-squint 2.6s ease-in-out infinite;
+}
+
+/* 生气：两眼向内倾成 /\ */
+.wr-bot-avatar[data-mood="angry"] .wr-bot-body {
+  animation: wm-bot-puff 2.4s ease-in-out infinite;
+}
+
+.wr-bot-avatar[data-mood="angry"] .wr-eye-l {
+  animation: wm-bot-angry-l 2.4s ease-in-out infinite;
+}
+
+.wr-bot-avatar[data-mood="angry"] .wr-eye-r {
+  animation: wm-bot-angry-r 2.4s ease-in-out infinite;
+}
+
+/* 犯困：几乎闭眼，呼吸放慢 */
+.wr-bot-avatar[data-mood="sleepy"] .wr-bot-body {
+  animation: wm-bot-breathe 8s ease-in-out infinite;
+}
+
+.wr-bot-avatar[data-mood="sleepy"] .wr-eye {
+  animation: wm-bot-sleep 6s ease-in-out infinite;
+}
+
+/* 惊讶：眼睛放大，停一下再回去 */
+.wr-bot-avatar[data-mood="surprised"] .wr-eye {
+  animation: wm-bot-surprise 2.2s ease-in-out infinite;
 }
 
 @keyframes wm-bot-breathe {
@@ -288,13 +335,106 @@
   }
 }
 
+@keyframes wm-bot-bounce {
+  0%,
+  100% {
+    transform: scale(1) translateY(0);
+  }
+  40% {
+    transform: scale(1.05) translateY(-3px);
+  }
+  70% {
+    transform: scale(0.985) translateY(1px);
+  }
+}
+
+@keyframes wm-bot-happy {
+  0%,
+  100% {
+    transform: scaleY(0.34) translateY(9px);
+  }
+  50% {
+    transform: scaleY(0.26) translateY(12px);
+  }
+}
+
+@keyframes wm-bot-tilt {
+  0%,
+  100% {
+    transform: rotate(-6deg) translate(2px, 0);
+  }
+  50% {
+    transform: rotate(4deg) translate(-2px, -1px);
+  }
+}
+
+@keyframes wm-bot-squint {
+  0%,
+  12%,
+  100% {
+    transform: scaleY(1);
+  }
+  40%,
+  70% {
+    transform: scaleY(0.55);
+  }
+}
+
+@keyframes wm-bot-puff {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+@keyframes wm-bot-angry-l {
+  0%,
+  100% {
+    transform: rotate(20deg) translate(7px, -2px);
+  }
+  50% {
+    transform: rotate(24deg) translate(9px, -3px);
+  }
+}
+
+@keyframes wm-bot-angry-r {
+  0%,
+  100% {
+    transform: rotate(-20deg) translate(-7px, -2px);
+  }
+  50% {
+    transform: rotate(-24deg) translate(-9px, -3px);
+  }
+}
+
+@keyframes wm-bot-sleep {
+  0%,
+  100% {
+    transform: scaleY(0.16);
+  }
+  50% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes wm-bot-surprise {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  18%,
+  55% {
+    transform: scale(1.18);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .wr-bot-body,
-  .wr-bot-eyes,
-  .wr-bot-eye,
-  .wr-bot-avatar.replying .wr-bot-body,
-  .wr-bot-avatar.replying .wr-bot-eyes,
-  .wr-bot-avatar.replying .wr-bot-eye {
+  .wr-bot-avatar .wr-bot-body,
+  .wr-bot-avatar .wr-bot-eyes,
+  .wr-bot-avatar .wr-eye {
     animation: none;
   }
 }

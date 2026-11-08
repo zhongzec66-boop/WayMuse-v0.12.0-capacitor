@@ -1,12 +1,5 @@
-import {
-  AlertTriangle,
-  Check,
-  Clock3,
-  MapPin,
-  Plus,
-  Trash2,
-  X,
-} from "lucide-react";
+import { AlertTriangle, Check, Clock3, Plus, Trash2, X } from "lucide-react";
+import { Fragment } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { Course, Overlay, Task } from "../types";
 
@@ -92,14 +85,8 @@ export default function TaskPage({
   const remove = (id: string) =>
     setTasks(tasks.filter((item) => item.id !== id));
 
-  const courseDays = WEEK_ORDER.map((weekday, i) => ({
-    weekday,
-    label: WEEK_LABELS[i],
-    date: weekDates[i],
-    courses: courses
-      .filter((c) => c.weekday === weekday)
-      .sort((a, b) => a.start.localeCompare(b.start)),
-  }));
+  // 课表按「时间槽 × 周一~周日」排成网格：整个一周一屏看完，不再一行一个。
+  const slots = Array.from(new Set(courses.map((c) => c.start))).sort();
 
   const renderTask = (t: Task) => (
     <div key={t.id} className="wr-task-line">
@@ -293,42 +280,54 @@ export default function TaskPage({
             </div>
             <p className="wr-progress-note">
               {courses.length
-                ? "按周一到周日排列，点某一天看当天的课"
+                ? "整个一周一屏看完，点「任务」页可以加截止日期"
                 : "还没有课程。在聊天里点「+」→「添加课程」就能录入"}
             </p>
           </section>
 
-          <div className="wr-course-week">
-            {courseDays.map((day) => (
-              <section key={day.weekday} className="wr-course-day">
-                <header>
-                  <b>周{day.label}</b>
-                  <small>{formatDay(day.date)}</small>
-                  {day.date === today && <em>今天</em>}
-                </header>
-                {day.courses.length === 0 ? (
-                  <p className="wr-course-empty">没课</p>
-                ) : (
-                  <div className="wr-course-list">
-                    {day.courses.map((c) => (
-                      <div key={c.id} className="wr-course-item">
-                        <span className="wr-course-time">
-                          {c.start}–{c.end}
-                        </span>
-                        <span className="wr-course-name">{c.name}</span>
-                        {c.place && (
-                          <span className="wr-course-place">
-                            <MapPin size={12} />
-                            {c.place}
-                          </span>
-                        )}
+          {courses.length === 0 ? (
+            <p className="wr-empty-hint">
+              还没有课程。在聊天里点「+」→「添加课程」就能录入。
+            </p>
+          ) : (
+            <div className="wr-grid" aria-label="周课表">
+              <div className="wr-grid-corner" />
+              {WEEK_LABELS.map((label, i) => (
+                <div
+                  key={label}
+                  className={
+                    "wr-grid-day" + (weekDates[i] === today ? " is-today" : "")
+                  }
+                >
+                  {label}
+                </div>
+              ))}
+              {slots.map((slot) => (
+                <Fragment key={slot}>
+                  <div className="wr-grid-time">{slot}</div>
+                  {WEEK_ORDER.map((weekday) => {
+                    const cell = courses.filter(
+                      (c) => c.weekday === weekday && c.start === slot,
+                    );
+                    return (
+                      <div key={weekday} className="wr-grid-cell">
+                        {cell.map((c) => (
+                          <div
+                            key={c.id}
+                            className="wr-grid-course"
+                            title={`${c.name} ${c.start}–${c.end}${c.place ? ` · ${c.place}` : ""}`}
+                          >
+                            <b>{c.name}</b>
+                            {c.place && <small>{c.place}</small>}
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </section>
-            ))}
-          </div>
+                    );
+                  })}
+                </Fragment>
+              ))}
+            </div>
+          )}
         </>
       )}
     </>

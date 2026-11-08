@@ -319,88 +319,81 @@
   opacity: 0.7;
 }
 
-/* ── 课表 ─────────────────────────────────────────────── */
+/* ── 课表：时间槽 × 周一~周日 的真网格 ─────────────────── */
 
-.wr-course-week {
+.wr-grid {
   display: grid;
-  gap: var(--space-12);
+  grid-template-columns: 38px repeat(7, minmax(0, 1fr));
+  gap: 2px;
   margin-bottom: var(--space-24);
 }
 
-.wr-course-day {
-  padding: var(--space-12) var(--space-16);
-  border: var(--border-1) solid var(--glass-line);
-  border-radius: var(--radius-20);
-  background: var(--glass-bg);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
+.wr-grid-corner,
+.wr-grid-day {
+  display: grid;
+  place-items: center;
+  padding-bottom: var(--space-4);
 }
 
-.wr-course-day > header {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-8);
-  margin-bottom: var(--space-8);
-}
-
-.wr-course-day > header b {
-  color: var(--ink);
-  font-size: var(--text-15);
-}
-
-.wr-course-day > header small {
+.wr-grid-day {
   color: var(--ink-3);
   font-size: var(--text-11);
 }
 
-.wr-course-day > header em {
-  margin-left: auto;
-  padding: 1px 8px;
-  border-radius: var(--radius-pill);
-  background: var(--primary);
-  color: var(--on-primary);
-  font-size: var(--text-11);
-  font-style: normal;
-}
-
-.wr-course-empty {
-  margin: 0;
-  color: var(--ink-3);
-  font-size: var(--text-12);
-}
-
-.wr-course-list {
-  display: grid;
-  gap: var(--space-8);
-}
-
-.wr-course-item {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 2px var(--space-12);
-  padding: var(--space-8) var(--space-12);
-  border-radius: var(--radius-16);
-  background: var(--surface);
-}
-
-.wr-course-time {
-  grid-row: span 2;
-  align-self: center;
+.wr-grid-day.is-today {
   color: var(--primary);
-  font-size: var(--text-12);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  font-weight: var(--weight-semibold);
 }
 
-.wr-course-name {
-  color: var(--ink);
-  font-size: var(--text-15);
-}
-
-.wr-course-place {
-  display: inline-flex;
+.wr-grid-time {
+  display: grid;
   align-items: center;
-  gap: 3px;
-  color: var(--ink-3);
-  font-size: var(--text-11);
+  justify-items: start;
+  color: var(--card-caption);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.wr-grid-cell {
+  min-height: 52px;
+  display: grid;
+  gap: 2px;
+  padding: 1px;
+  border-radius: 12px;
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+.wr-grid-cell:empty {
+  background: color-mix(in srgb, var(--card-bg) 50%, transparent);
+  box-shadow: none;
+}
+
+.wr-grid-course {
+  display: grid;
+  gap: 1px;
+  padding: 3px 4px;
+  overflow: hidden;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--primary) 12%, var(--card-bg));
+  color: var(--ink);
+}
+
+.wr-grid-course b {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: var(--weight-semibold);
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.wr-grid-course small {
+  overflow: hidden;
+  color: var(--card-caption);
+  font-size: 9px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

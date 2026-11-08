@@ -225,8 +225,11 @@
   z-index: var(--z-overlay);
   display: flex;
   align-items: flex-end;
+  /* 键盘弹起时整块弹层上移，否则「新增任务」的输入框会被输入法整个盖掉。 */
+  padding-bottom: var(--kb-inset, 0px);
   background: var(--scrim);
   animation: wm-fade var(--dur-2) var(--ease) both;
+  transition: padding-bottom var(--dur-2) var(--ease);
 }
 
 .wr-sheet {
