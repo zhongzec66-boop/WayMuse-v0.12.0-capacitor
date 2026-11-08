@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
 import ConnectionsPanel from "./ConnectionsPanel";
 import BotAvatar from "../BotAvatar";
 import AvatarPicker from "../AvatarPicker";
 import { speak } from "../breeze";
-import { haptic } from "../nativeExtras";
+import { getAudioRoute, haptic } from "../nativeExtras";
 import { storage } from "../storage";
 import { APP_VERSION } from "../version";
 import { DeepSeekError, listDeepSeekModels } from "../deepseek/client";
@@ -66,12 +66,25 @@ export default function SettingsPage({
   >("idle");
   const [breezeMsg, setBreezeMsg] = useState("");
 
+  useEffect(() => {
+    void getAudioRoute().then(setAudioRoute);
+  }, []);
+
   /* ── 联网搜索 ── */
   const [searchProvider, setSearchProvider] = useState(() =>
     storage.getSearchProvider(),
   );
   const [searchKey, setSearchKey] = useState(() => storage.getSearchKey());
   const [searchOn, setSearchOn] = useState(() => storage.getSearchEnabled());
+  const [audioRoute, setAudioRoute] = useState("");
+  const safeTop = (() => {
+    if (typeof window === "undefined") return 0;
+    const raw = getComputedStyle(document.documentElement)
+      .getPropertyValue("--safe-top")
+      .trim();
+    const value = Number.parseFloat(raw);
+    return Number.isFinite(value) ? Math.round(value) : 0;
+  })();
 
   const testVoice = async () => {
     setBreezeState("testing");
@@ -621,6 +634,10 @@ export default function SettingsPage({
           >
             试一下震动
           </button>
+          <p className="wr-settings-note">
+            顶部安全区：{safeTop}px · 出声口：
+            {audioRoute || "未知"}
+          </p>
           <p className="wr-settings-note">
             没有 key 也能用文字聊天；语音只是额外的朗读通道。
             震动没反应的话，先检查系统是否开了「低电量模式」。

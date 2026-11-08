@@ -21,8 +21,8 @@
   gap: var(--space-8);
   /* 标题改成绝对居中后不再撑高容器，这里要显式给一个，
      否则头像会被顶出去、和名字叠在一起 */
-  min-height: calc(var(--safe-top) + 124px);
-  padding: calc(var(--safe-top) + 20px) var(--page-pad) var(--space-12);
+  min-height: calc(var(--safe-top) + 136px);
+  padding: calc(var(--safe-top) + 32px) var(--page-pad) var(--space-12);
   pointer-events: none;
 }
 
@@ -165,7 +165,7 @@
   overflow-y: auto;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
-  padding: calc(var(--safe-top) + 136px) var(--page-pad)
+  padding: calc(var(--safe-top) + 148px) var(--page-pad)
     calc(var(--content-bottom) + var(--safe-bottom) + 48px);
   scroll-padding-block: 132px 150px;
 }
