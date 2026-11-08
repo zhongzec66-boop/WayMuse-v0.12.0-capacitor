@@ -35,6 +35,33 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
+      # GitHub 的 release CDN 偶发 504，会让 SPM 拉 Capacitor.xcframework 失败，
+      # 这一步单独做、并且重试，避免整条流水线因为一次网络抖动白跑。
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: build/DerivedData/SourcePackages
+          key: spm-${{ runner.os }}-${{ hashFiles('ios/App/CapApp-SPM/Package.swift') }}
+          restore-keys: |
+            spm-${{ runner.os }}-
+
+      - name: Resolve Swift package dependencies
+        run: |
+          for attempt in 1 2 3 4; do
+            if xcodebuild \
+                 -project ios/App/App.xcodeproj \
+                 -scheme App \
+                 -derivedDataPath build/DerivedData \
+                 -resolvePackageDependencies; then
+              echo "SPM resolved on attempt $attempt"
+              exit 0
+            fi
+            echo "::warning::SPM resolve failed (attempt $attempt), retrying in 20s"
+            sleep 20
+          done
+          echo "::error::SPM resolve failed after 4 attempts"
+          exit 1
+
       - name: Build unsigned iPhone app
         run: |
           xcodebuild \
