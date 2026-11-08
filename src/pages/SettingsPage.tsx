@@ -510,7 +510,7 @@ export default function SettingsPage({
           <label className="wr-settings-field">
             <span>
               服务商
-              <small>两家都按次计费，key 只存本机</small>
+              <small>不填 key 也能联网；填了质量更好</small>
             </span>
             <select
               value={searchProvider}
@@ -524,7 +524,12 @@ export default function SettingsPage({
             </select>
           </label>
           <label className="wr-settings-field">
-            <span>搜索 API Key</span>
+            <span>
+              搜索 API Key（可选）
+              <small>
+                serper.dev 每月 2500 次免费 · tavily.com 每月 1000 次免费
+              </small>
+            </span>
             <input
               type="password"
               value={searchKey}
@@ -551,7 +556,8 @@ export default function SettingsPage({
             聊天时默认联网（每次提问多一次搜索请求）
           </label>
           <p className="wr-settings-note">
-            不开也能正常聊天；开了以后回答会引用网页，并把来源写在后面。
+            不填 key 也能联网：默认走 DuckDuckGo 和维基百科的免费接口，
+            不需要注册。想要更完整的网页结果再填上面的 key。
           </p>
         </div>
 

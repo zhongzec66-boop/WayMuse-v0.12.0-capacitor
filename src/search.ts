@@ -62,7 +62,9 @@ export async function webSearch(
   config: SearchConfig,
 ): Promise<SearchHit[]> {
   const q = query.trim().slice(0, 200);
-  if (!q || !config.apiKey.trim()) return [];
+  if (!q) return [];
+  // 没有 key 就走免 key 的 DuckDuckGo + 维基，用户不需要配置任何东西
+  if (!config.apiKey.trim()) return webSearchKeyless(q);
   const provider = normalizeProvider(config.provider);
 
   try {
@@ -114,4 +116,100 @@ export function formatSearchContext(query: string, hits: SearchHit[]): string {
     ...lines,
     "引用时请说明来自网页，并把来源写在后面；不要编造结果里没有的内容。",
   ].join("\n");
+}
+
+/* ── 免 key 的兜底搜索 ─────────────────────────────
+   不填任何 key 也能联网：DuckDuckGo 的 Instant Answer 负责「是什么」，
+   维基百科负责条目摘要。两家都支持跨域、都不需要注册。
+   质量不如 Serper/Tavily，但「让用户少填一个密钥」值这个折中。 */
+
+async function getJson(url: string): Promise<unknown> {
+  if (Capacitor.isNativePlatform()) {
+    const response = await CapacitorHttp.get({
+      url,
+      responseType: "json",
+    });
+    if (response.status >= 400) throw new Error(`HTTP ${response.status}`);
+    return response.data;
+  }
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return await res.json();
+}
+
+async function searchDuckDuckGo(query: string): Promise<SearchHit[]> {
+  try {
+    const url =
+      "https://api.duckduckgo.com/?q=" +
+      encodeURIComponent(query) +
+      "&format=json&no_html=1&skip_disambig=1";
+    const data = (await getJson(url)) as {
+      Heading?: string;
+      AbstractText?: string;
+      AbstractURL?: string;
+      RelatedTopics?: Array<{ Text?: string; FirstURL?: string }>;
+    };
+    const hits: SearchHit[] = [];
+    if (data.AbstractText) {
+      hits.push({
+        title: data.Heading || query,
+        url: data.AbstractURL ?? "",
+        snippet: data.AbstractText.slice(0, 300),
+      });
+    }
+    for (const item of data.RelatedTopics ?? []) {
+      if (hits.length >= 4) break;
+      if (item.Text && item.FirstURL) {
+        hits.push({
+          title: item.Text.slice(0, 60),
+          url: item.FirstURL,
+          snippet: item.Text.slice(0, 300),
+        });
+      }
+    }
+    return hits;
+  } catch {
+    return [];
+  }
+}
+
+async function searchWikipedia(query: string): Promise<SearchHit[]> {
+  try {
+    const url =
+      "https://zh.wikipedia.org/w/api.php?action=query&list=search&format=json&origin=*&srlimit=3&srsearch=" +
+      encodeURIComponent(query);
+    const data = (await getJson(url)) as {
+      query?: { search?: Array<{ title?: string; snippet?: string }> };
+    };
+    return (data.query?.search ?? [])
+      .filter((item) => item.title)
+      .map((item) => ({
+        title: item.title ?? "",
+        url: `https://zh.wikipedia.org/wiki/${encodeURIComponent(item.title ?? "")}`,
+        snippet: (item.snippet ?? "").replace(/<[^>]+>/g, "").slice(0, 300),
+      }));
+  } catch {
+    return [];
+  }
+}
+
+/** 不需要任何 key 的联网搜索。 */
+export async function webSearchKeyless(query: string): Promise<SearchHit[]> {
+  const q = query.trim().slice(0, 200);
+  if (!q) return [];
+  const [duck, wiki] = await Promise.all([
+    searchDuckDuckGo(q),
+    searchWikipedia(q),
+  ]);
+  // 去重后取前 5 条
+  const seen = new Set<string>();
+  const merged: SearchHit[] = [];
+  for (const hit of [...duck, ...wiki]) {
+    const key = hit.url || hit.title;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(hit);
+    if (merged.length >= 5) break;
+  }
+  return merged;
 }

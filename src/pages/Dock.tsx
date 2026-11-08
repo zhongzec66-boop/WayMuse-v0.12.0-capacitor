@@ -4,7 +4,6 @@ import {
   FilePlus2,
   ListTodo,
   MessageCircle,
-  Mic2,
   AudioLines,
   Plus,
   Send,
@@ -42,7 +41,7 @@ export default function Dock({
   setAttachmentMenu: Dispatch<SetStateAction<boolean>>;
   draft: string;
   setDraft: Dispatch<SetStateAction<string>>;
-  overlay: Overlay;
+  overlay: Overlay | "通话";
   submit: () => void;
   openIntake: (kind: Kind) => void;
   onAttach: (payload: string) => void;
@@ -65,6 +64,7 @@ export default function Dock({
             ? "和助理说点什么…"
             : "点击输入或录制语音…";
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const imageRef = useRef<HTMLInputElement | null>(null);
   // 右侧麦克风：原生本地识别，逐字回填到输入框，不跳页
   const speech = useSpeechInput(setDraft);
 
@@ -100,24 +100,26 @@ export default function Dock({
     onTextChange: setDraft,
     onSubmit: submit,
     onAttach: () => setAttachmentMenu(!attachmentMenu),
-    onVoice: () => openIntake("语音"),
+    onVoice: () => {
+      if (speech.supported) {
+        speech.toggle();
+        return;
+      }
+      openIntake("语音");
+    },
   });
 
   return (
     <div className={nativeTabsActive ? "wr-dock wr-dock-native" : "wr-dock"}>
       {attachmentMenu && (
         <div className="wr-attachment-menu">
-          <button onClick={() => openIntake("图片")}>
+          <button onClick={() => imageRef.current?.click()}>
             <Camera size={20} />
-            上传照片或图片
+            选一张图片
           </button>
           <button onClick={() => fileRef.current?.click()}>
             <FilePlus2 size={20} />
             选一个文件
-          </button>
-          <button onClick={() => openIntake("语音")}>
-            <Mic2 size={20} />
-            录制或上传语音
           </button>
           <button onClick={() => openIntake("课表")}>
             <CalendarDays size={20} />
@@ -142,6 +144,14 @@ export default function Dock({
         className="wr-visually-hidden"
         onChange={handleFile}
         aria-label="选择要发送的文件"
+      />
+      <input
+        ref={imageRef}
+        type="file"
+        accept="image/*"
+        className="wr-visually-hidden"
+        onChange={handleFile}
+        aria-label="选择要发送的图片"
       />
       <div
         id={COMPOSE_SLOT_ID}

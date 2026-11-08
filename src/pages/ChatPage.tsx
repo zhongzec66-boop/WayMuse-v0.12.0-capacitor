@@ -132,6 +132,8 @@ export default function ChatPage({
   onTasksChange,
   onMemoriesChange,
   onViewPlans,
+  callOpen,
+  onCallOpenChange,
 }: {
   agentName: string;
   agentAvatar: string;
@@ -145,6 +147,8 @@ export default function ChatPage({
   onTasksChange: (tasks: Task[]) => void;
   onMemoriesChange: (memories: Memory[]) => void;
   onViewPlans: () => void;
+  callOpen: boolean;
+  onCallOpenChange: (open: boolean) => void;
 }) {
   const [config, setConfig] = useState<DeepSeekConfig>(() =>
     storage.getDeepSeekConfig(),
@@ -166,7 +170,7 @@ export default function ChatPage({
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [streaming, setStreaming] = useState(false);
-  const [callOpen, setCallOpen] = useState(false);
+
   const [breezeKey] = useState(() => storage.getBreezeKey());
   const [breezeVoice] = useState(() => storage.getBreezeVoice());
   const [searchOn, setSearchOn] = useState(() => storage.getSearchEnabled());
@@ -557,7 +561,7 @@ export default function ChatPage({
           <button
             className="wr-round"
             aria-label="语音通话"
-            onClick={() => setCallOpen(true)}
+            onClick={() => onCallOpenChange(true)}
           >
             <PhoneCall />
           </button>
@@ -579,7 +583,7 @@ export default function ChatPage({
         breezeKey={breezeKey}
         breezeVoice={breezeVoice}
         onFinal={(text) => void sendMessage(text, messages)}
-        onClose={() => setCallOpen(false)}
+        onClose={() => onCallOpenChange(false)}
       />
 
       <div className="wr-chat-scroll">

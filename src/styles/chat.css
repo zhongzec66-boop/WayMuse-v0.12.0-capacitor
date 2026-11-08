@@ -15,10 +15,13 @@
   right: 0;
   left: 0;
   z-index: var(--z-sticky);
-  display: grid;
-  grid-template-columns: 44px 1fr auto;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-8);
+  /* 标题改成绝对居中后不再撑高容器，这里要显式给一个，
+     否则头像会被顶出去、和名字叠在一起 */
+  min-height: calc(var(--safe-top) + 104px);
   padding: calc(var(--safe-top) + 10px) var(--page-pad) var(--space-12);
   pointer-events: none;
 }
@@ -67,14 +70,24 @@
   height: 22px;
 }
 
+/* 标题独立绝对居中：右侧按钮从 1 个变成 3 个时也不会把它挤偏 */
 .wr-chat-title {
+  position: absolute;
+  top: 50%;
+  left: 50%;
   min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  justify-self: center;
   gap: 1px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.wr-chat-title > b,
+.wr-chat-title > .wr-chat-sub {
+  pointer-events: auto;
 }
 
 .wr-chat-title b {

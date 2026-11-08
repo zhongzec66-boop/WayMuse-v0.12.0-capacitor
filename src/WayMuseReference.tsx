@@ -67,6 +67,8 @@ export default function WayMuseReference() {
   );
   const profileName = profile.callName.trim() || "同学";
   const [showTip, setShowTip] = useState(true);
+  // 通话是覆盖全屏的原生+Web 混合界面，必须把原生 Tab 栏和原生输入框一起藏掉
+  const [callOpen, setCallOpen] = useState(false);
   const [courses, setCourses] = useState<Course[]>(storage.getCourses);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [hasEntered, setHasEntered] = useState(storage.getEntered);
@@ -153,7 +155,12 @@ export default function WayMuseReference() {
   };
   // 原生 Liquid Glass Tab 栏：iOS 上由 LiquidGlassPlugin 接管，
   // 其它环境自动回落到 Web Tab 栏（hook 内部判断平台）。
-  const nativeTabsActive = useNativeTabs(page, hasEntered, overlay, nav);
+  const nativeTabsActive = useNativeTabs(
+    page,
+    hasEntered,
+    callOpen ? "通话" : overlay,
+    nav,
+  );
   const openIntake = (kind: Kind) => {
     setIntakeKind(kind);
     setAttachmentMenu(false);
@@ -279,6 +286,8 @@ export default function WayMuseReference() {
               onTasksChange={setTasks}
               onMemoriesChange={setMemories}
               onViewPlans={() => nav("任务")}
+              callOpen={callOpen}
+              onCallOpenChange={setCallOpen}
             />
           )}
           {page === "角色" && (
@@ -297,7 +306,7 @@ export default function WayMuseReference() {
           setAttachmentMenu={setAttachmentMenu}
           draft={draft}
           setDraft={setDraft}
-          overlay={overlay}
+          overlay={callOpen ? "通话" : overlay}
           submit={submit}
           openIntake={openIntake}
           onAttach={(payload) => {
