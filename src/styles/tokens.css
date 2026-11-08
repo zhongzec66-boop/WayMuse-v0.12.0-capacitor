@@ -67,7 +67,9 @@
   --motion-press: 0.97;
   --motion-modal: 0.92;
 
-  --safe-top: env(safe-area-inset-top, 0px);
+  /* 下限 47px：部分 WebView 配置下 env() 会返回 0，
+     那样顶部内容会直接压到灵动岛上面。47 是灵动岛机型的保守值。 */
+  --safe-top: max(env(safe-area-inset-top, 0px), 59px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
