@@ -32,6 +32,11 @@ jobs:
       - name: Copy web app and native plugin into iOS project
         run: npx cap sync ios
 
+      # cap sync 会重写 ios/App/App/capacitor.config.json，
+      # 所以注册必须放在它之后。
+      - name: Register native compose plugin
+        run: node scripts/register-native-compose.cjs
+
       - name: Show Xcode version
         run: xcodebuild -version
 

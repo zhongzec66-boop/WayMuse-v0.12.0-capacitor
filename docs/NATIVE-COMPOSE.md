@@ -28,16 +28,27 @@ node_modules/@ajuarezso/capacitor-liquid-glass/ios/Sources/LiquidGlassPlugin/
 
 ## 注册
 
-注入的类不在 Capacitor 的自动插件清单里，所以 `SceneDelegate.swift` 里用
-`WayMuseBridgeViewController` 子类在 `capacitorDidLoad()` 手动注册：
+App target **无法**直接引用这个类：它编译在 SPM 包 `AjuarezsoCapacitorLiquidGlass`
+的 `LiquidGlassPlugin` 模块里，跨模块引用要么赌模块名、要么改 pbxproj，都不稳。
+
+Capacitor 自己在 `CapacitorBridge.swift` 里是这样找插件的：
 
 ```swift
-final class WayMuseBridgeViewController: CAPBridgeViewController {
-    override func capacitorDidLoad() {
-        super.capacitorDidLoad()
-        bridge?.registerPluginInstance(NativeComposePlugin())
-    }
+for plugin in registrationList.packageClassList {
+    if let pluginClass = NSClassFromString(plugin) { ... }
 }
+```
+
+只按 **ObjC 类名**查。所以只要把 `NativeComposePlugin`（我们的类用
+`@objc(NativeComposePlugin)` 声明）写进 `ios/App/App/capacitor.config.json`
+的 `packageClassList`，就会被自动实例化和注册，App target 一行 Swift 都不用改。
+
+`npx cap sync ios` 会重写这个 json，因此由 `scripts/register-native-compose.cjs`
+在 **sync 之后**执行（CI 里是紧跟 sync 的一步）。本地手动构建时别忘了跑：
+
+```bash
+npx cap sync ios
+node scripts/register-native-compose.cjs
 ```
 
 ## 原生 API
