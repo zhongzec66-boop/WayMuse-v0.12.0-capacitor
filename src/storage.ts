@@ -322,6 +322,13 @@ export const storage = {
     readSessionText(DEEPSEEK_KEY_NAME) || readText(DEEPSEEK_KEY_NAME, ""),
   getDeepSeekRemember: () => readText(DEEPSEEK_REMEMBER_NAME, "") === "1",
   setDeepSeekKey: writeKey,
+  /* ── 语音（Breeze TTS）── 只存本机，和 DeepSeek key 一样不设默认值 */
+  getBreezeKey: () => readText("breeze-key", ""),
+  setBreezeKey: (key: string) => writeText("breeze-key", key.trim()),
+  getBreezeVoice: () =>
+    readText("breeze-voice", "voc_xeh3w54cqvnp") || "voc_xeh3w54cqvnp",
+  setBreezeVoice: (voice: string) =>
+    writeText("breeze-voice", voice.trim() || "voc_xeh3w54cqvnp"),
   getDeepSeekMessages: readDeepSeekMessages,
   setDeepSeekMessages: (messages: DeepSeekMessage[]) =>
     writeJson("deepseek-messages", messages.slice(-120)),

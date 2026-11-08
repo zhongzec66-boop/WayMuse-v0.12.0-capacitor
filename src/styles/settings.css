@@ -1,4 +1,4 @@
-﻿/* Settings, profile fields, AI connection and privacy pages. */
+/* Settings, profile fields, AI connection and privacy pages. */
 
 .wr-settings-page,
 .wr-intake-page {
@@ -205,6 +205,15 @@
   display: block;
   margin-bottom: var(--space-8);
   font-weight: var(--weight-semibold);
+}
+
+.wr-settings-field > span small {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-3);
+  font-size: var(--text-11);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-body);
 }
 
 .wr-settings-field input,
@@ -570,4 +579,37 @@
   background: var(--field-bg);
   border-radius: 16px;
   font-size: 14px;
+}
+
+/* ── 语音（Breeze TTS）试听 ───────────────────────── */
+
+.wr-settings-test {
+  /* 分组本身没有内边距，字段各自留白，这里要手动让出左右 */
+  width: calc(100% - var(--space-32));
+  min-height: var(--control-44);
+  margin: var(--space-8) var(--space-16) 0;
+  border-radius: var(--radius-16);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: var(--text-15);
+  font-weight: var(--weight-medium);
+}
+
+.wr-settings-test:disabled {
+  opacity: 0.6;
+}
+
+.wr-settings-note {
+  margin: var(--space-8) var(--space-16) var(--space-12);
+  color: var(--ink-3);
+  font-size: var(--text-12);
+  line-height: var(--leading-body);
+}
+
+.wr-settings-note.ok {
+  color: var(--primary);
+}
+
+.wr-settings-note.error {
+  color: var(--danger);
 }
