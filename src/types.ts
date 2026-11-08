@@ -15,6 +15,8 @@ export type Task = {
   done: boolean;
   priority?: "high" | "medium" | "low";
   deadline?: string;
+  /** 可选：HH:mm，用户提到具体钟点时才给 */
+  time?: string;
   category?: string;
 };
 

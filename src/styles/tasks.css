@@ -42,7 +42,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-12);
-  padding: var(--space-12) 0;
+  padding: var(--space-8) 0;
 }
 
 .wr-task-line + .wr-task-line {
@@ -76,7 +76,22 @@
 
 .wr-task-content > span {
   color: var(--ink);
-  font-size: var(--text-17);
+  font-size: var(--text-16);
+  line-height: var(--leading-body);
+}
+
+.wr-task-title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.wr-task-title > span:last-child {
+  min-width: 0;
+  flex: 1;
+  color: var(--ink);
+  font-size: var(--text-16);
   line-height: var(--leading-body);
 }
 
@@ -145,4 +160,247 @@
 .wr-schedule small {
   color: var(--ink-2);
   font-size: var(--text-12);
+}
+
+/* ── 本周进度 ─────────────────────────────────────────── */
+
+.wr-progress-card {
+  margin-bottom: var(--space-16);
+  padding: var(--space-16);
+  border: var(--border-1) solid var(--glass-line);
+  border-radius: var(--radius-28);
+  background: var(--glass-strong);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+.wr-progress-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  color: var(--ink-2);
+  font-size: var(--text-14);
+}
+
+.wr-progress-head b {
+  color: var(--ink);
+  font-size: var(--text-20);
+  font-variant-numeric: tabular-nums;
+}
+
+.wr-progress-track {
+  height: 8px;
+  margin: var(--space-12) 0 var(--space-8);
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--primary-soft);
+}
+
+.wr-progress-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+  transition: width var(--dur-3) var(--ease);
+}
+
+.wr-progress-note {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: var(--text-12);
+  line-height: var(--leading-body);
+}
+
+/* ── 周一到周日 ───────────────────────────────────────── */
+
+.wr-week-strip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-20);
+}
+
+.wr-week-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-8) 0;
+  border: var(--border-1) solid var(--glass-line);
+  border-radius: var(--radius-16);
+  background: var(--surface);
+  color: var(--ink-2);
+}
+
+.wr-week-day small {
+  font-size: var(--text-11);
+}
+
+.wr-week-day b {
+  color: var(--ink);
+  font-size: var(--text-15);
+  font-variant-numeric: tabular-nums;
+}
+
+.wr-week-day i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+.wr-week-day i[data-empty="true"] {
+  background: transparent;
+}
+
+.wr-week-day.is-today {
+  border-color: transparent;
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.wr-week-day.is-today b {
+  color: var(--on-primary);
+}
+
+.wr-week-day.is-today i {
+  background: var(--on-primary);
+}
+
+.wr-section-danger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  color: var(--danger);
+}
+
+/* ── 任务行补充：时间与标签 ───────────────────────────── */
+
+.wr-task-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--primary);
+  font-size: var(--text-12);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.wr-task-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.wr-task-tag {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 1px 6px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--primary-soft);
+  color: var(--ink-2);
+  font-size: var(--text-11);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wr-task-tag.wr-priority-high {
+  color: var(--danger);
+}
+
+.wr-task-tag.wr-priority-medium {
+  color: var(--accent-ink);
+}
+
+.wr-task-card-done {
+  opacity: 0.7;
+}
+
+/* ── 课表 ─────────────────────────────────────────────── */
+
+.wr-course-week {
+  display: grid;
+  gap: var(--space-12);
+  margin-bottom: var(--space-24);
+}
+
+.wr-course-day {
+  padding: var(--space-12) var(--space-16);
+  border: var(--border-1) solid var(--glass-line);
+  border-radius: var(--radius-20);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+.wr-course-day > header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-8);
+  margin-bottom: var(--space-8);
+}
+
+.wr-course-day > header b {
+  color: var(--ink);
+  font-size: var(--text-15);
+}
+
+.wr-course-day > header small {
+  color: var(--ink-3);
+  font-size: var(--text-11);
+}
+
+.wr-course-day > header em {
+  margin-left: auto;
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: var(--text-11);
+  font-style: normal;
+}
+
+.wr-course-empty {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: var(--text-12);
+}
+
+.wr-course-list {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.wr-course-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px var(--space-12);
+  padding: var(--space-8) var(--space-12);
+  border-radius: var(--radius-16);
+  background: var(--surface);
+}
+
+.wr-course-time {
+  grid-row: span 2;
+  align-self: center;
+  color: var(--primary);
+  font-size: var(--text-12);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.wr-course-name {
+  color: var(--ink);
+  font-size: var(--text-15);
+}
+
+.wr-course-place {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--ink-3);
+  font-size: var(--text-11);
 }

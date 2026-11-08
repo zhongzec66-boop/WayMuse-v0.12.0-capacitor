@@ -70,12 +70,14 @@ function sanitizeTask(value: unknown): Task | null {
     typeof value.category === "string" && value.category.trim()
       ? value.category.trim()
       : undefined;
+  const time = isTime(value.time) ? value.time : undefined;
   return {
     id: typeof value.id === "string" && value.id ? value.id : newId(),
     text,
     done: value.done === true,
     priority,
     deadline,
+    time,
     category,
   };
 }

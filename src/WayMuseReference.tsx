@@ -46,7 +46,7 @@ export default function WayMuseReference() {
   const [overlay, setOverlay] = useState<Overlay>("");
   const [attachmentMenu, setAttachmentMenu] = useState(false);
   const [intakeKind, setIntakeKind] = useState<Kind>("课表");
-  const [taskMode, setTaskMode] = useState<"任务" | "定时">("任务");
+  const [taskMode, setTaskMode] = useState<"任务" | "课表">("任务");
   const [tasks, setTasks] = useState<Task[]>(() =>
     storage.getTasks(seedTasks).filter((task) => !task.id.startsWith("seed-")),
   );
@@ -224,6 +224,7 @@ export default function WayMuseReference() {
               setTaskMode={setTaskMode}
               tasks={tasks}
               setTasks={setTasks}
+              courses={courses}
               setOverlay={setOverlay}
             />
           )}
@@ -233,6 +234,8 @@ export default function WayMuseReference() {
               setShowTip={setShowTip}
               memories={memories}
               setMemories={setMemories}
+              profile={profile}
+              profileName={profileName}
               nav={nav}
               setOverlay={setOverlay}
             />

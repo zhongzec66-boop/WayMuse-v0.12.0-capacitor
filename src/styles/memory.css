@@ -1,4 +1,4 @@
-﻿/* Memory guide and entries. */
+/* Memory guide and entries. */
 
 .wr-memory-tip {
   position: relative;
@@ -106,4 +106,127 @@
   display: grid;
   place-items: center;
   color: var(--ink-3);
+}
+
+/* ── 「关于我」结构化卡片 ─────────────────────────────── */
+
+.wr-fact-card,
+.wr-memory-block {
+  margin-top: var(--space-16);
+  padding: var(--space-16);
+  border: var(--border-1) solid var(--glass-line);
+  border-radius: var(--radius-28);
+  background: var(--glass-strong);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+.wr-fact-card > header,
+.wr-memory-block > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-12);
+  color: var(--ink);
+  font-size: var(--text-15);
+  font-weight: var(--weight-semibold);
+}
+
+.wr-fact-card > header button {
+  min-height: 32px;
+  padding: 0 var(--space-12);
+  border-radius: var(--radius-pill);
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: var(--text-12);
+  font-weight: var(--weight-medium);
+}
+
+.wr-memory-block > header em {
+  color: var(--ink-3);
+  font-size: var(--text-12);
+  font-style: normal;
+  font-weight: var(--weight-regular);
+}
+
+.wr-fact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-12);
+}
+
+.wr-fact-grid > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.wr-fact-grid small {
+  color: var(--ink-3);
+  font-size: var(--text-11);
+}
+
+.wr-fact-grid b {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: var(--text-15);
+  font-weight: var(--weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wr-fact-cta {
+  width: 100%;
+  min-height: var(--control-44);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  margin-top: var(--space-12);
+  border: var(--border-1) dashed var(--field-line);
+  border-radius: var(--radius-16);
+  color: var(--ink-2);
+  font-size: var(--text-13);
+}
+
+/* ── 记忆改成「标签云」，不再是一行行流水账 ───────────── */
+
+.wr-memory-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wr-memory-tags li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  max-width: 100%;
+  padding: 6px 6px 6px 12px;
+  border-radius: var(--radius-16);
+  background: var(--primary-soft);
+  color: var(--ink);
+  font-size: var(--text-13);
+  line-height: var(--leading-body);
+}
+
+.wr-memory-tags li button {
+  width: var(--space-20);
+  height: var(--space-20);
+  flex: 0 0 var(--space-20);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--ink-3);
+}
+
+.wr-memory-empty {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: var(--text-13);
+  line-height: var(--leading-body);
 }
