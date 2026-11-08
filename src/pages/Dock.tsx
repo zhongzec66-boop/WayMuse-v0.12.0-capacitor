@@ -47,12 +47,23 @@ export default function Dock({
 }) {
   const composeText =
     overlay === "新增任务" || overlay === "添加记忆" ? "" : draft;
+  // 同一个 agent，五个工作面：占位符跟着当前页走，提示它此刻能帮什么。
+  const placeholder =
+    page === "Today"
+      ? "帮我梳理今天的安排…"
+      : page === "任务"
+        ? "让我帮你研究、规划或拆解…"
+        : page === "记忆"
+          ? "让我更了解你…"
+          : page === "角色"
+            ? "和助理说点什么…"
+            : "点击输入或录制语音…";
   // iOS 上用原生输入框；其它环境（Web / 插件缺失）自动回退到下面的 <input>。
   const nativeComposeActive = useNativeCompose({
     enabled: isNativeComposeSupported(),
     hidden: overlay !== "",
     text: composeText,
-    placeholder: "点击输入或录制语音…",
+    placeholder,
     onTextChange: setDraft,
     onSubmit: submit,
     onAttach: () => setAttachmentMenu(!attachmentMenu),
@@ -100,7 +111,7 @@ export default function Dock({
           onKeyDown={(e) => {
             if (e.key === "Enter") submit();
           }}
-          placeholder="点击输入或录制语音…"
+          placeholder={placeholder}
         />
         <button
           aria-label={draft ? "发送" : "录制语音"}

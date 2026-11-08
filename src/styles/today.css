@@ -1,107 +1,303 @@
-﻿/* Today brief and course rows. */
+/* Today 页：模块卡片（冷白主题）。
+   参照图的结构：每张卡一个左上标签 + 右上「更新于」，卡内分主项与已结束。 */
 
-.wr-brief {
-  padding: var(--space-16);
-  border: var(--border-1) solid var(--glass-line);
-  border-radius: var(--radius-28);
-  background: var(--glass-bg);
-  box-shadow: var(--glass-shadow);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
-}
-
-.wr-brief-date {
-  color: var(--accent-ink);
-  font-size: var(--text-14);
-  font-weight: var(--weight-semibold);
-}
-
-.wr-brief h2 {
-  margin: var(--space-16) 0;
-  color: var(--ink);
-  font-size: var(--text-26);
-  font-weight: var(--weight-bold);
-  line-height: var(--leading-tight);
-}
-
-.wr-brief p {
-  margin: 0;
-  color: var(--ink-2);
-  font-size: var(--text-17);
-  line-height: var(--leading-body);
-}
-
-.wr-brief-label {
-  margin: var(--space-24) 0 var(--space-8);
-  color: var(--ink-3);
-  font-size: var(--text-12);
-  font-weight: var(--weight-semibold);
-}
-
-.wr-brief-end {
-  margin: var(--space-16) 0 0;
-  color: var(--ink-2);
-  font-size: var(--text-14);
-  line-height: var(--leading-body);
-}
-
-.wr-course-list {
-  display: grid;
+.wr-head-actions {
+  display: flex;
   gap: var(--space-8);
 }
 
-.wr-course-row {
+.wr-round-solid {
+  border-color: transparent;
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.wr-today-sub {
+  margin: calc(var(--space-4) * -1) 0 var(--space-16);
+  color: var(--ink-3);
+  font-size: var(--text-13);
+}
+
+.wr-tcard {
+  margin-bottom: var(--space-12);
+  padding: var(--space-16);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+.wr-tcard-head {
   display: flex;
   align-items: center;
-  gap: var(--space-12);
-  padding: var(--space-12);
-  border: var(--border-1) solid var(--glass-line);
-  border-radius: var(--radius-16);
-  background: var(--surface);
+  justify-content: space-between;
+  margin-bottom: var(--space-12);
 }
 
-.wr-course-row span {
-  min-width: 0;
-  flex: 1;
-}
-
-.wr-course-row b {
-  display: block;
+.wr-tcard-head > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
   color: var(--ink);
-  font-size: var(--text-17);
+  font-size: var(--text-13);
   font-weight: var(--weight-semibold);
 }
 
-.wr-course-row small {
-  display: block;
-  margin-top: var(--space-4);
-  color: var(--ink-2);
+.wr-tcard-head > span svg {
+  color: var(--primary);
+}
+
+.wr-tcard-head em {
+  color: var(--card-caption);
+  font-size: var(--text-11);
+  font-style: normal;
+}
+
+.wr-tcard-edit {
+  color: var(--primary);
   font-size: var(--text-12);
 }
 
-.wr-course-row time {
+.wr-tcard-empty {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: var(--text-13);
+  line-height: var(--leading-body);
+}
+
+.wr-tcard-divider {
+  margin: var(--space-12) 0 var(--space-8);
+  color: var(--card-caption);
+  font-size: var(--text-11);
+}
+
+.wr-tcard-link {
+  width: 100%;
+  min-height: var(--control-44);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  margin-top: var(--space-8);
   color: var(--primary);
-  font-size: var(--text-14);
+  font-size: var(--text-13);
+}
+
+.wr-tcard-cta {
+  width: 100%;
+  min-height: var(--control-44);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  margin-top: var(--space-8);
+  padding: 0 var(--space-12);
+  border: var(--border-1) dashed var(--primary-line);
+  border-radius: var(--radius-16);
+  color: var(--primary);
+  font-size: var(--text-13);
+  text-align: left;
+}
+
+/* ── 正在进行的那一项 ─────────────────────────────── */
+
+.wr-focus {
+  position: relative;
+  padding: var(--space-12) var(--space-12) var(--space-12) var(--space-16);
+  border-radius: var(--radius-16);
+  background: color-mix(in srgb, var(--primary) 7%, var(--card-bg));
+}
+
+.wr-focus::before {
+  content: "";
+  position: absolute;
+  top: var(--space-12);
+  bottom: var(--space-12);
+  left: 0;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--primary);
+}
+
+.wr-focus-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.wr-focus-top b {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: var(--text-16);
+  font-weight: var(--weight-semibold);
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.wr-course-row button {
-  min-width: var(--control-44);
-  min-height: var(--control-44);
-  display: grid;
-  place-items: center;
+.wr-state {
+  flex: 0 0 auto;
+  padding: 1px 8px;
   border-radius: var(--radius-pill);
+  font-size: var(--text-11);
+  font-weight: var(--weight-medium);
+}
+
+.wr-state-live {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.wr-state-soon {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.wr-focus-time {
+  margin: var(--space-4) 0 var(--space-12);
+  color: var(--ink-2);
+  font-size: var(--text-12);
+  font-variant-numeric: tabular-nums;
+}
+
+.wr-focus-time span {
+  margin-left: var(--space-4);
   color: var(--ink-3);
 }
 
-.wr-course-empty {
-  width: 100%;
-  min-height: var(--tile-height);
-  padding: var(--space-12);
-  border: var(--border-1) dashed var(--primary-line);
-  border-radius: var(--radius-16);
-  background: var(--primary-soft);
+.wr-focus-action {
+  min-height: 34px;
+  padding: 0 var(--space-16);
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: var(--text-13);
+  font-weight: var(--weight-medium);
+}
+
+/* ── 已结束 ───────────────────────────────────────── */
+
+.wr-ended {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-8) 0;
+}
+
+.wr-ended + .wr-ended {
+  border-top: var(--border-1) solid var(--divider);
+}
+
+.wr-ended-bar {
+  width: 3px;
+  height: var(--space-28);
+  flex: 0 0 3px;
+  border-radius: 3px;
+  background: var(--accent-soft);
+}
+
+.wr-ended-main {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 2px;
+}
+
+.wr-ended-main b {
+  overflow: hidden;
+  color: var(--ink-2);
+  font-size: var(--text-15);
+  font-weight: var(--weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wr-ended-main small {
+  color: var(--card-caption);
+  font-size: var(--text-11);
+  font-variant-numeric: tabular-nums;
+}
+
+.wr-ended > button {
+  flex: 0 0 auto;
+  padding: 0 var(--space-8);
+  min-height: var(--space-28);
+  color: var(--ink-3);
+  font-size: var(--text-11);
+}
+
+/* ── 今天到期 ─────────────────────────────────────── */
+
+.wr-due-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wr-due-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-8) 0;
+}
+
+.wr-due-list li + li {
+  border-top: var(--border-1) solid var(--divider);
+}
+
+.wr-due-time {
+  flex: 0 0 46px;
   color: var(--primary);
-  font-size: var(--text-14);
-  text-align: left;
+  font-size: var(--text-12);
+  font-variant-numeric: tabular-nums;
+}
+
+.wr-due-main {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 2px;
+}
+
+.wr-due-main b {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: var(--text-15);
+  font-weight: var(--weight-regular);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wr-due-main small {
+  color: var(--card-caption);
+  font-size: var(--text-11);
+}
+
+.wr-due-list li > button {
+  min-width: var(--space-28);
+  min-height: var(--space-28);
+  display: grid;
+  place-items: center;
+  color: var(--ink-3);
+}
+
+/* ── 我记得 ───────────────────────────────────────── */
+
+.wr-memory-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.wr-memory-chips span {
+  max-width: 100%;
+  padding: 5px 10px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--primary) 8%, var(--card-bg));
+  color: var(--ink-2);
+  font-size: var(--text-12);
+  line-height: var(--leading-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

@@ -1,6 +1,40 @@
-import { ChevronRight, SlidersHorizontal, X } from "lucide-react";
+import { ChevronRight, Clock3, Plus, SlidersHorizontal } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
+import { BRAND } from "../brand";
 import type { Course, Kind, Overlay, Page, Task } from "../types";
+
+/** 全站统一 Asia/Shanghai。 */
+function shanghaiParts() {
+  const fmt = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const map: Record<string, string> = {};
+  for (const p of fmt.formatToParts(new Date())) map[p.type] = p.value;
+  return {
+    ymd: `${map.year}-${map.month}-${map.day}`,
+    minutes: (Number(map.hour) % 24) * 60 + Number(map.minute),
+    clock: `${map.hour}:${map.minute}`,
+  };
+}
+
+function toMinutes(value: string): number {
+  const [h, m] = value.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function greeting(minutes: number): string {
+  if (minutes < 6 * 60) return "凌晨好";
+  if (minutes < 11 * 60) return "早上好";
+  if (minutes < 13 * 60) return "中午好";
+  if (minutes < 18 * 60) return "下午好";
+  return "晚上好";
+}
 
 export default function TodayPage({
   profileName,
@@ -8,8 +42,8 @@ export default function TodayPage({
   memories,
   tasks,
   todayCourses,
-  courses,
   setCourses,
+  courses,
   setOverlay,
   openIntake,
   nav,
@@ -25,158 +59,200 @@ export default function TodayPage({
   openIntake: (kind: Kind) => void;
   nav: (page: Page) => void;
 }) {
-  const activeTasks = tasks.filter((t) => !t.done);
-  const highPriorityTasks = activeTasks.filter((t) => t.priority === "high");
+  const { ymd: todayKey, minutes: now, clock } = shanghaiParts();
 
-  // 生成简报标题和正文
-  const getBriefContent = () => {
-    if (highPriorityTasks.length > 0) {
-      return {
-        title: "今天重点推进这些",
-        body: `你有 ${highPriorityTasks.length} 项高优先级任务。专注完成它们，会让本周进展更清楚。`,
-      };
-    }
-    if (activeTasks.length > 0) {
-      return {
-        title: "稳步推进当前计划",
-        body: `你有 ${activeTasks.length} 项待办任务。选一两件今天能推进的，保持节奏。`,
-      };
-    }
-    if (memories.length > 0) {
-      return {
-        title: "准备好开始了",
-        body: "可以在任务页添加要推进的事，或者在聊天页告诉我你的想法。",
-      };
-    }
-    return {
-      title: "欢迎使用 WayMuse",
-      body: "从记录你的情况开始，我会根据你的需要给出建议。",
-    };
-  };
+  const active = tasks.filter((t) => !t.done);
+  const dueTasks = active
+    .filter((t) => t.deadline && t.deadline <= todayKey)
+    .sort((a, b) => (a.time ?? "99:99").localeCompare(b.time ?? "99:99"));
 
-  const brief = getBriefContent();
-  const suggestedTasks = activeTasks.slice(0, 2);
+  const finished = todayCourses.filter((c) => toMinutes(c.end) < now);
+  const upcoming = todayCourses.filter((c) => toMinutes(c.end) >= now);
+  const focus = upcoming[0];
+  const focusLive = focus ? toMinutes(focus.start) <= now : false;
 
-  // 按截止日期挑出真正"今天要做"的事：逾期排前面
-  const todayKey = (() => {
-    const now = new Date();
-    const offset = now.getTimezoneOffset() * 60_000;
-    return new Date(now.getTime() - offset).toISOString().slice(0, 10);
-  })();
-  const dueTasks = activeTasks
-    .filter((task) => task.deadline && task.deadline <= todayKey)
-    .sort((a, b) => (a.deadline ?? "").localeCompare(b.deadline ?? ""))
-    .slice(0, 4);
+  const weekTotal = tasks.filter((t) => t.deadline).length;
+  const weekDone = tasks.filter((t) => t.deadline && t.done).length;
+  const percent = weekTotal ? Math.round((weekDone / weekTotal) * 100) : 0;
 
   return (
     <>
       <div className="wr-head">
         <h1>今天</h1>
-        <button
-          className="wr-round"
-          aria-label="设置"
-          onClick={() => setOverlay("设置")}
-        >
-          <SlidersHorizontal />
-        </button>
-      </div>
-      <div className="wr-welcome">
-        <span>现在</span>
-        <strong>欢迎，{profileName}</strong>
-      </div>
-      <article className="wr-brief">
-        <div className="wr-brief-date">{date}</div>
-        <h2>{brief.title}</h2>
-        <p>{brief.body}</p>
-        <div className="wr-brief-label">我记得这些</div>
-        <div className="wr-chips">
-          {memories.slice(0, 3).map((m) => (
-            <span key={m}>{m}</span>
-          ))}
+        <div className="wr-head-actions">
+          <button
+            className="wr-round"
+            aria-label="设置"
+            onClick={() => setOverlay("设置")}
+          >
+            <SlidersHorizontal />
+          </button>
+          <button
+            className="wr-round wr-round-solid"
+            aria-label="新增任务"
+            onClick={() => setOverlay("新增任务")}
+          >
+            <Plus />
+          </button>
         </div>
-        <div className="wr-divider" />
-        <div className="wr-brief-label">今天的课程</div>
-        {todayCourses.length ? (
-          <div className="wr-course-list">
-            {todayCourses.map((c) => (
-              <div className="wr-course-row" key={c.id}>
-                <span>
+      </div>
+
+      <p className="wr-today-sub">
+        {greeting(now)}，{profileName} · {date}
+      </p>
+
+      {/* ── 今天进行中 ─────────────────────────────── */}
+      <section className="wr-tcard" aria-label="今天进行中">
+        <header className="wr-tcard-head">
+          <span>
+            <Clock3 size={15} /> 今天进行中
+          </span>
+          <em>更新于 {clock}</em>
+        </header>
+
+        {focus ? (
+          <div className="wr-focus">
+            <div className="wr-focus-top">
+              <b>{focus.name}</b>
+              <span
+                className={
+                  focusLive
+                    ? "wr-state wr-state-live"
+                    : "wr-state wr-state-soon"
+                }
+              >
+                {focusLive ? "进行中" : "即将开始"}
+              </span>
+            </div>
+            <p className="wr-focus-time">
+              {focus.start} – {focus.end}
+              {focus.place && <span>· {focus.place}</span>}
+            </p>
+            <button className="wr-focus-action" onClick={() => nav("聊天")}>
+              和 {BRAND} 聊聊
+            </button>
+          </div>
+        ) : (
+          <p className="wr-tcard-empty">
+            {todayCourses.length
+              ? "今天的课都结束了，剩下时间归你安排。"
+              : "今天没有课。"}
+          </p>
+        )}
+
+        {finished.length > 0 && (
+          <>
+            <div className="wr-tcard-divider">已结束</div>
+            {finished.map((c) => (
+              <div className="wr-ended" key={c.id}>
+                <span className="wr-ended-bar" aria-hidden="true" />
+                <span className="wr-ended-main">
                   <b>{c.name}</b>
-                  <small>{c.place || "地点未填写"}</small>
+                  <small>
+                    {c.start} – {c.end}
+                    {c.place ? ` · ${c.place}` : ""}
+                  </small>
                 </span>
-                <time>
-                  {c.start}–{c.end}
-                </time>
                 <button
-                  aria-label={`删除${c.name}`}
+                  aria-label={`删除课程 ${c.name}`}
                   onClick={() =>
                     setCourses(courses.filter((x) => x.id !== c.id))
                   }
                 >
-                  <X size={15} />
+                  移除
                 </button>
               </div>
             ))}
-          </div>
-        ) : (
-          <button
-            className="wr-course-empty"
-            onClick={() => openIntake("课表")}
-          >
-            暂无今天的课程，添加课表
-          </button>
-        )}
-        {dueTasks.length > 0 && (
-          <>
-            <div className="wr-divider" />
-            <div className="wr-brief-label">今天到期</div>
-            <div className="wr-course-list">
-              {dueTasks.map((task) => (
-                <div className="wr-course-row" key={task.id}>
-                  <span>
-                    <b>{task.text}</b>
-                    <small>
-                      {task.deadline === todayKey
-                        ? "今天"
-                        : `已逾期 · ${task.deadline}`}
-                    </small>
-                  </span>
-                  <button aria-label="去任务页" onClick={() => nav("任务")}>
-                    <ChevronRight size={15} />
-                  </button>
-                </div>
-              ))}
-            </div>
           </>
         )}
-        <div className="wr-divider" />
-        <div className="wr-brief-label">今天可以做</div>
-        {suggestedTasks.length > 0 ? (
-          <div className="wr-mini-grid">
-            {suggestedTasks.map((t) => (
-              <button key={t.id} onClick={() => nav("任务")}>
-                <b>{t.text}</b>
-                {t.priority && (
-                  <small>
-                    {t.priority === "high"
-                      ? "高优先级"
-                      : t.priority === "medium"
-                        ? "中优先级"
-                        : ""}
-                  </small>
-                )}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <button className="wr-course-empty" onClick={() => nav("任务")}>
-            去任务页添加要推进的事
+
+        {todayCourses.length === 0 && (
+          <button className="wr-tcard-cta" onClick={() => openIntake("课表")}>
+            添加课表，我就能把一天的节奏排出来
+            <ChevronRight size={15} />
           </button>
         )}
-        <p className="wr-brief-end">
-          你可以随时告诉我新的进展，我会一起调整计划。
+      </section>
+
+      {/* ── 今天到期 ───────────────────────────────── */}
+      <section className="wr-tcard" aria-label="今天到期">
+        <header className="wr-tcard-head">
+          <span>今天到期</span>
+          <em>{dueTasks.length} 项</em>
+        </header>
+
+        {dueTasks.length === 0 ? (
+          <p className="wr-tcard-empty">现在没有到期的任务。</p>
+        ) : (
+          <ul className="wr-due-list">
+            {dueTasks.slice(0, 5).map((t) => (
+              <li key={t.id}>
+                <span className="wr-due-time">{t.time ?? "—"}</span>
+                <span className="wr-due-main">
+                  <b>{t.text}</b>
+                  <small>
+                    {t.deadline && t.deadline < todayKey
+                      ? `已逾期 · ${t.deadline}`
+                      : (t.category ?? "今天")}
+                  </small>
+                </span>
+                <button aria-label="去计划页" onClick={() => nav("任务")}>
+                  <ChevronRight size={15} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <button className="wr-tcard-link" onClick={() => nav("任务")}>
+          查看全部计划 <ChevronRight size={14} />
+        </button>
+      </section>
+
+      {/* ── 本周 ───────────────────────────────────── */}
+      <section className="wr-tcard" aria-label="本周进度">
+        <header className="wr-tcard-head">
+          <span>本周</span>
+          <em>
+            {weekDone}/{weekTotal}
+          </em>
+        </header>
+        <div
+          className="wr-progress-track"
+          role="progressbar"
+          aria-valuenow={percent}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <span style={{ width: `${percent}%` }} />
+        </div>
+        <p className="wr-tcard-empty">
+          {weekTotal
+            ? percent === 100
+              ? "本周的都完成了。"
+              : `还剩 ${weekTotal - weekDone} 项带日期的任务。`
+            : "还没有带日期的任务。"}
         </p>
-      </article>
+      </section>
+
+      {/* ── 我记得 ─────────────────────────────────── */}
+      <section className="wr-tcard" aria-label="我记得">
+        <header className="wr-tcard-head">
+          <span>我记得</span>
+          <button className="wr-tcard-edit" onClick={() => nav("记忆")}>
+            管理
+          </button>
+        </header>
+        {memories.length === 0 ? (
+          <p className="wr-tcard-empty">还没有记住任何事。聊天时我会先问你。</p>
+        ) : (
+          <div className="wr-memory-chips">
+            {memories.slice(0, 3).map((m) => (
+              <span key={m}>{m}</span>
+            ))}
+          </div>
+        )}
+      </section>
     </>
   );
 }
