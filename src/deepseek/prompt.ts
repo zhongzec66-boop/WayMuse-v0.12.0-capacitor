@@ -67,6 +67,7 @@ export function buildSystemPrompt(
   config: { useContext: boolean },
   profile: UserProfile,
   context: AssistantContext,
+  webContext = "",
 ): string {
   const sections = [
     DEFAULT_SYSTEM_PROMPT,
@@ -74,7 +75,10 @@ export function buildSystemPrompt(
     companionInstruction(profile),
     PLAN_INSTRUCTION,
   ];
-  if (!config.useContext) return sections.join("\n");
+  if (!config.useContext) {
+    if (webContext) sections.push("", webContext);
+    return sections.join("\n");
+  }
 
   const memories = context.memories.slice(0, 12);
   const courses = context.courses.slice(0, 24);
@@ -106,5 +110,6 @@ export function buildSystemPrompt(
     "这些数据来自本机记录，不是完整用户档案。回答时不要假装知道未列出的信息，也不要声称已经连接学校系统。",
   );
   sections.push(lines.join("\n"));
+  if (webContext) sections.push("", webContext);
   return sections.join("\n");
 }

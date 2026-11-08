@@ -322,6 +322,15 @@ export const storage = {
     readSessionText(DEEPSEEK_KEY_NAME) || readText(DEEPSEEK_KEY_NAME, ""),
   getDeepSeekRemember: () => readText(DEEPSEEK_REMEMBER_NAME, "") === "1",
   setDeepSeekKey: writeKey,
+  /* ── 联网搜索（用户自带 key）── */
+  getSearchProvider: () => readText("search-provider", "serper"),
+  setSearchProvider: (provider: string) =>
+    writeText("search-provider", provider.trim() || "serper"),
+  getSearchKey: () => readText("search-key", ""),
+  setSearchKey: (key: string) => writeText("search-key", key.trim()),
+  getSearchEnabled: () => readText("search-enabled", "") === "1",
+  setSearchEnabled: (on: boolean) => writeText("search-enabled", on ? "1" : ""),
+
   /* ── 语音（Breeze TTS）── 只存本机，和 DeepSeek key 一样不设默认值 */
   getBreezeKey: () => readText("breeze-key", ""),
   setBreezeKey: (key: string) => writeText("breeze-key", key.trim()),

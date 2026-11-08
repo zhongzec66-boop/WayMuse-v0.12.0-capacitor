@@ -1273,6 +1273,13 @@
   gap: 6px;
 }
 
+/* 联网开关打开时的强调态 */
+.wr-round-on {
+  border-color: transparent;
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
 /* ── 语音通话浮层 ───────────────────────────────── */
 
 .wr-call {

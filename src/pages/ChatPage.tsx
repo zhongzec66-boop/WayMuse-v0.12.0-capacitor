@@ -5,6 +5,7 @@ import {
   Eye,
   EyeOff,
   FileText,
+  Globe,
   PhoneCall,
   KeyRound,
   Plus,
@@ -20,6 +21,9 @@ import { localSuggestions, parseReply, planTasks } from "../agent";
 import { BRAND } from "../brand";
 import BotAvatar from "../BotAvatar";
 import VoiceCall from "../VoiceCall";
+import { haptic } from "../nativeExtras";
+import { formatSearchContext, webSearch } from "../search";
+import type { SearchProvider } from "../search";
 import { storage, createMemory } from "../storage";
 import { newId } from "../id";
 import {
@@ -165,6 +169,11 @@ export default function ChatPage({
   const [callOpen, setCallOpen] = useState(false);
   const [breezeKey] = useState(() => storage.getBreezeKey());
   const [breezeVoice] = useState(() => storage.getBreezeVoice());
+  const [searchOn, setSearchOn] = useState(() => storage.getSearchEnabled());
+  const [searchKey] = useState(() => storage.getSearchKey());
+  const [searchProvider] = useState<SearchProvider>(
+    () => storage.getSearchProvider() as SearchProvider,
+  );
   const [error, setError] = useState("");
   const [connectState, setConnectState] = useState<ConnectState>("idle");
   const [connectText, setConnectText] = useState("");
@@ -256,6 +265,16 @@ export default function ChatPage({
     const content = text.trim();
     if (!content || streaming) return;
 
+    // 联网搜索：只在开关打开且有 key 时查一次，结果拼进 system prompt
+    let webContext = "";
+    if (searchOn && searchKey.trim()) {
+      const hits = await webSearch(content, {
+        provider: searchProvider,
+        apiKey: searchKey,
+      });
+      webContext = formatSearchContext(content, hits);
+    }
+
     // 没有 Key 时走本地兜底：仍然给用户「可说 → 可确认 → 可落地」的闭环，
     // 而不是把连接设置硬塞到用户面前。
     if (!apiKey.trim()) {
@@ -313,11 +332,12 @@ export default function ChatPage({
     const payload: ChatRequestMessage[] = [
       {
         role: "system",
-        content: buildSystemPrompt(config, profile, {
-          memories,
-          courses,
-          tasks,
-        }),
+        content: buildSystemPrompt(
+          config,
+          profile,
+          { memories, courses, tasks },
+          webContext,
+        ),
       },
       ...history
         .filter((message) => message.content.trim())
@@ -521,6 +541,19 @@ export default function ChatPage({
           </span>
         </div>
         <div className="wr-chat-actions">
+          <button
+            className={searchOn ? "wr-round wr-round-on" : "wr-round"}
+            aria-label={searchOn ? "关闭联网搜索" : "打开联网搜索"}
+            aria-pressed={searchOn}
+            onClick={() => {
+              const next = !searchOn;
+              setSearchOn(next);
+              storage.setSearchEnabled(next);
+              void haptic("light");
+            }}
+          >
+            <Globe />
+          </button>
           <button
             className="wr-round"
             aria-label="语音通话"

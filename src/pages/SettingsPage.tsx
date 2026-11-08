@@ -65,6 +65,13 @@ export default function SettingsPage({
   >("idle");
   const [breezeMsg, setBreezeMsg] = useState("");
 
+  /* ── 联网搜索 ── */
+  const [searchProvider, setSearchProvider] = useState(() =>
+    storage.getSearchProvider(),
+  );
+  const [searchKey, setSearchKey] = useState(() => storage.getSearchKey());
+  const [searchOn, setSearchOn] = useState(() => storage.getSearchEnabled());
+
   const testVoice = async () => {
     setBreezeState("testing");
     setBreezeMsg("");
@@ -494,6 +501,58 @@ export default function SettingsPage({
             />
             深度思考（回复更慢）
           </label>
+        </div>
+
+        <div className="wr-settings-label" id="setting-联网搜索">
+          联网搜索
+        </div>
+        <div className="wr-settings-group">
+          <label className="wr-settings-field">
+            <span>
+              服务商
+              <small>两家都按次计费，key 只存本机</small>
+            </span>
+            <select
+              value={searchProvider}
+              onChange={(event) => {
+                setSearchProvider(event.target.value);
+                storage.setSearchProvider(event.target.value);
+              }}
+            >
+              <option value="serper">Serper · Google 结果</option>
+              <option value="tavily">Tavily · 带网页摘要</option>
+            </select>
+          </label>
+          <label className="wr-settings-field">
+            <span>搜索 API Key</span>
+            <input
+              type="password"
+              value={searchKey}
+              placeholder={
+                searchProvider === "tavily" ? "tvly-…" : "粘贴 Serper key"
+              }
+              autoComplete="off"
+              spellCheck={false}
+              onChange={(event) => {
+                setSearchKey(event.target.value);
+                storage.setSearchKey(event.target.value);
+              }}
+            />
+          </label>
+          <label className="wr-settings-check">
+            <input
+              type="checkbox"
+              checked={searchOn}
+              onChange={(event) => {
+                setSearchOn(event.target.checked);
+                storage.setSearchEnabled(event.target.checked);
+              }}
+            />
+            聊天时默认联网（每次提问多一次搜索请求）
+          </label>
+          <p className="wr-settings-note">
+            不开也能正常聊天；开了以后回答会引用网页，并把来源写在后面。
+          </p>
         </div>
 
         <div className="wr-settings-label" id="setting-语音">
