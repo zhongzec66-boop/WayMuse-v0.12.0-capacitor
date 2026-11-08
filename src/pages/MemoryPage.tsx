@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useRef, useState } from "react";
 import { BookOpen, GraduationCap, Sparkles, Trash2, X } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import type { UserProfile } from "../profile";
 import type { Memory, MemoryWeight, Overlay, Page } from "../types";
+import { useBubbleField } from "../useBubbleField";
 
 const WEIGHT_LABEL: Record<MemoryWeight, string> = {
   1: "小事",
@@ -35,28 +36,23 @@ export default function MemoryPage({
 }) {
   const [selected, setSelected] = useState<Memory | null>(null);
   const [draft, setDraft] = useState("");
+  const fieldRef = useRef<HTMLDivElement>(null);
+
+  const tapRef = useRef<(id: string) => void>(() => undefined);
+  tapRef.current = (id: string) => {
+    const hit = memories.find((m) => m.id === id);
+    if (hit) {
+      setSelected(hit);
+      setDraft(hit.text);
+    }
+  };
+
+  // 气泡在玻璃场里漂移、互相碰撞、可拖拽
+  useBubbleField(fieldRef, memories.length, tapRef);
 
   const hasFacts = Boolean(
     profile.grade || profile.major || profile.school || profile.courses,
   );
-
-  // 星点固定分布（用序号取模，避免每次渲染跳动）
-  const stars = useMemo(
-    () =>
-      Array.from({ length: 26 }, (_, i) => ({
-        left: `${(i * 37 + 11) % 96}%`,
-        top: `${(i * 53 + 7) % 94}%`,
-        size: 1 + (i % 3),
-        delay: `${(i % 8) * 0.55}s`,
-        opacity: 0.25 + ((i * 17) % 45) / 100,
-      })),
-    [],
-  );
-
-  const open = (m: Memory) => {
-    setSelected(m);
-    setDraft(m.text);
-  };
 
   const save = () => {
     if (!selected) return;
@@ -108,56 +104,34 @@ export default function MemoryPage({
         </div>
       )}
 
-      {/* ── 记忆星链 ───────────────────────────────── */}
-      <section className="wr-starfield" aria-label="记忆星链">
-        <div className="wr-starfield-sky" aria-hidden="true">
-          {stars.map((s, i) => (
-            <i
-              key={i}
-              style={{
-                left: s.left,
-                top: s.top,
-                width: s.size,
-                height: s.size,
-                opacity: s.opacity,
-                animationDelay: s.delay,
-              }}
-            />
-          ))}
-        </div>
-
-        <header className="wr-starfield-head">
-          <span>记忆星链</span>
-          <em>{memories.length} 颗</em>
+      {/* ── 记忆气泡场 ─────────────────────────────── */}
+      <section className="wr-bubblewrap" aria-label="记忆">
+        <header className="wr-bubblewrap-head">
+          <span>记忆气泡</span>
+          <em>
+            {memories.length} 条{memories.length > 0 && " · 拖动看看"}
+          </em>
         </header>
 
         {memories.length === 0 ? (
-          <p className="wr-starfield-empty">
+          <p className="wr-bubblewrap-empty">
             还没有记忆。聊天里出现值得记住的细节时，我会先问你，你同意才会写进来。
           </p>
         ) : (
-          <ul className="wr-chain">
-            {memories.map((m, i) => (
-              <li
+          <div className="wr-bubblefield" ref={fieldRef}>
+            {memories.map((m) => (
+              <button
                 key={m.id}
-                className="wr-chain-node"
+                type="button"
+                data-bubble={m.id}
                 data-weight={m.weight}
-                style={
-                  {
-                    "--offset": `${Math.round(Math.sin(i * 0.9) * 26)}px`,
-                    "--delay": `${(i % 6) * 0.4}s`,
-                  } as React.CSSProperties
-                }
+                className="wr-membubble"
+                aria-label={`查看记忆：${m.text}`}
               >
-                <button
-                  onClick={() => open(m)}
-                  aria-label={`查看记忆：${m.text}`}
-                >
-                  {m.text}
-                </button>
-              </li>
+                {m.text}
+              </button>
             ))}
-          </ul>
+          </div>
         )}
       </section>
 
