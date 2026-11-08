@@ -17,25 +17,23 @@
   backdrop-filter: var(--glass-blur);
 }
 
-/* 输入区上方：与页面底部同色 + 遮罩渐隐，上滚的内容在这里溶解掉，
-   不再被输入框一刀切出半截字（截图里的计划卡就是这样被切的）。 */
-.wr-dock::before {
+/* 只在聊天页给输入区上方加一层「溶解带」，让上滚的消息淡出，
+   不再被输入框一刀切出半截字。
+   其它页面（今天/计划/记忆）没有这种贴着输入框滚动的长内容，
+   加上去只会变成一块可见的米色色块，所以用 :has 限定在聊天页。 */
+.wr-phone:has(.wr-content-chat) .wr-dock::before {
   content: "";
   position: absolute;
   right: calc(var(--dock-inset) * -1);
   bottom: 100%;
   left: calc(var(--dock-inset) * -1);
   height: 48px;
-  background: var(--bg-bottom);
-  -webkit-backdrop-filter: blur(12px) saturate(1.3);
-  backdrop-filter: blur(12px) saturate(1.3);
-  -webkit-mask-image: linear-gradient(
+  background: linear-gradient(
     to top,
-    #000 0%,
-    #000 42%,
+    var(--bg-bottom) 0%,
+    color-mix(in srgb, var(--bg-bottom) 55%, transparent) 55%,
     transparent 100%
   );
-  mask-image: linear-gradient(to top, #000 0%, #000 42%, transparent 100%);
   pointer-events: none;
 }
 
