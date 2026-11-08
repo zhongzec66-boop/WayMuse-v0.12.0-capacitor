@@ -332,6 +332,10 @@ export const storage = {
   setSearchEnabled: (on: boolean) => writeText("search-enabled", on ? "1" : ""),
 
   /* ── 语音（Breeze TTS）── 只存本机，和 DeepSeek key 一样不设默认值 */
+  /* ── 三份可编辑的人格/记忆文件 ── */
+  getDoc: (id: string) => readText(`doc-${id}`, ""),
+  setDoc: (id: string, text: string) => writeText(`doc-${id}`, text),
+
   getBreezeKey: () => readText("breeze-key", ""),
   setBreezeKey: (key: string) => writeText("breeze-key", key.trim()),
   getBreezeVoice: () =>

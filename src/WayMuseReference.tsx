@@ -265,8 +265,6 @@ export default function WayMuseReference() {
               setShowTip={setShowTip}
               memories={memories}
               setMemories={setMemories}
-              profile={profile}
-              profileName={profileName}
               nav={nav}
               setOverlay={setOverlay}
             />

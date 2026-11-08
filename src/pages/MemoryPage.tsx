@@ -1,27 +1,31 @@
-import { useRef, useState } from "react";
-import { BookOpen, GraduationCap, Sparkles, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BookOpen, ChevronRight, RotateCcw, Trash2, X } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
-import type { UserProfile } from "../profile";
-import type { Memory, MemoryWeight, Overlay, Page } from "../types";
+import {
+  DOCS,
+  docBullets,
+  docDefault,
+  docSummary,
+  readDoc,
+  removeBullet,
+  writeDoc,
+} from "../docs";
+import type { DocId } from "../docs";
+import type { Memory, Overlay, Page } from "../types";
 import { useBubbleField } from "../useBubbleField";
 
-const WEIGHT_LABEL: Record<MemoryWeight, string> = {
-  1: "小事",
-  2: "一般",
-  3: "重要",
+type Bubble = {
+  id: string;
+  text: string;
+  weight: number;
+  from: "doc" | "chat";
 };
-
-function fact(value: string): string {
-  return value.trim() || "未填写";
-}
 
 export default function MemoryPage({
   showTip,
   setShowTip,
   memories,
   setMemories,
-  profile,
-  profileName,
   nav,
   setOverlay,
 }: {
@@ -29,54 +33,86 @@ export default function MemoryPage({
   setShowTip: Dispatch<SetStateAction<boolean>>;
   memories: Memory[];
   setMemories: Dispatch<SetStateAction<Memory[]>>;
-  profile: UserProfile;
-  profileName: string;
   nav: (page: Page) => void;
   setOverlay: Dispatch<SetStateAction<Overlay>>;
 }) {
-  const [selected, setSelected] = useState<Memory | null>(null);
+  const [docs, setDocs] = useState<Record<DocId, string>>(() => ({
+    identity: readDoc("identity"),
+    soul: readDoc("soul"),
+    memory: readDoc("memory"),
+  }));
+  const [editing, setEditing] = useState<DocId | null>(null);
   const [draft, setDraft] = useState("");
+  const [picked, setPicked] = useState<Bubble | null>(null);
+
   const fieldRef = useRef<HTMLDivElement>(null);
-
   const tapRef = useRef<(id: string) => void>(() => undefined);
+
+  // MEMORY.md 里的条目 + 对话里确认过的记忆，合并成气泡
+  const bubbles = useMemo<Bubble[]>(() => {
+    const docItems = docBullets(docs.memory);
+    const fromDoc: Bubble[] = docItems.map((text, index) => ({
+      id: `doc-${index}-${text.slice(0, 8)}`,
+      text,
+      weight: 2,
+      from: "doc",
+    }));
+    const fromChat: Bubble[] = memories
+      .filter((item) => !docItems.includes(item.text))
+      .map((item) => ({
+        id: item.id,
+        text: item.text,
+        weight: item.weight,
+        from: "chat",
+      }));
+    return [...fromChat, ...fromDoc];
+  }, [docs.memory, memories]);
+
   tapRef.current = (id: string) => {
-    const hit = memories.find((m) => m.id === id);
-    if (hit) {
-      setSelected(hit);
-      setDraft(hit.text);
+    const hit = bubbles.find((item) => item.id === id);
+    if (hit) setPicked(hit);
+  };
+
+  useBubbleField(fieldRef, bubbles.length, tapRef);
+
+  const openDoc = (id: DocId) => {
+    setEditing(id);
+    setDraft(docs[id]);
+  };
+
+  const saveDoc = () => {
+    if (!editing) return;
+    const text = draft;
+    setDocs((current) => ({ ...current, [editing]: text }));
+    writeDoc(editing, text);
+    setEditing(null);
+  };
+
+  const resetDoc = () => {
+    if (!editing) return;
+    setDraft(docDefault(editing));
+  };
+
+  const removeBubble = (bubble: Bubble) => {
+    if (bubble.from === "doc") {
+      const next = removeBullet(docs.memory, bubble.text);
+      setDocs((current) => ({ ...current, memory: next }));
+      writeDoc("memory", next);
+    } else {
+      setMemories(memories.filter((item) => item.text !== bubble.text));
     }
+    setPicked(null);
   };
 
-  // 气泡在玻璃场里漂移、互相碰撞、可拖拽
-  useBubbleField(fieldRef, memories.length, tapRef);
-
-  const hasFacts = Boolean(
-    profile.grade || profile.major || profile.school || profile.courses,
-  );
-
-  const save = () => {
-    if (!selected) return;
-    const text = draft.trim();
-    if (!text) return;
-    setMemories(
-      memories.map((m) => (m.id === selected.id ? { ...m, text } : m)),
-    );
-    setSelected(null);
-  };
-
-  const setWeight = (weight: MemoryWeight) => {
-    if (!selected) return;
-    setMemories(
-      memories.map((m) => (m.id === selected.id ? { ...m, weight } : m)),
-    );
-    setSelected({ ...selected, weight });
-  };
-
-  const remove = () => {
-    if (!selected) return;
-    setMemories(memories.filter((m) => m.id !== selected.id));
-    setSelected(null);
-  };
+  // 打开编辑器时锁住页面滚动
+  useEffect(() => {
+    if (!editing) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [editing]);
 
   return (
     <>
@@ -96,122 +132,124 @@ export default function MemoryPage({
           <button aria-label="关闭提示" onClick={() => setShowTip(false)}>
             <X size={17} />
           </button>
-          <h2>让建议更贴近你</h2>
-          <p>我只用你确认过的信息给建议。这里每一条都能单独改、单独删。</p>
+          <h2>三份文件，随时可改</h2>
+          <p>
+            我怎么称呼自己、按什么原则做事、记住了什么，都写在这三份明文里。
+            你可以直接编辑，也可以让它忘掉某件事。
+          </p>
           <button className="wr-tip-row" onClick={() => nav("聊天")}>
-            <Sparkles /> 在聊天里告诉我更多 <span>›</span>
+            <BookOpen /> 在聊天里告诉我更多 <span>›</span>
           </button>
         </div>
       )}
 
-      {/* ── 记忆气泡场 ─────────────────────────────── */}
+      {/* ── 三份文件 ─────────────────────────────── */}
+      <section className="wr-doclist" aria-label="人格与记忆文件">
+        {DOCS.map((doc) => {
+          const text = docs[doc.id];
+          const count = docBullets(text).length;
+          return (
+            <button
+              key={doc.id}
+              className="wr-docrow"
+              onClick={() => openDoc(doc.id)}
+            >
+              <span className="wr-docrow-main">
+                <b>{doc.filename}</b>
+                <small>{docSummary(text)}</small>
+              </span>
+              <span className="wr-docrow-meta">
+                {count > 0 ? `${count} 条` : doc.hint}
+                <ChevronRight size={14} />
+              </span>
+            </button>
+          );
+        })}
+      </section>
+
+      {/* ── 记忆气泡场 ───────────────────────────── */}
       <section className="wr-bubblewrap" aria-label="记忆">
         <header className="wr-bubblewrap-head">
           <span>记忆气泡</span>
           <em>
-            {memories.length} 条{memories.length > 0 && " · 拖动看看"}
+            {bubbles.length} 条{bubbles.length > 0 && " · 拖动看看"}
           </em>
         </header>
 
-        {memories.length === 0 ? (
+        {bubbles.length === 0 ? (
           <p className="wr-bubblewrap-empty">
-            还没有记忆。聊天里出现值得记住的细节时，我会先问你，你同意才会写进来。
+            还没有记忆。聊天里出现值得记住的细节时，我会先问你；你也可以直接编辑
+            MEMORY.md。
           </p>
         ) : (
           <div className="wr-bubblefield" ref={fieldRef}>
-            {memories.map((m) => (
+            {bubbles.map((item) => (
               <button
-                key={m.id}
+                key={item.id}
                 type="button"
-                data-bubble={m.id}
-                data-weight={m.weight}
+                data-bubble={item.id}
+                data-weight={item.weight}
                 className="wr-membubble"
-                aria-label={`查看记忆：${m.text}`}
+                aria-label={`查看记忆：${item.text}`}
               >
-                {m.text}
+                {item.text}
               </button>
             ))}
           </div>
         )}
       </section>
 
-      {/* ── 关于我 ─────────────────────────────────── */}
-      <section className="wr-fact-card" aria-label="关于我">
-        <header>
-          <span>关于我</span>
-          <button onClick={() => setOverlay("设置")}>编辑</button>
-        </header>
-        <div className="wr-fact-grid">
-          <div>
-            <small>称呼</small>
-            <b>{fact(profileName)}</b>
-          </div>
-          <div>
-            <small>年级</small>
-            <b>{fact(profile.grade)}</b>
-          </div>
-          <div>
-            <small>专业</small>
-            <b>{fact(profile.major)}</b>
-          </div>
-          <div>
-            <small>学校</small>
-            <b>{fact(profile.school)}</b>
+      {/* ── 编辑器 ───────────────────────────────── */}
+      {editing && (
+        <div className="wr-overlay wr-overlay-fixed">
+          <div className="wr-doceditor">
+            <div className="wr-doceditor-head">
+              <button aria-label="取消" onClick={() => setEditing(null)}>
+                <X />
+              </button>
+              <b>{DOCS.find((doc) => doc.id === editing)?.filename}</b>
+              <button aria-label="恢复默认模板" onClick={resetDoc}>
+                <RotateCcw size={17} />
+              </button>
+            </div>
+            <p className="wr-doceditor-hint">
+              这是明文文件，AI 每次对话都会读它。改完记得保存。
+            </p>
+            <textarea
+              className="wr-doceditor-area"
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              spellCheck={false}
+            />
+            <div className="wr-doceditor-actions">
+              <button className="wr-doceditor-save" onClick={saveDoc}>
+                保存
+              </button>
+            </div>
           </div>
         </div>
-        {!hasFacts && (
-          <button className="wr-fact-cta" onClick={() => setOverlay("设置")}>
-            <GraduationCap size={16} />
-            补上年级和专业，建议会更准
-          </button>
-        )}
-      </section>
+      )}
 
-      {/* ── 详情弹层 ───────────────────────────────── */}
-      {selected && (
+      {/* ── 单条记忆 ─────────────────────────────── */}
+      {picked && (
         <div className="wr-overlay wr-overlay-fixed">
           <div className="wr-sheet">
             <div className="wr-sheet-head">
-              <button onClick={() => setSelected(null)} aria-label="返回">
+              <button onClick={() => setPicked(null)} aria-label="关闭">
                 <X />
               </button>
               <h2>这条记忆</h2>
-              <button onClick={remove} aria-label="删除">
-                <Trash2 />
-              </button>
+              <span />
             </div>
-
-            <label className="wr-memo-field">
-              <span>内容</span>
-              <textarea
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                rows={3}
-                maxLength={120}
-              />
-            </label>
-
-            <div className="wr-memo-weight">
-              <span>分量</span>
-              <div>
-                {([1, 2, 3] as MemoryWeight[]).map((w) => (
-                  <button
-                    key={w}
-                    className={selected.weight === w ? "selected" : ""}
-                    onClick={() => setWeight(w)}
-                  >
-                    {WEIGHT_LABEL[w]}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <p className="wr-memo-note">
-              标成「重要」的记忆在气泡场里更亮，也更容易被带进对话。
+            <p className="wr-picked-text">{picked.text}</p>
+            <p className="wr-doceditor-hint">
+              来源：{picked.from === "doc" ? "MEMORY.md" : "对话中确认"}
             </p>
-
-            <button className="wr-memo-save" onClick={save}>
-              保存
+            <button
+              className="wr-doceditor-save danger"
+              onClick={() => removeBubble(picked)}
+            >
+              <Trash2 size={15} /> 从记忆里删掉
             </button>
           </div>
         </div>
