@@ -15,7 +15,9 @@ import {
   COMPANION_TYPES,
   DEFAULT_PROFILE,
   GRADES,
+  IDENTITIES,
   RESPONSE_LENGTHS,
+  SCHOOL_LEVELS,
   TONES,
 } from "./profile";
 import type {
@@ -45,7 +47,7 @@ export default function Onboarding({
   const [step, setStep] = useState(0);
   const [profile, setProfile] = useState<UserProfile>({ ...DEFAULT_PROFILE });
   const [entering, setEntering] = useState(false);
-  const steps = 5;
+  const steps = 6;
 
   const update = <K extends keyof UserProfile>(key: K, value: UserProfile[K]) =>
     setProfile((current) => ({ ...current, [key]: value }));
@@ -97,9 +99,7 @@ export default function Onboarding({
       </div>
       <div
         className={
-          step === 1 || step === 2 || step === 3
-            ? "wr-onboard-body form"
-            : "wr-onboard-body"
+          step === 1 || step === 2 ? "wr-onboard-body form" : "wr-onboard-body"
         }
         key={step}
       >
@@ -120,8 +120,8 @@ export default function Onboarding({
             <div className="wr-onboard-kicker">你的学业</div>
             <h1>先认识你的学习生活。</h1>
             <div className="wr-onboard-form">
-              <label>
-                学校
+              <label className="wr-field-block">
+                <span>学校</span>
                 <input
                   value={profile.school}
                   onChange={(event) => update("school", event.target.value)}
@@ -129,9 +129,10 @@ export default function Onboarding({
                   maxLength={80}
                 />
               </label>
+
               <div className="wr-onboard-grid">
-                <label>
-                  专业
+                <label className="wr-field-block">
+                  <span>专业</span>
                   <input
                     value={profile.major}
                     onChange={(event) => update("major", event.target.value)}
@@ -139,8 +140,8 @@ export default function Onboarding({
                     maxLength={80}
                   />
                 </label>
-                <label>
-                  年级
+                <label className="wr-field-block">
+                  <span>年级</span>
                   <select
                     value={profile.grade}
                     onChange={(event) => update("grade", event.target.value)}
@@ -153,8 +154,42 @@ export default function Onboarding({
                   </select>
                 </label>
               </div>
-              <label>
-                主要课程
+
+              <div className="wr-onboard-grid">
+                <label className="wr-field-block">
+                  <span>当前身份</span>
+                  <select
+                    value={profile.identity}
+                    onChange={(event) => update("identity", event.target.value)}
+                  >
+                    <option value="">请选择</option>
+                    {IDENTITIES.map((value) => (
+                      <option value={value} key={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="wr-field-block">
+                  <span>院校层次</span>
+                  <select
+                    value={profile.schoolLevel}
+                    onChange={(event) =>
+                      update("schoolLevel", event.target.value)
+                    }
+                  >
+                    <option value="">请选择</option>
+                    {SCHOOL_LEVELS.map((value) => (
+                      <option value={value} key={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <label className="wr-field-block">
+                <span>主要课程</span>
                 <textarea
                   rows={3}
                   value={profile.courses}
@@ -162,6 +197,7 @@ export default function Onboarding({
                   placeholder="例如：高等数学、数据结构、宏观经济学"
                   maxLength={600}
                 />
+                <small>用顿号或逗号分开，之后排复习计划会用到。</small>
               </label>
             </div>
             <p className="wr-onboard-hint">
@@ -171,6 +207,49 @@ export default function Onboarding({
         )}
 
         {step === 2 && (
+          <>
+            <div className="wr-onboard-kicker">你的方向</div>
+            <h1>你最近在想什么？</h1>
+            <div className="wr-onboard-form">
+              <label className="wr-field-block">
+                <span>目标方向</span>
+                <input
+                  value={profile.direction}
+                  onChange={(event) => update("direction", event.target.value)}
+                  placeholder="例如：找暑期实习 / 准备考研"
+                  maxLength={80}
+                />
+              </label>
+
+              <label className="wr-field-block">
+                <span>兴趣方向</span>
+                <input
+                  value={profile.interest}
+                  onChange={(event) => update("interest", event.target.value)}
+                  placeholder="例如：产品设计、数据分析、摄影"
+                  maxLength={120}
+                />
+                <small>随便写几个词就行，我会据此调整给建议的角度。</small>
+              </label>
+
+              <label className="wr-field-block">
+                <span>所在城市</span>
+                <input
+                  value={profile.city}
+                  onChange={(event) => update("city", event.target.value)}
+                  placeholder="例如：无锡"
+                  maxLength={40}
+                />
+                <small>只用来考虑本地作息和通勤，不会上传。</small>
+              </label>
+            </div>
+            <p className="wr-onboard-hint">
+              不知道写什么就跳过，后面聊到了再补。
+            </p>
+          </>
+        )}
+
+        {step === 3 && (
           <>
             <div className="wr-onboard-kicker">称呼与 WayMuse 头像</div>
             <h1>{BRAND} 该怎么称呼你？</h1>
@@ -193,7 +272,7 @@ export default function Onboarding({
           </>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <>
             <div className="wr-onboard-kicker">陪伴方式</div>
             <h1>你希望 {BRAND} 以什么方式陪伴你？</h1>
@@ -278,7 +357,7 @@ export default function Onboarding({
           </>
         )}
 
-        {step === 4 && (
+        {step === 5 && (
           <>
             <BotAvatar className="wr-onboard-emblem small" />
             <h1>你的资料，由你决定。</h1>

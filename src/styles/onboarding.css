@@ -1,4 +1,4 @@
-﻿/* Avatar picker and first-run onboarding. */
+/* Avatar picker and first-run onboarding. */
 
 .wr-avatar-picker {
   display: flex;
@@ -264,9 +264,10 @@
   gap: var(--space-8);
 }
 
-.wr-onboard-hint {
+/* 注意：.wr-onboard-body p 的特异性比单个类高，这里必须带上父级才压得住 */
+.wr-onboard-body .wr-onboard-hint {
   margin: var(--space-8) 0 0;
-  color: var(--ink-2);
+  color: var(--ink-3);
   font-size: var(--text-12);
   line-height: var(--leading-body);
 }
@@ -483,5 +484,74 @@
     opacity: 1;
     transform: translateY(0);
     filter: blur(0);
+  }
+}
+
+/* ── 学业 / 方向 表单：更规整的字段块 ───────────────── */
+
+.wr-field-block {
+  display: grid;
+  gap: var(--space-4);
+  color: var(--ink-2);
+  font-size: var(--text-12);
+}
+
+.wr-field-block > input,
+.wr-field-block > select,
+.wr-field-block > textarea {
+  margin-top: 0;
+  min-height: 46px;
+  font-size: var(--text-16);
+}
+
+.wr-field-block > textarea {
+  padding: var(--space-12);
+  line-height: var(--leading-body);
+}
+
+.wr-field-block > small {
+  color: var(--ink-3);
+  font-size: var(--text-11);
+  line-height: var(--leading-body);
+}
+
+/* 字段逐条浮入，别整块硬切 */
+.wr-onboard-form > * {
+  animation: wm-field-in 340ms var(--ease) both;
+}
+
+.wr-onboard-form > *:nth-child(1) {
+  animation-delay: 20ms;
+}
+.wr-onboard-form > *:nth-child(2) {
+  animation-delay: 60ms;
+}
+.wr-onboard-form > *:nth-child(3) {
+  animation-delay: 100ms;
+}
+.wr-onboard-form > *:nth-child(4) {
+  animation-delay: 140ms;
+}
+.wr-onboard-form > *:nth-child(5) {
+  animation-delay: 180ms;
+}
+.wr-onboard-form > *:nth-child(6) {
+  animation-delay: 220ms;
+}
+
+@keyframes wm-field-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wr-onboard-form > * {
+    animation: none;
   }
 }

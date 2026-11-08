@@ -9,6 +9,16 @@ export type UserProfile = {
   major: string;
   grade: string;
   courses: string;
+  /** 当前身份：高中生 / 大学生 / 研究生 / 已毕业或工作 */
+  identity: string;
+  /** 院校层次：985 / 211 / 双一流 / 普通本科 … */
+  schoolLevel: string;
+  /** 目标方向，例如「找暑期实习」「考研」 */
+  direction: string;
+  /** 所在城市 */
+  city: string;
+  /** 兴趣方向，例如「产品设计、数据分析」 */
+  interest: string;
   companionType: CompanionType;
   tone: CompanionTone;
   temperature: number;
@@ -17,6 +27,17 @@ export type UserProfile = {
 };
 
 export const GRADES = ["大一", "大二", "大三", "大四", "研究生", "其他"];
+export const IDENTITIES = ["高中生", "大学生", "研究生", "已毕业或工作"];
+export const SCHOOL_LEVELS = [
+  "985",
+  "211",
+  "双一流",
+  "普通本科",
+  "民办本科",
+  "专科",
+  "海外院校",
+  "其他",
+];
 export const COMPANION_TYPES: CompanionType[] = ["朋友", "导师", "自定义"];
 export const TONES: CompanionTone[] = ["温柔", "直接", "幽默", "冷静", "鼓励"];
 export const RESPONSE_LENGTHS: ResponseLength[] = ["短", "中", "长"];
@@ -36,6 +57,11 @@ export const DEFAULT_PROFILE: UserProfile = {
   major: "",
   grade: "大一",
   courses: "",
+  identity: "",
+  schoolLevel: "",
+  direction: "",
+  city: "",
+  interest: "",
   companionType: "朋友",
   tone: "幽默",
   temperature: 0.8,
@@ -100,6 +126,17 @@ export function normalizeProfile(value: unknown): UserProfile {
       typeof input.courses === "string"
         ? input.courses.slice(0, 600)
         : DEFAULT_PROFILE.courses,
+    identity: IDENTITIES.includes(String(input.identity))
+      ? String(input.identity)
+      : "",
+    schoolLevel: SCHOOL_LEVELS.includes(String(input.schoolLevel))
+      ? String(input.schoolLevel)
+      : "",
+    direction:
+      typeof input.direction === "string" ? input.direction.slice(0, 80) : "",
+    city: typeof input.city === "string" ? input.city.slice(0, 40) : "",
+    interest:
+      typeof input.interest === "string" ? input.interest.slice(0, 120) : "",
     companionType,
     tone,
     temperature,

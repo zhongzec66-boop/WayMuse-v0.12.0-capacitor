@@ -48,9 +48,17 @@ function companionInstruction(profile: UserProfile): string {
 
 function profileSection(profile: UserProfile): string {
   const lines = ["【用户档案（用户在本机填写）】"];
+  if (profile.identity.trim()) lines.push(`身份：${profile.identity.trim()}`);
   if (profile.school.trim()) lines.push(`学校：${profile.school.trim()}`);
+  if (profile.schoolLevel.trim())
+    lines.push(`院校层次：${profile.schoolLevel.trim()}`);
   if (profile.major.trim()) lines.push(`专业：${profile.major.trim()}`);
   if (profile.grade.trim()) lines.push(`年级：${profile.grade.trim()}`);
+  if (profile.city.trim()) lines.push(`所在城市：${profile.city.trim()}`);
+  if (profile.direction.trim())
+    lines.push(`目标方向：${profile.direction.trim()}`);
+  if (profile.interest.trim())
+    lines.push(`兴趣方向：${profile.interest.trim()}`);
   if (profile.courses.trim()) lines.push(`主要课程：${profile.courses.trim()}`);
   return lines.join("\n");
 }
