@@ -91,6 +91,24 @@ export function useBubbleField(
       b.el.style.transform = `translate3d(${b.x}px, ${b.y}px, 0)`;
     };
 
+    // 指针在玻璃面上的位置（相对 field），用来「拨开」附近的气泡
+    const pointer = { x: -9999, y: -9999, active: false };
+    const REPEL_RADIUS = 118;
+    const REPEL_FORCE = 1.15;
+    let lastRipple = 0;
+
+    const spawnRipple = (x: number, y: number) => {
+      const now = performance.now();
+      if (now - lastRipple < 110) return;
+      lastRipple = now;
+      const dot = document.createElement("span");
+      dot.className = "wr-ripple";
+      dot.style.left = `${x}px`;
+      dot.style.top = `${y}px`;
+      field.appendChild(dot);
+      window.setTimeout(() => dot.remove(), 760);
+    };
+
     const cleanups: Array<() => void> = [];
 
     bodies.forEach((b) => {
@@ -123,6 +141,11 @@ export function useBubbleField(
         b.x = clamp(originX + dx, 0, Math.max(0, W - b.w));
         b.y = clamp(originY + dy, 0, Math.max(0, H - b.h));
         paint(b);
+        // 拖动气泡时也顺带拨开旁边的
+        const rect = field.getBoundingClientRect();
+        pointer.x = e.clientX - rect.left;
+        pointer.y = e.clientY - rect.top;
+        pointer.active = true;
       };
 
       const onUp = (e: PointerEvent) => {
@@ -166,6 +189,29 @@ export function useBubbleField(
 
     bodies.forEach(paint);
 
+    // 光标划过玻璃面：把附近气泡拨开，并留一颗涟漪
+    const onFieldMove = (e: PointerEvent) => {
+      const rect = field.getBoundingClientRect();
+      pointer.x = e.clientX - rect.left;
+      pointer.y = e.clientY - rect.top;
+      pointer.active = true;
+      spawnRipple(pointer.x, pointer.y);
+    };
+    const onFieldLeave = () => {
+      pointer.active = false;
+      pointer.x = -9999;
+      pointer.y = -9999;
+    };
+
+    field.addEventListener("pointermove", onFieldMove);
+    field.addEventListener("pointerleave", onFieldLeave);
+    field.addEventListener("pointercancel", onFieldLeave);
+    cleanups.push(() => {
+      field.removeEventListener("pointermove", onFieldMove);
+      field.removeEventListener("pointerleave", onFieldLeave);
+      field.removeEventListener("pointercancel", onFieldLeave);
+    });
+
     if (reduce) {
       return () => cleanups.forEach((fn) => fn());
     }
@@ -177,8 +223,32 @@ export function useBubbleField(
       const dt = Math.min(32, now - last) / 16.67; // 归一到 60fps 的步长
       last = now;
 
+      // 先给「被划过」的邻近气泡一点推力，再积分
+      if (pointer.active) {
+        for (const b of bodies) {
+          if (b.dragging) continue;
+          const cx = b.x + b.w / 2;
+          const cy = b.y + b.h / 2;
+          const dx = cx - pointer.x;
+          const dy = cy - pointer.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist > 0.5 && dist < REPEL_RADIUS) {
+            const falloff = 1 - dist / REPEL_RADIUS;
+            const push = falloff * falloff * REPEL_FORCE;
+            b.vx += (dx / dist) * push;
+            b.vy += (dy / dist) * push;
+          }
+        }
+      }
+
       for (const b of bodies) {
         if (b.dragging) continue;
+        // 限速，避免连续划过把气泡甩飞
+        const speed = Math.hypot(b.vx, b.vy);
+        if (speed > 9) {
+          b.vx = (b.vx / speed) * 9;
+          b.vy = (b.vy / speed) * 9;
+        }
         b.x += b.vx * dt;
         b.y += b.vy * dt;
         b.vx *= DAMPING;

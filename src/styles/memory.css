@@ -403,3 +403,30 @@
   font-size: var(--text-16);
   font-weight: var(--weight-medium);
 }
+
+/* 划过玻璃时的小涟漪 */
+.wr-ripple {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(37, 99, 168, 0.18) 0%,
+    rgba(37, 99, 168, 0) 70%
+  );
+  pointer-events: none;
+  animation: wm-ripple 0.75s ease-out forwards;
+}
+
+@keyframes wm-ripple {
+  from {
+    transform: scale(0.4);
+    opacity: 0.6;
+  }
+  to {
+    transform: scale(6);
+    opacity: 0;
+  }
+}
