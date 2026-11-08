@@ -35,8 +35,8 @@ try {
 }
 
 const list = Array.isArray(config.packageClassList) ? config.packageClassList : [];
-if (!list.includes(PLUGIN_CLASS)) {
-  list.push(PLUGIN_CLASS);
+if (!PLUGIN_CLASSES.every((cls) => list.includes(cls))) {
+  PLUGIN_CLASSES.forEach((cls) => { if (!list.includes(cls)) list.push(cls); });
   config.packageClassList = list;
   fs.writeFileSync(configPath, `${JSON.stringify(config, null, "\t")}\n`, "utf8");
   console.log(`[register-native-compose] 已注册：${list.join(", ")}`);
