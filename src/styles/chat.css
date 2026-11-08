@@ -193,7 +193,7 @@
 .wr-eye {
   transform-box: fill-box;
   transform-origin: center;
-  animation: wm-bot-blink 5.6s ease-in-out infinite;
+  animation: wm-bot-blink 3.2s ease-in-out infinite;
 }
 
 /* ── 情绪：同一双眼睛在变形，不是换图 ───────────────────── */
@@ -269,20 +269,20 @@
 /* 眨眼：快速闭合，不是匀速缩放 */
 @keyframes wm-bot-blink {
   0%,
-  89%,
+  84%,
   100% {
     transform: scaleY(1);
   }
-  92% {
-    transform: scaleY(0.07);
+  87% {
+    transform: scaleY(0.06);
   }
-  95% {
+  90% {
     transform: scaleY(1);
   }
-  96% {
-    transform: scaleY(0.55);
+  92% {
+    transform: scaleY(0.5);
   }
-  98% {
+  95% {
     transform: scaleY(1);
   }
 }
@@ -1194,4 +1194,18 @@
 }
 .wr-memory-proposal > button {
   width: 100%;
+}
+
+/* 头像换成动画组件后，各处容器统一撑满 */
+.wr-bot-avatar {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.wr-ai-empty-mark.wr-bot-avatar {
+  width: var(--space-64);
+  height: var(--space-64);
+  margin: 0 auto var(--space-16);
+  border-radius: var(--radius-pill);
 }

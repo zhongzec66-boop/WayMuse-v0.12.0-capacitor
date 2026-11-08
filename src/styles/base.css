@@ -99,11 +99,12 @@ svg {
 .wr-content {
   height: 100%;
   overflow-y: auto;
-  padding: calc(var(--safe-top) + var(--title-top)) var(--page-pad)
-    var(--content-bottom);
+  padding: calc(var(--safe-top) + 46px) var(--page-pad) var(--content-bottom);
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  animation: wm-page-in var(--dur-3) var(--ease) both;
+  /* 注意：这里不能加 animation / transform / opacity ——
+     任何一个都会让 .wr-content 产生层叠上下文，把 .wr-overlay-fixed
+     这类弹层关在里面，于是被底部 Dock 盖住。 */
 }
 
 .wr-head {
@@ -240,4 +241,23 @@ svg {
   50% {
     opacity: 0.4;
   }
+}
+
+/* 非聊天页的顶部渐隐带：上滚的内容在这里溶解，不再压到状态栏 */
+.wr-topfade {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: var(--z-sticky);
+  height: calc(var(--safe-top) + 46px);
+  background: var(--bg-top);
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 58%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(180deg, #000 0%, #000 58%, transparent 100%);
+  pointer-events: none;
 }

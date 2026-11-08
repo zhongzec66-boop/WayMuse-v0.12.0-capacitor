@@ -678,7 +678,7 @@ export default function ChatPage({
 
         {!showConfig && !messages.length && (
           <div className="wr-ai-empty">
-            <img className="wr-ai-empty-mark" src="/avatar.svg" alt="" />
+            <BotAvatar className="wr-ai-empty-mark" />
             <h2>和 {agentName} 聊聊</h2>
             <p>
               {apiKey

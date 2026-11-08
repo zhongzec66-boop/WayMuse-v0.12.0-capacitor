@@ -200,6 +200,9 @@ export default function WayMuseReference() {
   return (
     <div className="wr-page">
       <div className="wr-phone">
+        {/* 聊天页有自己的导航条；其它页用这条渐隐带，让上滚内容在状态栏处淡出，
+            而不是硬切一刀。 */}
+        {page !== "聊天" && <div className="wr-topfade" aria-hidden="true" />}
         <main
           key={page}
           className={`wr-content ${page === "聊天" ? "wr-content-chat" : ""}`}
@@ -225,6 +228,7 @@ export default function WayMuseReference() {
               tasks={tasks}
               setTasks={setTasks}
               courses={courses}
+              setCourses={setCourses}
               setOverlay={setOverlay}
             />
           )}

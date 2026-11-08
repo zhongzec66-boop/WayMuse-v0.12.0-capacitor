@@ -219,6 +219,13 @@
   color: var(--primary);
 }
 
+/* 记忆详情这类需要盖住底部 Dock 的弹层 */
+.wr-overlay-fixed {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+}
+
 .wr-overlay {
   position: absolute;
   inset: 0;

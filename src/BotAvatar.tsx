@@ -24,10 +24,12 @@ export default function BotAvatar({
   source,
   replying = false,
   mood,
+  className,
 }: {
   source?: string;
   replying?: boolean;
   mood?: BotMood;
+  className?: string;
 }) {
   const [drift, setDrift] = useState<BotMood>("idle");
 
@@ -41,20 +43,27 @@ export default function BotAvatar({
     return () => window.clearInterval(id);
   }, [mood, replying]);
 
-  if (source) return <img src={source} alt="" className="wr-bot-avatar" />;
+  if (source)
+    return (
+      <img
+        src={source}
+        alt=""
+        className={className ? `wr-bot-avatar ${className}` : "wr-bot-avatar"}
+      />
+    );
 
   const active: BotMood = replying ? "thinking" : (mood ?? drift);
 
   return (
     <svg
-      className="wr-bot-avatar"
+      className={className ? `wr-bot-avatar ${className}` : "wr-bot-avatar"}
       data-mood={active}
       viewBox="0 0 512 512"
       role="img"
       aria-label={`WayMuse 头像（${active}）`}
     >
       <g className="wr-bot-body">
-        <circle cx="256" cy="256" r="248" fill="#17191c" />
+        <circle cx="256" cy="256" r="248" fill="#036f3b" />
         <g className="wr-bot-eyes">
           <rect
             className="wr-eye wr-eye-l"

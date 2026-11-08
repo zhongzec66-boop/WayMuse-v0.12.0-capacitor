@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
 import ConnectionsPanel from "./ConnectionsPanel";
+import BotAvatar from "../BotAvatar";
 import AvatarPicker from "../AvatarPicker";
 import { storage } from "../storage";
 import { APP_VERSION } from "../version";
@@ -167,7 +168,7 @@ export default function SettingsPage({
         <div className="wr-settings-profile">
           <div className="wr-settings-profile-head">
             <div className="wr-settings-avatar">
-              <img src={agentAvatar || "/avatar.svg"} alt="" />
+              <BotAvatar source={agentAvatar} />
             </div>
             <div>
               <div className="wr-settings-brand">{agentName}</div>

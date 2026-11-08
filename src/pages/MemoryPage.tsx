@@ -169,7 +169,7 @@ export default function MemoryPage({
 
       {/* ── 详情弹层 ───────────────────────────────── */}
       {selected && (
-        <div className="wr-overlay">
+        <div className="wr-overlay wr-overlay-fixed">
           <div className="wr-sheet">
             <div className="wr-sheet-head">
               <button onClick={() => setSelected(null)} aria-label="返回">
@@ -207,7 +207,7 @@ export default function MemoryPage({
             </div>
 
             <p className="wr-memo-note">
-              标成「重要」的记忆会在星链里发光，也会更容易被带进对话。
+              标成「重要」的记忆在气泡场里更亮，也更容易被带进对话。
             </p>
 
             <button className="wr-memo-save" onClick={save}>

@@ -1,6 +1,7 @@
 import { AlertTriangle, Check, Clock3, Plus, Trash2, X } from "lucide-react";
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
+import { newId } from "../id";
 import type { Course, Overlay, Task } from "../types";
 
 export type TaskMode = "任务" | "课表";
@@ -10,6 +11,57 @@ const WEEK_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
 /** 课程 weekday 用 0=周日 … 6=周六（与 storage.sanitizeCourse 一致），
  *  界面按「周一开头」排列。 */
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+const WEEKDAY_OF_LABEL: Record<string, number> = {
+  一: 1,
+  二: 2,
+  三: 3,
+  四: 4,
+  五: 5,
+  六: 6,
+  日: 0,
+  天: 0,
+};
+
+/** "8:00" → "08:00"，其它原样返回 */
+function padTime(value: string): string {
+  const m = value.match(/^(\d{1,2}):(\d{2})$/);
+  return m ? `${m[1].padStart(2, "0")}:${m[2]}` : value;
+}
+
+/**
+ * 批量导入：一行一节课。
+ * 例：周一 08:00-09:40 高等数学 @教三-201
+ * 地点用 @ 分隔，可省略；「周」/「星期」前缀可省略。
+ */
+function parseCourseLines(text: string): Course[] {
+  const out: Course[] = [];
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    const m = line.match(
+      /^(?:周|星期)?([一二三四五六日天])\s*(\d{1,2}:\d{2})\s*[-–~—至]\s*(\d{1,2}:\d{2})\s*(.+)$/,
+    );
+    if (!m) continue;
+    let rest = m[4].trim();
+    let place = "";
+    const at = rest.lastIndexOf("@");
+    if (at >= 0) {
+      place = rest.slice(at + 1).trim();
+      rest = rest.slice(0, at).trim();
+    }
+    if (!rest) continue;
+    out.push({
+      id: newId(),
+      name: rest.slice(0, 40),
+      weekday: WEEKDAY_OF_LABEL[m[1]] ?? 1,
+      start: padTime(m[2]),
+      end: padTime(m[3]),
+      place: place.slice(0, 40),
+    });
+  }
+  return out;
+}
 
 /** 全站统一 Asia/Shanghai，避免跨时区/跨午夜时日期不一致。 */
 function todayYmd(): string {
@@ -47,6 +99,7 @@ export default function TaskPage({
   tasks,
   setTasks,
   courses,
+  setCourses,
   setOverlay,
 }: {
   taskMode: TaskMode;
@@ -54,8 +107,57 @@ export default function TaskPage({
   tasks: Task[];
   setTasks: Dispatch<SetStateAction<Task[]>>;
   courses: Course[];
+  setCourses: Dispatch<SetStateAction<Course[]>>;
   setOverlay: Dispatch<SetStateAction<Overlay>>;
 }) {
+  // ── 课程录入 / 批量导入 ──
+  const [courseOpen, setCourseOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [draftName, setDraftName] = useState("");
+  const [draftWeekday, setDraftWeekday] = useState(1);
+  const [draftStart, setDraftStart] = useState("08:00");
+  const [draftEnd, setDraftEnd] = useState("09:40");
+  const [draftPlace, setDraftPlace] = useState("");
+  const [importText, setImportText] = useState("");
+  const [importNote, setImportNote] = useState("");
+
+  const resetCourse = () => {
+    setDraftName("");
+    setDraftWeekday(1);
+    setDraftStart("08:00");
+    setDraftEnd("09:40");
+    setDraftPlace("");
+  };
+
+  const saveCourse = () => {
+    const name = draftName.trim();
+    if (!name) return;
+    setCourses([
+      ...courses,
+      {
+        id: newId(),
+        name: name.slice(0, 40),
+        weekday: draftWeekday,
+        start: draftStart,
+        end: draftEnd,
+        place: draftPlace.trim().slice(0, 40),
+      },
+    ]);
+    resetCourse();
+    setCourseOpen(false);
+  };
+
+  const runImport = () => {
+    const parsed = parseCourseLines(importText);
+    if (!parsed.length) {
+      setImportNote("没认出任何一行，检查一下格式？");
+      return;
+    }
+    setCourses([...courses, ...parsed]);
+    setImportText("");
+    setImportNote(`已导入 ${parsed.length} 节`);
+  };
+
   const today = todayYmd();
   const weekStart = shiftYmd(today, -weekdayIndex(today));
   const weekDates = Array.from({ length: 7 }, (_, i) => shiftYmd(weekStart, i));
@@ -133,8 +235,10 @@ export default function TaskPage({
         <h1>计划</h1>
         <button
           className="wr-round"
-          aria-label="新增任务"
-          onClick={() => setOverlay("新增任务")}
+          aria-label={taskMode === "课表" ? "添加课程" : "新增任务"}
+          onClick={() =>
+            taskMode === "课表" ? setCourseOpen(true) : setOverlay("新增任务")
+          }
         >
           <Plus />
         </button>
@@ -280,14 +384,18 @@ export default function TaskPage({
             </div>
             <p className="wr-progress-note">
               {courses.length
-                ? "整个一周一屏看完，点「任务」页可以加截止日期"
-                : "还没有课程。在聊天里点「+」→「添加课程」就能录入"}
+                ? "整个一周一屏看完；点上面的「+」可以补课或批量导入"
+                : "还没有课程。点右上角「+」录入一节课，或者批量粘贴。"}
             </p>
+            <div className="wr-course-actions">
+              <button onClick={() => setCourseOpen(true)}>录入一节课</button>
+              <button onClick={() => setImportOpen(true)}>批量导入</button>
+            </div>
           </section>
 
           {courses.length === 0 ? (
             <p className="wr-empty-hint">
-              还没有课程。在聊天里点「+」→「添加课程」就能录入。
+              还没有课程。点「录入一节课」，或者「批量导入」一次贴进来。
             </p>
           ) : (
             <div className="wr-grid" aria-label="周课表">
@@ -312,14 +420,17 @@ export default function TaskPage({
                     return (
                       <div key={weekday} className="wr-grid-cell">
                         {cell.map((c) => (
-                          <div
+                          <button
                             key={c.id}
                             className="wr-grid-course"
-                            title={`${c.name} ${c.start}–${c.end}${c.place ? ` · ${c.place}` : ""}`}
+                            title={`${c.name} ${c.start}–${c.end}${c.place ? ` · ${c.place}` : ""}（点一下删除）`}
+                            onClick={() =>
+                              setCourses(courses.filter((x) => x.id !== c.id))
+                            }
                           >
                             <b>{c.name}</b>
                             {c.place && <small>{c.place}</small>}
-                          </div>
+                          </button>
                         ))}
                       </div>
                     );
@@ -329,6 +440,121 @@ export default function TaskPage({
             </div>
           )}
         </>
+      )}
+
+      {/* ── 录入一节课 ─────────────────────────────── */}
+      {courseOpen && (
+        <div className="wr-overlay wr-overlay-fixed">
+          <div className="wr-sheet">
+            <div className="wr-sheet-head">
+              <button onClick={() => setCourseOpen(false)} aria-label="返回">
+                <X />
+              </button>
+              <h2>录入一节课</h2>
+              <span />
+            </div>
+
+            <label className="wr-field">
+              <span>课程名</span>
+              <input
+                autoFocus
+                value={draftName}
+                onChange={(e) => setDraftName(e.target.value)}
+                placeholder="例如：高等数学"
+                maxLength={40}
+              />
+            </label>
+
+            <div className="wr-field">
+              <span>星期几</span>
+              <div className="wr-weekpick">
+                {WEEK_LABELS.map((label, i) => (
+                  <button
+                    key={label}
+                    type="button"
+                    className={draftWeekday === WEEK_ORDER[i] ? "selected" : ""}
+                    onClick={() => setDraftWeekday(WEEK_ORDER[i])}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="wr-field-row">
+              <label className="wr-field">
+                <span>开始</span>
+                <input
+                  type="time"
+                  value={draftStart}
+                  onChange={(e) => setDraftStart(e.target.value)}
+                />
+              </label>
+              <label className="wr-field">
+                <span>结束</span>
+                <input
+                  type="time"
+                  value={draftEnd}
+                  onChange={(e) => setDraftEnd(e.target.value)}
+                />
+              </label>
+            </div>
+
+            <label className="wr-field">
+              <span>地点</span>
+              <input
+                value={draftPlace}
+                onChange={(e) => setDraftPlace(e.target.value)}
+                placeholder="例如：教三-201（可空）"
+                maxLength={40}
+              />
+            </label>
+
+            <button className="wr-sheet-primary" onClick={saveCourse}>
+              保存这节课
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── 批量导入 ───────────────────────────────── */}
+      {importOpen && (
+        <div className="wr-overlay wr-overlay-fixed">
+          <div className="wr-sheet">
+            <div className="wr-sheet-head">
+              <button onClick={() => setImportOpen(false)} aria-label="返回">
+                <X />
+              </button>
+              <h2>批量导入</h2>
+              <span />
+            </div>
+
+            <p className="wr-import-hint">
+              一行一节课，格式：<code>周一 08:00-09:40 高等数学 @教三-201</code>
+              <br />
+              地点用 @ 分隔，可以省略。
+            </p>
+
+            <textarea
+              className="wr-import-area"
+              rows={6}
+              value={importText}
+              onChange={(e) => {
+                setImportText(e.target.value);
+                setImportNote("");
+              }}
+              placeholder={
+                "周一 08:00-09:40 高等数学 @教三-201\n周二 10:00-11:40 数据结构 @机房 A\n周三 14:00-15:40 大学英语"
+              }
+            />
+
+            {importNote && <p className="wr-import-note">{importNote}</p>}
+
+            <button className="wr-sheet-primary" onClick={runImport}>
+              解析并加入课表
+            </button>
+          </div>
+        </div>
       )}
     </>
   );

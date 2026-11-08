@@ -9,6 +9,7 @@ import {
   Users,
 } from "lucide-react";
 import AvatarPicker from "./AvatarPicker";
+import BotAvatar from "./BotAvatar";
 import {
   COMPANION_PRESETS,
   COMPANION_TYPES,
@@ -104,7 +105,7 @@ export default function Onboarding({
       >
         {step === 0 && (
           <>
-            <img className="wr-onboard-emblem" src="/avatar.svg" alt="" />
+            <BotAvatar className="wr-onboard-emblem" />
             <h1>先建立你的本地档案。</h1>
             <p>
               不用注册账号。先告诉我你的学业背景，再设置 {BRAND}{" "}
@@ -279,7 +280,7 @@ export default function Onboarding({
 
         {step === 4 && (
           <>
-            <img className="wr-onboard-emblem small" src="/avatar.svg" alt="" />
+            <BotAvatar className="wr-onboard-emblem small" />
             <h1>你的资料，由你决定。</h1>
             <p>
               学业档案、头像、称呼和陪伴方式都只保存在本机。没有账户，也没有云端副本。
@@ -304,7 +305,7 @@ export default function Onboarding({
       </button>
       {entering && (
         <div className="wr-entry">
-          <img className="wr-entry-mark" src="/avatar.svg" alt="" />
+          <BotAvatar className="wr-entry-mark" />
           <div>{profile.callName || "同学"}，陪你走下一步。</div>
         </div>
       )}

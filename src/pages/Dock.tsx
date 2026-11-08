@@ -11,6 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
+import BotAvatar from "../BotAvatar";
 import type { Kind, Overlay, Page } from "../types";
 import {
   COMPOSE_SLOT_ID,
@@ -154,7 +155,7 @@ export default function Dock({
             <ListTodo />,
             <Sparkles />,
             <span className="wr-small-orb">
-              <img src={agentAvatar || "/avatar.svg"} alt="" />
+              <BotAvatar source={agentAvatar} />
             </span>,
           ];
           return (
