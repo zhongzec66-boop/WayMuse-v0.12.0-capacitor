@@ -58,6 +58,8 @@ interface NativeExtras {
   playAudio(options: { base64: string }): Promise<{ finished?: boolean }>;
   stopAudio(): Promise<void>;
   endAudioSession(): Promise<void>;
+  beginCallAudio(): Promise<{ ok: boolean }>;
+  endCallAudio(): Promise<void>;
   addListener(
     event: "speechPartial",
     listener: (event: SpeechPayload) => void,
@@ -192,6 +194,25 @@ export async function stopAudioNative(): Promise<void> {
   if (!isNativeExtrasSupported()) return;
   try {
     await NativeExtras.stopAudio();
+  } catch {
+    // ignore
+  }
+}
+
+/** 进入通话音频模式：开硬件回声消除，允许「边说边听」。 */
+export async function beginCallAudio(): Promise<void> {
+  if (!isNativeExtrasSupported()) return;
+  try {
+    await NativeExtras.beginCallAudio();
+  } catch {
+    // 失败就退回普通模式，不影响通话本身
+  }
+}
+
+export async function endCallAudio(): Promise<void> {
+  if (!isNativeExtrasSupported()) return;
+  try {
+    await NativeExtras.endCallAudio();
   } catch {
     // ignore
   }

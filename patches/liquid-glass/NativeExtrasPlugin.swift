@@ -30,6 +30,8 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "playAudio", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stopAudio", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "endAudioSession", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "beginCallAudio", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "endCallAudio", returnType: CAPPluginReturnPromise),
     ]
 
     private let engine = AVAudioEngine()
@@ -37,6 +39,11 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
     private var task: SFSpeechRecognitionTask?
     private var recognizing = false
     private var tapInstalled = false
+    /// 通话中打开：用 .voiceChat 换回声消除，代价是音质偏「电话音」
+    private var inCall = false
+    private var callAudioMode: AVAudioSession.Mode {
+        inCall ? .voiceChat : .measurement
+    }
     private let eventStore = EKEventStore()
     private var player: AVAudioPlayer?
     private var pendingPlay: CAPPluginCall?
@@ -143,10 +150,12 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
 
         do {
             let session = AVAudioSession.sharedInstance()
+            // 通话中必须用 .voiceChat：它会打开系统级回声消除，
+            // 让麦克风在播放 TTS 的同时仍然能听清用户说话（打断的前提）。
             try session.setCategory(
                 .playAndRecord,
-                mode: .measurement,
-                options: [.duckOthers, .defaultToSpeaker]
+                mode: callAudioMode,
+                options: [.duckOthers, .defaultToSpeaker, .allowBluetooth]
             )
             try session.setActive(true, options: .notifyOthersOnDeactivation)
 
@@ -378,7 +387,7 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(
             .playAndRecord,
-            mode: .default,
+            mode: callAudioMode,
             options: [.defaultToSpeaker, .allowBluetooth]
         )
         try session.setActive(true, options: .notifyOthersOnDeactivation)
@@ -408,6 +417,27 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
                 self.pendingPlay = nil
                 call.reject("audio-session-failed: \(error.localizedDescription)")
             }
+        }
+    }
+
+    /// 进入通话音频模式：之后麦克风与扬声器可以同时工作且互不干扰。
+    @objc func beginCallAudio(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            self.inCall = true
+            do {
+                try self.configureSpeakerSession()
+                call.resolve(["ok": true])
+            } catch {
+                call.reject("call-audio-failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    /// 退出通话音频模式，恢复普通录音配置。
+    @objc func endCallAudio(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            self.inCall = false
+            call.resolve()
         }
     }
 

@@ -3,7 +3,9 @@ import { ChevronDown, Mic, MicOff, PhoneOff } from "lucide-react";
 import BotAvatar from "./BotAvatar";
 import { speakAndWait, stopSpeaking } from "./breeze";
 import {
+  beginCallAudio,
   endAudioSession,
+  endCallAudio,
   haptic,
   isNativeExtrasSupported,
 } from "./nativeExtras";
@@ -49,12 +51,34 @@ export default function VoiceCall({
   const finalRef = useRef(onFinal);
   finalRef.current = onFinal;
 
-  // 通话模式下不做逐字回填，拿到 final 一次性提交
+  // 打断用：正在念的文本、是否正在念
+  const speakingRef = useRef(false);
+  const spokenTextRef = useRef("");
+  const [barged, setBarged] = useState(false);
+
+  const bargeIn = () => {
+    spokenRef.current = "";
+    stopSpeaking();
+    setSpeaking(false);
+    setBarged(true);
+    void haptic("medium");
+  };
+
+  // 通话模式下不做逐字回填；partial 用来判断「用户开口打断」
   const speech = useSpeechInput(
-    () => undefined,
+    (partial) => {
+      if (!speakingRef.current) return;
+      const said = partial.trim().replace(/\s+/g, "");
+      if (said.length < 4) return;
+      // 回声防护：如果识别到的就是正在念的内容，说明是喇叭串进麦克风
+      const playing = spokenTextRef.current.replace(/\s+/g, "");
+      if (playing.includes(said) || said.includes(playing.slice(0, 6))) return;
+      bargeIn();
+    },
     (text) => finalRef.current(text),
   );
 
+  speakingRef.current = speaking;
   const native = isNativeExtrasSupported();
 
   /* ── 念回复 ─────────────────────────────────── */
@@ -68,6 +92,8 @@ export default function VoiceCall({
     }
     let alive = true;
     setSpeaking(true);
+    setBarged(false);
+    spokenTextRef.current = reply;
     setNote("");
     void speakAndWait(reply, { apiKey: breezeKey, voiceId: breezeVoice })
       .catch(() => {
@@ -88,7 +114,9 @@ export default function VoiceCall({
   /* ── 自动接着听：说完 / 念完之后自己开麦 ─────── */
   useEffect(() => {
     if (!open) return;
-    if (paused || busy || speaking || speech.listening || speech.error) return;
+    // 注意：这里**不**排除 speaking。说话时麦克风必须继续工作，
+    // 否则用户没法打断（配合原生 .voiceChat 的回声消除）。
+    if (paused || busy || speech.listening || speech.error) return;
     const timer = window.setTimeout(() => speech.start(), 420);
     return () => window.clearTimeout(timer);
   }, [open, paused, busy, speaking, speech.listening, speech.error]);
@@ -100,11 +128,13 @@ export default function VoiceCall({
       setNote("");
       setPaused(false);
       stopSpeaking();
+      void endCallAudio();
       void endAudioSession();
       void endLiveActivity();
       return;
     }
     void haptic("medium");
+    void beginCallAudio();
     void startLiveActivity("正在通话", "在听你说");
   }, [open]);
 
@@ -135,11 +165,13 @@ export default function VoiceCall({
 
   const status =
     phase === "speaking"
-      ? "正在说…"
+      ? "正在说…（开口就能打断）"
       : phase === "thinking"
         ? "正在整理你说的话…"
         : phase === "listening"
-          ? "在听你说"
+          ? barged
+            ? "你说，我在听"
+            : "在听你说"
           : phase === "paused"
             ? "已暂停，点麦克风继续"
             : "马上就开始听";
