@@ -18,7 +18,11 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-const PLUGIN_CLASSES = ["NativeComposePlugin", "NativeExtrasPlugin"];
+const PLUGIN_CLASSES = [
+  "NativeComposePlugin",
+  "NativeExtrasPlugin",
+  "LiveActivityPlugin",
+];
 const configPath = path.join(__dirname, "..", "ios", "App", "App", "capacitor.config.json");
 
 if (!fs.existsSync(configPath)) {

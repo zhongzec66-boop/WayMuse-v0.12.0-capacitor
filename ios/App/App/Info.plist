@@ -22,6 +22,8 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>NSCalendarsUsageDescription</key>
 	<string>读取你的课程与日程，用来排今天和本周的安排。数据只在本机处理。</string>
 	<key>NSRemindersUsageDescription</key>

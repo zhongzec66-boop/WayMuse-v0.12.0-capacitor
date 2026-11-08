@@ -2,6 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { Mic, PhoneOff } from "lucide-react";
 import BotAvatar from "./BotAvatar";
 import { speakAndWait, stopSpeaking } from "./breeze";
+import {
+  endLiveActivity,
+  startLiveActivity,
+  updateLiveActivity,
+} from "./liveActivity";
 import { haptic, isNativeExtrasSupported } from "./nativeExtras";
 import { useSpeechInput } from "./useSpeechInput";
 
@@ -71,16 +76,25 @@ export default function VoiceCall({
     };
   }, [open, busy, reply, breezeKey, breezeVoice]);
 
-  // 进入通话就开始听
+  // 进入通话就开始听，同时把状态推到灵动岛/锁屏
   useEffect(() => {
     if (!open) {
       spokenRef.current = "";
       setNote("");
       stopSpeaking();
+      void endLiveActivity();
       return;
     }
     void haptic("medium");
+    void startLiveActivity("正在通话", "点一下屏幕回来说话");
   }, [open]);
+
+  // 状态变化时更新实时活动
+  useEffect(() => {
+    if (!open) return;
+    const detail = speaking ? "正在说" : busy ? "正在想" : "在听你说";
+    void updateLiveActivity("WayMuse 通话中", detail);
+  }, [open, speaking, busy]);
 
   if (!open) return null;
 
