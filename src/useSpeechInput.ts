@@ -34,6 +34,42 @@ export function useSpeechInput(
   const onFinalRef = useRef(onFinal);
   onFinalRef.current = onFinal;
 
+  // ── 断句与去重 ────────────────────────────────
+  // 同一句话可能同时由「静音断句」和系统的 final 各触发一次，
+  // 用这个引用挡掉重复提交。
+  const committedRef = useRef({ text: "", at: 0 });
+  const silenceRef = useRef<number | null>(null);
+
+  const commit = (raw: string) => {
+    const text = raw.trim();
+    if (!text) return;
+    const now = Date.now();
+    if (
+      committedRef.current.text === text &&
+      now - committedRef.current.at < 4000
+    ) {
+      return;
+    }
+    committedRef.current = { text, at: now };
+    if (silenceRef.current) {
+      window.clearTimeout(silenceRef.current);
+      silenceRef.current = null;
+    }
+    onTextRef.current(text);
+    setListening(false);
+    void stopSpeech();
+    void haptic("light");
+    onFinalRef.current?.(text);
+  };
+
+  const armSilence = (text: string) => {
+    if (silenceRef.current) window.clearTimeout(silenceRef.current);
+    silenceRef.current = window.setTimeout(() => {
+      silenceRef.current = null;
+      if (text.trim()) commit(text);
+    }, 1200);
+  };
+
   useEffect(() => {
     if (!isNativeExtrasSupported()) return;
     let alive = true;
@@ -41,17 +77,15 @@ export function useSpeechInput(
 
     const bind = async () => {
       const partial = await speechEvents.partial(({ text }) => {
-        if (alive) onTextRef.current(text);
+        if (!alive) return;
+        onTextRef.current(text);
+        // 只有通话模式才做静音断句：中文离线识别经常不给 isFinal。
+        // 长按说话由松手结束，不做静音判定，免得停顿一下就被截断。
+        if (onFinalRef.current) armSilence(text);
       });
       const final = await speechEvents.final(({ text }) => {
         if (!alive) return;
-        onTextRef.current(text);
-        setListening(false);
-        // 识别到一句就主动收麦：不等系统自己结束，
-        // 否则会出现「已经读完了但一直开着、点也关不掉」的状态
-        void stopSpeech();
-        void haptic("light");
-        if (text.trim() && onFinalRef.current) onFinalRef.current(text.trim());
+        commit(text);
       });
       const failed = await speechEvents.error(({ message }) => {
         if (!alive) return;
@@ -80,6 +114,7 @@ export function useSpeechInput(
 
   const begin = async () => {
     setError("");
+    committedRef.current = { text: "", at: 0 };
     try {
       await startSpeech("zh-CN");
       setListening(true);
