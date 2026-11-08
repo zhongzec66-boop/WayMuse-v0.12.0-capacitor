@@ -131,6 +131,8 @@ export default function WayMuseReference() {
     setOverlay("");
     setAttachmentMenu(false);
   };
+  // 原生 Liquid Glass Tab 栏：iOS 上由 LiquidGlassPlugin 接管，
+  // 其它环境自动回落到 Web Tab 栏（hook 内部判断平台）。
   const nativeTabsActive = useNativeTabs(page, hasEntered, overlay, nav);
   const openIntake = (kind: Kind) => {
     setIntakeKind(kind);

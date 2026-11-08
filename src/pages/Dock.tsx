@@ -12,6 +12,11 @@ import {
 } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import type { Kind, Overlay, Page } from "../types";
+import {
+  COMPOSE_SLOT_ID,
+  isNativeComposeSupported,
+  useNativeCompose,
+} from "../nativeCompose";
 
 export default function Dock({
   nativeTabsActive,
@@ -40,8 +45,22 @@ export default function Dock({
   agentName: string;
   agentAvatar: string;
 }) {
+  const composeText =
+    overlay === "新增任务" || overlay === "添加记忆" ? "" : draft;
+  // iOS 上用原生输入框；其它环境（Web / 插件缺失）自动回退到下面的 <input>。
+  const nativeComposeActive = useNativeCompose({
+    enabled: isNativeComposeSupported(),
+    hidden: overlay !== "",
+    text: composeText,
+    placeholder: "点击输入或录制语音…",
+    onTextChange: setDraft,
+    onSubmit: submit,
+    onAttach: () => setAttachmentMenu(!attachmentMenu),
+    onVoice: () => openIntake("语音"),
+  });
+
   return (
-    <div className="wr-dock">
+    <div className={nativeTabsActive ? "wr-dock wr-dock-native" : "wr-dock"}>
       {attachmentMenu && (
         <div className="wr-attachment-menu">
           <button onClick={() => openIntake("图片")}>
@@ -62,7 +81,12 @@ export default function Dock({
           </button>
         </div>
       )}
-      <div className="wr-compose">
+      <div
+        id={COMPOSE_SLOT_ID}
+        className={
+          nativeComposeActive ? "wr-compose wr-compose-native" : "wr-compose"
+        }
+      >
         <button
           aria-label="添加附件"
           aria-expanded={attachmentMenu}
@@ -71,7 +95,7 @@ export default function Dock({
           <Plus />
         </button>
         <input
-          value={overlay === "新增任务" || overlay === "添加记忆" ? "" : draft}
+          value={composeText}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") submit();

@@ -50,6 +50,19 @@
   color: var(--ink-3);
 }
 
+/* 原生输入框接管时：只保留这块区域作为定位锚点，
+   视觉与交互全部交给原生玻璃浮层，避免「Web 胶囊 + 原生胶囊」重影。 */
+.wr-compose-native {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.wr-compose-native > * {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .wr-dock nav {
   position: relative;
   display: grid;
@@ -63,6 +76,25 @@
 .wr-dock nav.wr-native-tabs > .wr-tab-highlight {
   opacity: 0;
   pointer-events: none;
+}
+
+/* 原生模式下，Tab 栏由 UITabBar 自己绘制玻璃，容器不再叠一层玻璃背景，
+   避免「双玻璃」；输入框保留自己的胶囊玻璃，与原生栏形成两层浮动。 */
+.wr-dock-native {
+  padding-bottom: 0;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.wr-dock-native .wr-compose {
+  margin-bottom: 8px;
+}
+
+.wr-dock-native nav {
+  padding-top: 0;
 }
 
 .wr-tab-highlight {

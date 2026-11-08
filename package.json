@@ -14,7 +14,8 @@
     "format": "prettier --write src",
     "format:check": "prettier --check src",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "postinstall": "node scripts/inject-native-compose.cjs"
   },
   "dependencies": {
     "@ajuarezso/capacitor-liquid-glass": "^0.8.0",
