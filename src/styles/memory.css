@@ -584,13 +584,22 @@
    这里必须是不透明面板，否则在 backdrop-filter 不起作用的环境里
    菜单会整块透明、字全叠在聊天记录上。 */
 .wr-sheet.wr-titlemenu {
-  display: grid;
-  gap: var(--space-4);
+  /* 挂在名字正下方的小胶囊，而不是铺在底部的整张 sheet */
+  position: absolute;
+  top: calc(var(--safe-top) + 92px);
+  bottom: auto;
+  left: 50%;
+  width: max-content;
+  min-width: 188px;
+  max-width: 78vw;
   min-height: 0;
-  max-height: 70%;
-  padding: var(--space-12);
+  max-height: none;
+  padding: 6px;
+  border-radius: var(--radius-20);
   background: var(--card-bg);
-  box-shadow: 0 -12px 40px rgba(16, 36, 56, 0.16);
+  box-shadow: 0 14px 44px rgba(16, 36, 56, 0.2);
+  /* 用 translate 而不是 transform：.wr-sheet 自带的进场动画会覆盖 transform */
+  translate: -50% 0;
 }
 
 .wr-titlemenu > button {

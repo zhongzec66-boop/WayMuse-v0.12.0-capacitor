@@ -532,7 +532,11 @@ export default function ChatPage({
 
   return (
     <>
-      <div className="wr-chat-head">
+      <div
+        className={
+          messages.length === 0 ? "wr-chat-head is-empty" : "wr-chat-head"
+        }
+      >
         <button className="wr-round" aria-label="设置" onClick={onSettings}>
           <Settings />
         </button>
@@ -608,6 +612,22 @@ export default function ChatPage({
       />
 
       <div className="wr-chat-scroll">
+        {messages.length === 0 && (
+          <button
+            className="wr-chat-hero"
+            aria-label="打开快捷操作"
+            onClick={() => {
+              void haptic("medium");
+              setTitleMenu(true);
+            }}
+          >
+            <span className="wr-hero-orb">
+              <BotAvatar source={agentAvatar} replying={streaming} />
+            </span>
+            <b>{agentName}</b>
+            <small>{statusLabel}</small>
+          </button>
+        )}
         {searchOpen && (
           <div className="wr-chat-search">
             <Search size={18} />
@@ -811,8 +831,7 @@ export default function ChatPage({
 
         {!showConfig && !messages.length && (
           <div className="wr-ai-empty">
-            <BotAvatar className="wr-ai-empty-mark" />
-            <h2>和 {agentName} 聊聊</h2>
+            {/* 头像和名字已经在空态 hero 里了，这里只留引导 */}
             <p>
               {apiKey
                 ? "想聊聊近况，还是一起学点什么？"

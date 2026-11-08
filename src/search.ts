@@ -118,93 +118,84 @@ export function formatSearchContext(query: string, hits: SearchHit[]): string {
   ].join("\n");
 }
 
-/* ── 免 key 的兜底搜索 ─────────────────────────────
-   不填任何 key 也能联网：DuckDuckGo 的 Instant Answer 负责「是什么」，
-   维基百科负责条目摘要。两家都支持跨域、都不需要注册。
-   质量不如 Serper/Tavily，但「让用户少填一个密钥」值这个折中。 */
-
-async function getJson(url: string): Promise<unknown> {
-  if (Capacitor.isNativePlatform()) {
-    const response = await CapacitorHttp.get({
-      url,
-      responseType: "json",
-    });
-    if (response.status >= 400) throw new Error(`HTTP ${response.status}`);
-    return response.data;
-  }
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return await res.json();
+function decodeEntities(input: string): string {
+  return input
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-async function searchDuckDuckGo(query: string): Promise<SearchHit[]> {
+/**
+ * Bing 网页结果。
+ *
+ * 为什么是 Bing 而不是 DuckDuckGo / 维基：后两家在国内不可达，
+ * 免 key 通道会静默返回空数组，用户以为在联网、其实没有。
+ * Bing 国内可直连，用 CapacitorHttp 走原生请求也没有跨域问题。
+ *
+ * 这是抓 HTML，结构变了会失效——所以失败时返回空数组，
+ * 由上层明确告诉用户「没拿到结果」，绝不假装搜过。
+ */
+async function searchBing(query: string): Promise<SearchHit[]> {
+  const url =
+    "https://cn.bing.com/search?q=" + encodeURIComponent(query) + "&count=8";
+  const ua =
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) " +
+    "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 " +
+    "Mobile/15E148 Safari/604.1";
+  let html: string;
   try {
-    const url =
-      "https://api.duckduckgo.com/?q=" +
-      encodeURIComponent(query) +
-      "&format=json&no_html=1&skip_disambig=1";
-    const data = (await getJson(url)) as {
-      Heading?: string;
-      AbstractText?: string;
-      AbstractURL?: string;
-      RelatedTopics?: Array<{ Text?: string; FirstURL?: string }>;
-    };
-    const hits: SearchHit[] = [];
-    if (data.AbstractText) {
-      hits.push({
-        title: data.Heading || query,
-        url: data.AbstractURL ?? "",
-        snippet: data.AbstractText.slice(0, 300),
+    if (Capacitor.isNativePlatform()) {
+      const response = await CapacitorHttp.get({
+        url,
+        headers: { "user-agent": ua, "accept-language": "zh-CN,zh;q=0.9" },
+        responseType: "text",
       });
+      if (response.status >= 400) return [];
+      html = typeof response.data === "string" ? response.data : "";
+    } else {
+      const res = await fetch(url, {
+        headers: { "user-agent": ua, "accept-language": "zh-CN,zh;q=0.9" },
+      });
+      if (!res.ok) return [];
+      html = await res.text();
     }
-    for (const item of data.RelatedTopics ?? []) {
-      if (hits.length >= 4) break;
-      if (item.Text && item.FirstURL) {
-        hits.push({
-          title: item.Text.slice(0, 60),
-          url: item.FirstURL,
-          snippet: item.Text.slice(0, 300),
-        });
-      }
-    }
-    return hits;
   } catch {
     return [];
   }
-}
+  if (!html) return [];
 
-async function searchWikipedia(query: string): Promise<SearchHit[]> {
-  try {
-    const url =
-      "https://zh.wikipedia.org/w/api.php?action=query&list=search&format=json&origin=*&srlimit=3&srsearch=" +
-      encodeURIComponent(query);
-    const data = (await getJson(url)) as {
-      query?: { search?: Array<{ title?: string; snippet?: string }> };
-    };
-    return (data.query?.search ?? [])
-      .filter((item) => item.title)
-      .map((item) => ({
-        title: item.title ?? "",
-        url: `https://zh.wikipedia.org/wiki/${encodeURIComponent(item.title ?? "")}`,
-        snippet: (item.snippet ?? "").replace(/<[^>]+>/g, "").slice(0, 300),
-      }));
-  } catch {
-    return [];
+  const hits: SearchHit[] = [];
+  for (const raw of html.split('<li class="b_algo"').slice(1)) {
+    const block = raw.split("</li>")[0] ?? "";
+    const link = block.match(
+      /<a[^>]*href="(https?:\/\/[^"]+)"[^>]*>([\s\S]*?)<\/a>/,
+    );
+    if (!link) continue;
+    const snippet = block.match(/<p[^>]*>([\s\S]*?)<\/p>/);
+    hits.push({
+      title: decodeEntities(link[2]).slice(0, 80) || link[1],
+      url: link[1],
+      snippet: decodeEntities(snippet?.[1] ?? "").slice(0, 300),
+    });
+    if (hits.length >= 5) break;
   }
+  return hits;
 }
-
-/** 不需要任何 key 的联网搜索。 */
+/** 不需要任何 key 的联网搜索（Bing，国内可直连）。 */
 export async function webSearchKeyless(query: string): Promise<SearchHit[]> {
   const q = query.trim().slice(0, 200);
   if (!q) return [];
-  const [duck, wiki] = await Promise.all([
-    searchDuckDuckGo(q),
-    searchWikipedia(q),
-  ]);
+  const found = await searchBing(q);
   // 去重后取前 5 条
   const seen = new Set<string>();
   const merged: SearchHit[] = [];
-  for (const hit of [...duck, ...wiki]) {
+  for (const hit of found) {
     const key = hit.url || hit.title;
     if (seen.has(key)) continue;
     seen.add(key);

@@ -1551,3 +1551,52 @@
     animation: none;
   }
 }
+
+/* ── 空态：大头像占住视线中心 ───────────────────── */
+
+.wr-chat-head.is-empty .wr-chat-title {
+  display: none;
+}
+
+.wr-chat-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12vh var(--space-16) 0;
+  width: 100%;
+  text-align: center;
+}
+
+.wr-hero-orb {
+  width: 116px;
+  height: 116px;
+  display: block;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.9),
+    0 20px 48px rgba(16, 36, 56, 0.16);
+}
+
+.wr-chat-hero > b {
+  margin-top: var(--space-8);
+  color: var(--ink);
+  font-size: 22px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.02em;
+}
+
+.wr-chat-hero > small {
+  color: var(--ink-3);
+  font-size: var(--text-13);
+}
+
+/* 有消息之后头像缩回头部，但比原先的 44 大一号 */
+.wr-chat-orb {
+  width: 56px;
+  height: 56px;
+}
+
+.wr-chat-head:not(.is-empty) .wr-chat-title {
+  padding-top: 0;
+}

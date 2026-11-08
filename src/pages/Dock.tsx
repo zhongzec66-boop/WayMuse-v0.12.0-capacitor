@@ -76,17 +76,30 @@ export default function Dock({
     setAttachmentMenu(false);
     const isText =
       file.type.startsWith("text/") ||
-      /\.(txt|md|markdown|csv|tsv|json|log|ya?ml)$/i.test(file.name);
+      /\.(txt|md|markdown|mdx|csv|tsv|json|jsonl|log|ya?ml|html?|xml|svg|css|scss|jsx?|tsx?|py|java|c|cc|cpp|h|hpp|go|rs|rb|php|sh|sql|tex|ini|conf|toml)$/i.test(
+        file.name,
+      );
     const header = JSON.stringify({
       n: file.name.slice(0, 80),
       s: file.size,
       b: !isText,
     });
     let payload = `[[FILE:${header}]]` + "\n[[/FILE]]";
-    if (isText && file.size <= 2 * 1024 * 1024) {
+    if (isText && file.size <= 4 * 1024 * 1024) {
       const text = await file.text();
+      const LIMIT = 16000;
+      // 截断要说清楚，否则模型以为自己看到了全文
+      const body =
+        text.length > LIMIT
+          ? `${text.slice(0, LIMIT)}\n（文件较长，以上是前 ${LIMIT} 字）`
+          : text;
+      payload = `[[FILE:${header}]]` + "\n" + body + "\n[[/FILE]]";
+    } else if (!isText) {
+      // 图片/PDF/Word 这类读不出文字，明确告诉模型它看不到内容
       payload =
-        `[[FILE:${header}]]` + "\n" + text.slice(0, 4000) + "\n[[/FILE]]";
+        `[[FILE:${header}]]` +
+        "\n（这是二进制文件，你只能看到文件名和大小，看不到里面的内容）" +
+        "\n[[/FILE]]";
     }
     onAttach(payload);
   };

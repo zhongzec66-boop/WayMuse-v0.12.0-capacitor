@@ -328,7 +328,7 @@ export const storage = {
     writeText("search-provider", provider.trim() || "serper"),
   getSearchKey: () => readText("search-key", ""),
   setSearchKey: (key: string) => writeText("search-key", key.trim()),
-  getSearchEnabled: () => readText("search-enabled", "") === "1",
+  getSearchEnabled: () => readText("search-enabled", "1") !== "0",
   setSearchEnabled: (on: boolean) => writeText("search-enabled", on ? "1" : ""),
 
   /* ── 语音（Breeze TTS）── 只存本机，和 DeepSeek key 一样不设默认值 */
