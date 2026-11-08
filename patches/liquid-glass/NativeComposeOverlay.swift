@@ -35,7 +35,7 @@ final class NativeComposeOverlay: NSObject {
     private var widthConstraint: NSLayoutConstraint?
     private var heightConstraint: NSLayoutConstraint?
     private var baseRect: CGRect = .zero
-    private var keyboardInset: CGFloat = 0
+    private var keyboardOverlap: CGFloat = 0
 
     // MARK: - 状态
 
@@ -94,7 +94,16 @@ final class NativeComposeOverlay: NSObject {
         guard let host else { return }
         let converted = webView?.convert(rect, to: host) ?? rect
 
-        let y = max(0, converted.origin.y - keyboardInset)
+        // 键盘出现时只做「最小必要抬升」：如果 DOM 矩形本身已经在键盘上方
+        // （WebKit 会因视口变化重新排布），就不要再叠加一次键盘高度，
+        // 否则输入框会被顶到屏幕中上部。
+        var y = converted.origin.y
+        if keyboardOverlap > 0 {
+            let keyboardTop = host.bounds.maxY - keyboardOverlap
+            let limit = keyboardTop - 8 - converted.size.height
+            if y > limit { y = limit }
+        }
+        y = max(0, y)
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -216,13 +225,12 @@ final class NativeComposeOverlay: NSObject {
     @objc private func keyboardWillChange(_ note: Notification) {
         guard let host, let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
         let inHost = host.convert(frame, from: host.window)
-        let overlap = max(0, host.bounds.maxY - inHost.minY)
-        keyboardInset = overlap > 0 ? overlap + 8 : 0
+        keyboardOverlap = max(0, host.bounds.maxY - inHost.minY)
         setBounds(baseRect)
     }
 
     @objc private func keyboardWillHide(_ note: Notification) {
-        keyboardInset = 0
+        keyboardOverlap = 0
         setBounds(baseRect)
     }
 

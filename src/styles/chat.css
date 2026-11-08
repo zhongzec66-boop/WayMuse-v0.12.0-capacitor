@@ -126,7 +126,8 @@
 }
 
 /* ── 头像动效 ────────────────────────────────────────────────
-   呼吸 + 眨眼 + 眼球微移，全部纯 CSS，跟随 prefers-reduced-motion。 */
+   造型只有「深色圆球 + 两只眼睛」，情绪靠眼神：呼吸、注视方向、
+   眨眼、出神时眯眼歪头。全部纯 CSS，跟随 prefers-reduced-motion。 */
 .wr-bot-avatar {
   display: block;
   overflow: visible;
@@ -135,37 +136,32 @@
 .wr-bot-body {
   transform-box: fill-box;
   transform-origin: center;
-  animation: wm-bot-breathe 5.5s ease-in-out infinite;
+  animation: wm-bot-breathe 5s ease-in-out infinite;
 }
 
 .wr-bot-eyes {
   transform-box: fill-box;
   transform-origin: center;
-  animation: wm-bot-look 7s ease-in-out infinite;
+  animation: wm-bot-gaze 9s ease-in-out infinite;
 }
 
 .wr-bot-eye {
   transform-box: fill-box;
   transform-origin: center;
-  animation: wm-bot-blink 6.5s ease-in-out infinite;
+  animation: wm-bot-blink 5.6s ease-in-out infinite;
 }
 
-.wr-bot-mouth {
-  transform-box: fill-box;
-  transform-origin: center;
-}
-
-/* 说话时：眨眼更频繁、身体轻微律动 */
+/* 回复中：节奏加快 + 眯眼（思考感），并轻微歪头 */
 .wr-bot-avatar.replying .wr-bot-body {
-  animation-duration: 2.4s;
+  animation: wm-bot-breathe 2.6s ease-in-out infinite;
+}
+
+.wr-bot-avatar.replying .wr-bot-eyes {
+  animation: wm-bot-gaze-active 3.2s ease-in-out infinite;
 }
 
 .wr-bot-avatar.replying .wr-bot-eye {
-  animation-duration: 1.5s;
-}
-
-.wr-bot-avatar.replying .wr-bot-mouth {
-  animation: wm-bot-talk 0.9s ease-in-out infinite;
+  animation: wm-bot-think 1.8s ease-in-out infinite;
 }
 
 @keyframes wm-bot-breathe {
@@ -174,44 +170,76 @@
     transform: scale(1);
   }
   50% {
-    transform: scale(1.025);
+    transform: scale(1.028);
   }
 }
 
+/* 眨眼：快速闭合，不是匀速缩放 */
 @keyframes wm-bot-blink {
   0%,
-  92%,
+  89%,
   100% {
     transform: scaleY(1);
+  }
+  92% {
+    transform: scaleY(0.07);
   }
   95% {
-    transform: scaleY(0.06);
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.55);
+  }
+  98% {
+    transform: scaleY(1);
   }
 }
 
-@keyframes wm-bot-look {
+/* 空闲：左看 → 回中 → 右看 → 回中，偶尔上扬一点 */
+@keyframes wm-bot-gaze {
   0%,
   100% {
-    transform: translateX(0);
+    transform: translate(0, 0) rotate(0deg);
   }
-  25% {
-    transform: translateX(-5px);
+  18% {
+    transform: translate(-7px, 1px) rotate(-1.5deg);
   }
-  55% {
-    transform: translateX(4px);
+  38% {
+    transform: translate(-2px, -3px) rotate(0deg);
   }
-  80% {
-    transform: translateX(-2px);
+  62% {
+    transform: translate(6px, 1px) rotate(1.5deg);
+  }
+  82% {
+    transform: translate(1px, 2px) rotate(0deg);
   }
 }
 
-@keyframes wm-bot-talk {
+/* 回复中：更快地在思考与注视之间切换 */
+@keyframes wm-bot-gaze-active {
+  0%,
+  100% {
+    transform: translate(0, -2px) rotate(0deg);
+  }
+  30% {
+    transform: translate(-6px, 0) rotate(-2deg);
+  }
+  60% {
+    transform: translate(5px, -1px) rotate(2deg);
+  }
+}
+
+/* 眯眼 = 专注/思考，比眨眼慢且幅度小 */
+@keyframes wm-bot-think {
   0%,
   100% {
     transform: scaleY(1);
   }
-  50% {
-    transform: scaleY(0.55);
+  45% {
+    transform: scaleY(0.6);
+  }
+  70% {
+    transform: scaleY(0.86);
   }
 }
 
@@ -219,10 +247,9 @@
   .wr-bot-body,
   .wr-bot-eyes,
   .wr-bot-eye,
-  .wr-bot-mouth,
   .wr-bot-avatar.replying .wr-bot-body,
-  .wr-bot-avatar.replying .wr-bot-eye,
-  .wr-bot-avatar.replying .wr-bot-mouth {
+  .wr-bot-avatar.replying .wr-bot-eyes,
+  .wr-bot-avatar.replying .wr-bot-eye {
     animation: none;
   }
 }
