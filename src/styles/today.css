@@ -1,6 +1,5 @@
 /* Today 页：一条竖着的「今天」时间轴。
-   这是学生场景独有的结构 —— 一天是按课表和截止时间走的，
-   不是一堆可以互换的模块卡片。 */
+   学生的一天是按课表和截止时间走的，不是可以互换的模块卡片。 */
 
 .wr-head-actions {
   display: flex;
@@ -19,7 +18,7 @@
   font-size: var(--text-13);
 }
 
-/* ── 今天的时间轴 ─────────────────────────────────── */
+/* ── 时间轴 ───────────────────────────────────────── */
 
 .wr-dayline {
   margin-bottom: var(--space-12);
@@ -75,7 +74,6 @@
   list-style: none;
 }
 
-/* 竖线穿过所有节点 */
 .wr-timeline::before {
   content: "";
   position: absolute;
@@ -149,28 +147,41 @@
   white-space: nowrap;
 }
 
+/* 行内动作：默认隐藏，悬停/聚焦时才出现，避免每行两个按钮太吵 */
+.wr-timeline-act,
 .wr-timeline-x {
   position: absolute;
-  top: 4px;
-  right: -4px;
-  width: 22px;
-  height: 22px;
+  top: 6px;
+  width: 24px;
+  height: 24px;
   display: grid;
   place-items: center;
   border-radius: 50%;
-  color: var(--ink-3);
-  font-size: 15px;
-  line-height: 1;
   opacity: 0;
   transition: opacity var(--dur-1) var(--ease);
 }
 
+.wr-timeline-act {
+  right: 64px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.wr-timeline-x {
+  right: 8px;
+  color: var(--ink-3);
+  font-size: 15px;
+  line-height: 1;
+}
+
+.wr-timeline li:hover .wr-timeline-act,
+.wr-timeline li:focus-within .wr-timeline-act,
 .wr-timeline li:hover .wr-timeline-x,
 .wr-timeline li:focus-within .wr-timeline-x {
   opacity: 1;
 }
 
-/* 状态：已结束整条压暗；进行中用实心点；逾期标红 */
+/* 状态配色 */
 .wr-timeline li[data-state="done"] .wr-timeline-body b {
   color: var(--ink-3);
 }
@@ -243,6 +254,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .wr-timeline-act,
   .wr-timeline-x {
     transition: none;
   }

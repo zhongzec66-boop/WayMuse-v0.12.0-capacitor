@@ -3,6 +3,7 @@ import Capacitor
 import UIKit
 import AVFoundation
 import Speech
+import EventKit
 
 /// 原生「震动 + 本地语音识别」桥。
 ///
@@ -21,12 +22,18 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "startSpeech", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stopSpeech", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "cancelSpeech", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "calendarStatus", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "requestCalendar", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "readEvents", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "addEvent", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "addReminder", returnType: CAPPluginReturnPromise),
     ]
 
     private let engine = AVAudioEngine()
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     private var recognizing = false
+    private let eventStore = EKEventStore()
 
     // MARK: - 触觉反馈
 
@@ -183,6 +190,160 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
         } catch {
             stopInternal()
             call.reject("speech-start-failed: \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: - 日历 / 提醒事项
+
+    private static let iso: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    private static let isoPlain: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
+    /// 解析前端传来的 ISO 时间；解析失败返回 nil。
+    private static func parseDate(_ value: String?) -> Date? {
+        guard let value, !value.isEmpty else { return nil }
+        return iso.date(from: value) ?? isoPlain.date(from: value)
+    }
+
+    private static func formatDate(_ date: Date) -> String {
+        iso.string(from: date)
+    }
+
+    private func calendarAuthorized() -> Bool {
+        let status = EKEventStore.authorizationStatus(for: .event)
+        if #available(iOS 17.0, *) {
+            return status == .fullAccess
+        }
+        return status == .authorized
+    }
+
+    @objc func calendarStatus(_ call: CAPPluginCall) {
+        let status = EKEventStore.authorizationStatus(for: .event)
+        let granted = calendarAuthorized()
+        DispatchQueue.main.async {
+            call.resolve(["granted": granted, "rawStatus": status.rawValue])
+        }
+    }
+
+    @objc func requestCalendar(_ call: CAPPluginCall) {
+        if #available(iOS 17.0, *) {
+            eventStore.requestFullAccessToEvents { granted, error in
+                if let error {
+                    call.reject("calendar-request-failed: \(error.localizedDescription)")
+                    return
+                }
+                call.resolve(["granted": granted])
+            }
+        } else {
+            eventStore.requestAccess(to: .event) { granted, error in
+                if let error {
+                    call.reject("calendar-request-failed: \(error.localizedDescription)")
+                    return
+                }
+                call.resolve(["granted": granted])
+            }
+        }
+    }
+
+    @objc func readEvents(_ call: CAPPluginCall) {
+        guard calendarAuthorized() else {
+            call.reject("calendar-unauthorized")
+            return
+        }
+        let calendar = Calendar.current
+        let start = Self.parseDate(call.getString("start"))
+            ?? calendar.startOfDay(for: Date())
+        let end = Self.parseDate(call.getString("end"))
+            ?? calendar.date(byAdding: .day, value: 1, to: start)
+            ?? start.addingTimeInterval(86_400)
+
+        let predicate = eventStore.predicateForEvents(
+            withStart: start,
+            end: end,
+            calendars: nil
+        )
+        let events: [[String: Any]] = eventStore.events(matching: predicate)
+            .filter { !$0.isAllDay }
+            .sorted { $0.startDate < $1.startDate }
+            .prefix(20)
+            .map { event in
+                [
+                    "id": event.eventIdentifier ?? UUID().uuidString,
+                    "title": event.title ?? "未命名日程",
+                    "start": Self.formatDate(event.startDate),
+                    "end": Self.formatDate(event.endDate),
+                    "location": event.location ?? "",
+                    "calendar": event.calendar?.title ?? "",
+                ]
+            }
+        call.resolve(["events": events])
+    }
+
+    @objc func addEvent(_ call: CAPPluginCall) {
+        guard calendarAuthorized() else {
+            call.reject("calendar-unauthorized")
+            return
+        }
+        guard let title = call.getString("title"), !title.isEmpty else {
+            call.reject("title-required")
+            return
+        }
+        guard let start = Self.parseDate(call.getString("start")) else {
+            call.reject("start-required")
+            return
+        }
+        let end = Self.parseDate(call.getString("end"))
+            ?? start.addingTimeInterval(3_600)
+
+        let event = EKEvent(eventStore: eventStore)
+        event.title = title
+        event.startDate = start
+        event.endDate = end
+        event.notes = call.getString("notes")
+        event.calendar = eventStore.defaultCalendarForNewEvents
+
+        do {
+            try eventStore.save(event, span: .thisEvent)
+            call.resolve(["ok": true, "id": event.eventIdentifier ?? ""])
+        } catch {
+            call.reject("save-failed: \(error.localizedDescription)")
+        }
+    }
+
+    @objc func addReminder(_ call: CAPPluginCall) {
+        let store = EKEventStore()
+        store.requestAccess(to: .reminder) { granted, error in
+            guard granted, error == nil else {
+                call.reject("reminder-unauthorized")
+                return
+            }
+            guard let title = call.getString("title"), !title.isEmpty else {
+                call.reject("title-required")
+                return
+            }
+            let reminder = EKReminder(eventStore: store)
+            reminder.title = title
+            reminder.calendar = store.defaultCalendarForNewReminders()
+            if let due = Self.parseDate(call.getString("due")) {
+                reminder.dueDateComponents = Calendar.current.dateComponents(
+                    [.year, .month, .day, .hour, .minute],
+                    from: due
+                )
+            }
+            do {
+                try store.save(reminder, commit: true)
+                call.resolve(["ok": true])
+            } catch {
+                call.reject("reminder-save-failed: \(error.localizedDescription)")
+            }
         }
     }
 

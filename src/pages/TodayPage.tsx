@@ -1,4 +1,6 @@
-import { Plus, SlidersHorizontal } from "lucide-react";
+import { CalendarPlus, Plus, SlidersHorizontal } from "lucide-react";
+import { addEventToCalendar, haptic } from "../nativeExtras";
+import type { CalendarEvent } from "../nativeExtras";
 import type { Dispatch, SetStateAction } from "react";
 import type { Course, Kind, Overlay, Page, Task } from "../types";
 
@@ -54,8 +56,9 @@ type Entry = {
   title: string;
   meta: string;
   state: EntryState;
-  kind: "course" | "task";
+  kind: "course" | "task" | "calendar";
   courseId?: string;
+  taskId?: string;
 };
 
 const STATE_LABEL: Record<EntryState, string> = {
@@ -71,6 +74,7 @@ export default function TodayPage({
   date,
   tasks,
   todayCourses,
+  calendarEvents,
   courses,
   setCourses,
   setOverlay,
@@ -81,6 +85,7 @@ export default function TodayPage({
   date: string;
   tasks: Task[];
   todayCourses: Course[];
+  calendarEvents: CalendarEvent[];
   courses: Course[];
   setCourses: Dispatch<SetStateAction<Course[]>>;
   setOverlay: Dispatch<SetStateAction<Overlay>>;
@@ -107,6 +112,33 @@ export default function TodayPage({
         courseId: c.id,
       };
     }),
+    ...calendarEvents.map<Entry>((event) => {
+      const start = new Date(event.start);
+      const end = new Date(event.end);
+      const minutes = start.getHours() * 60 + start.getMinutes();
+      const clock = `${String(start.getHours()).padStart(2, "0")}:${String(
+        start.getMinutes(),
+      ).padStart(2, "0")}`;
+      const endClock = `${String(end.getHours()).padStart(2, "0")}:${String(
+        end.getMinutes(),
+      ).padStart(2, "0")}`;
+      return {
+        key: `cal-${event.id}`,
+        minutes,
+        clock,
+        title: event.title,
+        meta: [clock + "–" + endClock, event.location, event.calendar]
+          .filter(Boolean)
+          .join(" · "),
+        state:
+          end.getTime() < Date.now()
+            ? "done"
+            : start.getTime() <= Date.now()
+              ? "live"
+              : "next",
+        kind: "calendar" as const,
+      };
+    }),
     ...dueTasks.map<Entry>((t) => ({
       key: `t-${t.id}`,
       minutes: t.time ? toMinutes(t.time) : 23 * 60 + 59,
@@ -118,6 +150,7 @@ export default function TodayPage({
           : (t.category ?? "今天到期"),
       state: t.deadline && t.deadline < todayKey ? "overdue" : "due",
       kind: "task",
+      taskId: t.id,
     })),
   ].sort((a, b) => a.minutes - b.minutes);
 
@@ -181,6 +214,26 @@ export default function TodayPage({
                 <span className="wr-timeline-state">
                   {STATE_LABEL[e.state]}
                 </span>
+                {e.kind === "task" && e.taskId && (
+                  <button
+                    className="wr-timeline-act"
+                    aria-label={`把「${e.title}」加到系统日历`}
+                    onClick={() => {
+                      const task = tasks.find((x) => x.id === e.taskId);
+                      if (!task) return;
+                      const day = task.deadline ?? todayKey;
+                      const time = task.time ?? "09:00";
+                      const start = new Date(`${day}T${time}:00`).toISOString();
+                      void addEventToCalendar({
+                        title: task.text,
+                        start,
+                        notes: task.category,
+                      }).then((ok) => haptic(ok ? "light" : "heavy"));
+                    }}
+                  >
+                    <CalendarPlus size={13} />
+                  </button>
+                )}
                 {e.kind === "course" && e.courseId && (
                   <button
                     className="wr-timeline-x"

@@ -16,12 +16,45 @@ export type NotifyStyle = "success" | "warning" | "error";
 type SpeechPayload = { text: string; final?: boolean };
 type SpeechFailure = { message: string };
 
+export type CalendarEvent = {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  location: string;
+  calendar: string;
+};
+
+export type CalendarDraft = {
+  title: string;
+  /** ISO8601 */
+  start: string;
+  end?: string;
+  notes?: string;
+};
+
 interface NativeExtras {
   impact(options: { style: ImpactStyle }): Promise<void>;
   notify(options: { type: NotifyStyle }): Promise<void>;
   startSpeech(options: { locale?: string; onDevice?: boolean }): Promise<void>;
   stopSpeech(): Promise<void>;
   cancelSpeech(): Promise<void>;
+  calendarStatus(): Promise<{ granted: boolean; rawStatus: number }>;
+  requestCalendar(): Promise<{ granted: boolean }>;
+  readEvents(options: {
+    start?: string;
+    end?: string;
+  }): Promise<{ events: CalendarEvent[] }>;
+  addEvent(options: {
+    title: string;
+    start: string;
+    end?: string;
+    notes?: string;
+  }): Promise<{ ok: boolean; id: string }>;
+  addReminder(options: {
+    title: string;
+    due?: string;
+  }): Promise<{ ok: boolean }>;
   addListener(
     event: "speechPartial",
     listener: (event: SpeechPayload) => void,
@@ -100,3 +133,61 @@ export const speechEvents = {
   cancelled: (cb: () => void) =>
     NativeExtras.addListener("speechCancelled", cb),
 };
+
+/* ── 日历 / 提醒事项 ─────────────────────────────── */
+
+/** 确保拿到日历权限；用户拒绝返回 false。 */
+export async function ensureCalendarAccess(): Promise<boolean> {
+  if (!isNativeExtrasSupported()) return false;
+  try {
+    const status = await NativeExtras.calendarStatus();
+    if (status.granted) return true;
+    const result = await NativeExtras.requestCalendar();
+    return result.granted;
+  } catch {
+    return false;
+  }
+}
+
+export async function readCalendarEvents(
+  startISO?: string,
+  endISO?: string,
+): Promise<CalendarEvent[]> {
+  if (!isNativeExtrasSupported()) return [];
+  try {
+    const result = await NativeExtras.readEvents({
+      start: startISO,
+      end: endISO,
+    });
+    return result.events ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function addEventToCalendar(
+  draft: CalendarDraft,
+): Promise<boolean> {
+  if (!isNativeExtrasSupported()) return false;
+  try {
+    const ok = await ensureCalendarAccess();
+    if (!ok) return false;
+    await NativeExtras.addEvent(draft);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function addReminder(
+  title: string,
+  dueISO?: string,
+): Promise<boolean> {
+  if (!isNativeExtrasSupported()) return false;
+  try {
+    await NativeExtras.addReminder({ title, due: dueISO });
+    return true;
+  } catch {
+    return false;
+  }
+}

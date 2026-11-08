@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { BRAND } from "./brand";
 import { newId } from "./id";
 import Onboarding from "./Onboarding";
+import { readCalendarEvents } from "./nativeExtras";
+import type { CalendarEvent } from "./nativeExtras";
 import { useKeyboardInset } from "./useKeyboardInset";
 import WayMuseIntake from "./WayMuseIntake";
 import ChatPage from "./pages/ChatPage";
@@ -66,6 +68,7 @@ export default function WayMuseReference() {
   const profileName = profile.callName.trim() || "同学";
   const [showTip, setShowTip] = useState(true);
   const [courses, setCourses] = useState<Course[]>(storage.getCourses);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [hasEntered, setHasEntered] = useState(storage.getEntered);
   const [agentName, setAgentName] = useState(
     () => storage.getAgentName() || BRAND,
@@ -100,6 +103,23 @@ export default function WayMuseReference() {
     if (!hasEntered) return;
     storage.setProfile(profile);
   }, [profile, hasEntered]);
+
+  useEffect(() => {
+    if (page !== "Today") return;
+    let alive = true;
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    void readCalendarEvents(start.toISOString(), end.toISOString()).then(
+      (events) => {
+        if (alive) setCalendarEvents(events);
+      },
+    );
+    return () => {
+      alive = false;
+    };
+  }, [page]);
 
   const todayWeekday = getShanghaiWeekday();
   const todayCourses = courses
@@ -213,6 +233,7 @@ export default function WayMuseReference() {
               date={date}
               tasks={tasks}
               todayCourses={todayCourses}
+              calendarEvents={calendarEvents}
               courses={courses}
               setCourses={setCourses}
               setOverlay={setOverlay}
