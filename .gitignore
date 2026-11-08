@@ -1,0 +1,9 @@
+node_modules/
+dist/
+build/
+ios/App/App/public/
+ios/DerivedData/
+public/manifest.webmanifest
+.env
+.env.*
+!.env.example

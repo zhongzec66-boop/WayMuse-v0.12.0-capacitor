@@ -1,0 +1,920 @@
+import { useEffect, useRef, useState } from "react";
+import {
+  CheckCircle2,
+  ChevronDown,
+  Download,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Plus,
+  RotateCcw,
+  Settings,
+  Search,
+  X,
+  Square,
+  Trash2,
+  TriangleAlert,
+} from "lucide-react";
+import { parseReply, planTasks, demoReply } from "../agent";
+import { BRAND } from "../brand";
+import { storage } from "../storage";
+import { newId } from "../id";
+import {
+  DeepSeekError,
+  listDeepSeekModels,
+  streamDeepSeekChat,
+} from "../deepseek/client";
+import { DEEPSEEK_MODELS } from "../deepseek/config";
+import { buildSystemPrompt } from "../deepseek/prompt";
+import MarkdownText from "../deepseek/Markdown";
+import { responseTokenBudget } from "../profile";
+import type { UserProfile } from "../profile";
+import type {
+  ChatRequestMessage,
+  DeepSeekConfig,
+  DeepSeekMessage,
+  DeepSeekUsage,
+} from "../deepseek/types";
+import type { Course, Task } from "../types";
+
+type ConnectState = "idle" | "testing" | "ok" | "error";
+
+function describeError(error: unknown): string {
+  if (error instanceof DeepSeekError) {
+    if (error.status === 401) return "API Key 无效或已过期（401）。";
+    if (error.status === 402)
+      return "账户余额不足（402），请到 DeepSeek 平台充值。";
+    if (error.status === 429) return "请求过于频繁（429），请稍后再试。";
+    if (error.status === 400) return `请求参数有误（400）：${error.message}`;
+    if (error.status && error.status >= 500) {
+      return `DeepSeek 服务异常（${error.status}），请稍后重试。`;
+    }
+    return error.message;
+  }
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return "请求已取消。";
+  }
+  if (error instanceof TypeError) {
+    return "网络请求失败。检查网络、Base URL，或浏览器是否拦截了跨域请求。";
+  }
+  return "请求失败，请稍后重试。";
+}
+
+function formatTime(timestamp: number): string {
+  return new Intl.DateTimeFormat("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(timestamp));
+}
+
+export default function ChatPage({
+  agentName,
+  agentAvatar,
+  pendingMessage,
+  onPendingConsumed,
+  profile,
+  memories,
+  courses,
+  tasks,
+  onSettings,
+  onTasksChange,
+  onViewPlans,
+}: {
+  agentName: string;
+  agentAvatar: string;
+  pendingMessage: { id: number; text: string } | null;
+  onPendingConsumed: () => void;
+  profile: UserProfile;
+  memories: string[];
+  courses: Course[];
+  tasks: Task[];
+  onSettings: () => void;
+  onTasksChange: (tasks: Task[]) => void;
+  onViewPlans: () => void;
+}) {
+  const [config, setConfig] = useState<DeepSeekConfig>(() =>
+    storage.getDeepSeekConfig(),
+  );
+  const [apiKey, setApiKey] = useState(() => storage.getDeepSeekKey());
+  const [rememberKey, setRememberKey] = useState(() =>
+    storage.getDeepSeekRemember(),
+  );
+  const [showKey, setShowKey] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
+  const [messages, setMessages] = useState<DeepSeekMessage[]>(() =>
+    storage.getDeepSeekMessages(),
+  );
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [streaming, setStreaming] = useState(false);
+  const [error, setError] = useState("");
+  const [connectState, setConnectState] = useState<ConnectState>("idle");
+  const [connectText, setConnectText] = useState("");
+  const [models, setModels] = useState<string[]>([]);
+  const [usage, setUsage] = useState<DeepSeekUsage | null>(null);
+  const [latency, setLatency] = useState<number | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const testAbortRef = useRef<AbortController | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    storage.setDeepSeekMessages(messages);
+  }, [messages]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ block: "end" });
+  }, [messages]);
+
+  useEffect(
+    () => () => {
+      abortRef.current?.abort();
+      testAbortRef.current?.abort();
+    },
+    [],
+  );
+
+  const modelOptions = Array.from(
+    new Set([...DEEPSEEK_MODELS, ...models, config.model].filter(Boolean)),
+  );
+
+  const updateConfig = <K extends keyof DeepSeekConfig>(
+    key: K,
+    value: DeepSeekConfig[K],
+  ) => setConfig((current) => ({ ...current, [key]: value }));
+
+  const testConnection = async () => {
+    if (!apiKey.trim()) {
+      setConnectState("error");
+      setConnectText("先填写 API Key。");
+      return;
+    }
+    testAbortRef.current?.abort();
+    const controller = new AbortController();
+    testAbortRef.current = controller;
+    setConnectState("testing");
+    setConnectText("正在请求 /models…");
+    try {
+      const ids = await listDeepSeekModels({
+        baseUrl: config.baseUrl,
+        apiKey,
+        signal: controller.signal,
+      });
+      setModels(ids);
+      storage.setDeepSeekKey(apiKey, rememberKey);
+      setConnectState("ok");
+      setConnectText(
+        ids.length
+          ? `连接成功，可用模型：${ids.join("、")}`
+          : "连接成功，但 /models 没有返回模型。",
+      );
+    } catch (caught) {
+      if (controller.signal.aborted) return;
+      setConnectState("error");
+      setConnectText(describeError(caught));
+    }
+  };
+
+  const saveSettings = () => {
+    if (!apiKey.trim()) {
+      setConnectState("error");
+      setConnectText("先填写 API Key。");
+      return;
+    }
+    storage.setDeepSeekConfig(config);
+    storage.setDeepSeekKey(apiKey, rememberKey);
+    setShowConfig(false);
+    setConnectText("设置已保存到本机。");
+  };
+
+  const clearKey = () => {
+    storage.setDeepSeekKey("", false);
+    setApiKey("");
+    setRememberKey(false);
+    setConnectState("idle");
+    setConnectText("已清除本机保存的 API Key。");
+  };
+
+  const sendMessage = async (text: string, history: DeepSeekMessage[]) => {
+    const content = text.trim();
+    if (!content || streaming) return;
+
+    const userMessage: DeepSeekMessage = {
+      id: newId(),
+      role: "user",
+      content,
+      createdAt: Date.now(),
+    };
+    const assistantId = newId();
+    const assistantMessage: DeepSeekMessage = {
+      id: assistantId,
+      role: "assistant",
+      content: "",
+      createdAt: Date.now(),
+      model: config.model,
+    };
+    setMessages([...history, userMessage, assistantMessage]);
+    setError("");
+    setUsage(null);
+    setLatency(null);
+    setStreaming(true);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const startedAt = performance.now();
+    let firstTokenAt: number | null = null;
+
+    if (!apiKey.trim()) {
+      const reply = demoReply(
+        content,
+        config.useContext ? tasks : [],
+        config.useContext ? memories : [],
+        config.useContext ? courses : [],
+      );
+      const pieces = reply.split(/(\n\n)/);
+      let shown = "";
+      try {
+        for (const piece of pieces) {
+          await new Promise<void>((resolve, reject) => {
+            const timer = window.setTimeout(resolve, 380);
+            controller.signal.addEventListener(
+              "abort",
+              () => {
+                clearTimeout(timer);
+                reject(new DOMException("Stopped", "AbortError"));
+              },
+              { once: true },
+            );
+          });
+          if (controller.signal.aborted) break;
+          shown += piece;
+          setMessages((current) =>
+            current.map((m) =>
+              m.id === assistantId
+                ? { ...m, content: shown, model: "本地演示 · 示例回复" }
+                : m,
+            ),
+          );
+        }
+      } catch {
+        /* User stopped or left the conversation. */
+      } finally {
+        setStreaming(false);
+        abortRef.current = null;
+      }
+      return;
+    }
+
+    const payload: ChatRequestMessage[] = [
+      {
+        role: "system",
+        content: buildSystemPrompt(config, profile, {
+          memories,
+          courses,
+          tasks,
+        }),
+      },
+      ...history
+        .filter((message) => message.content.trim())
+        .slice(-30)
+        .map((message) => ({
+          role: message.role,
+          content: message.content,
+        })),
+      { role: "user", content },
+    ];
+    const requestConfig: DeepSeekConfig = {
+      ...config,
+      temperature: profile.temperature,
+      maxTokens: Math.max(1400, responseTokenBudget(profile.responseLength)),
+    };
+
+    try {
+      const result = await streamDeepSeekChat({
+        config: requestConfig,
+        apiKey,
+        messages: payload,
+        signal: controller.signal,
+        onDelta: (delta) => {
+          firstTokenAt ??= performance.now();
+          setMessages((current) =>
+            current.map((message) =>
+              message.id === assistantId
+                ? { ...message, content: message.content + delta }
+                : message,
+            ),
+          );
+        },
+        onReasoning: (delta) => {
+          firstTokenAt ??= performance.now();
+          setMessages((current) =>
+            current.map((message) =>
+              message.id === assistantId
+                ? {
+                    ...message,
+                    reasoning: `${message.reasoning ?? ""}${delta}`,
+                  }
+                : message,
+            ),
+          );
+        },
+      });
+
+      if (!result.content && !result.reasoning) {
+        setMessages((current) =>
+          current.filter((message) => message.id !== assistantId),
+        );
+        setError("模型没有返回内容，请检查模型名称或稍后重试。");
+      } else {
+        setMessages((current) =>
+          current.map((message) =>
+            message.id === assistantId
+              ? {
+                  ...message,
+                  content: result.content || "（模型只返回了思考过程）",
+                  reasoning: result.reasoning || undefined,
+                  model: result.model,
+                  usage: result.usage ?? undefined,
+                  latencyMs: Math.round(performance.now() - startedAt),
+                  finishReason: result.finishReason ?? undefined,
+                }
+              : message,
+          ),
+        );
+        setUsage(result.usage);
+        setLatency(Math.round(performance.now() - startedAt));
+        if (firstTokenAt) {
+          setConnectState("ok");
+          setConnectText(
+            `首字 ${Math.round(firstTokenAt - startedAt)} ms · 完成 ${Math.round(
+              performance.now() - startedAt,
+            )} ms`,
+          );
+        }
+      }
+    } catch (caught) {
+      if (controller.signal.aborted) {
+        setMessages((current) =>
+          current.map((message) =>
+            message.id === assistantId
+              ? {
+                  ...message,
+                  stopped: true,
+                  content: message.content || "（已停止，没有生成内容）",
+                }
+              : message,
+          ),
+        );
+      } else {
+        setError(describeError(caught));
+        setMessages((current) =>
+          current.filter(
+            (message) =>
+              message.id !== assistantId || Boolean(message.content.trim()),
+          ),
+        );
+      }
+    } finally {
+      setStreaming(false);
+      abortRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    if (!pendingMessage) return;
+    onPendingConsumed();
+    if (streaming) {
+      setError("正在生成，请稍候再发送。");
+      return;
+    }
+    void sendMessage(pendingMessage.text, messages);
+  }, [pendingMessage]);
+
+  const stop = () => abortRef.current?.abort();
+
+  const retry = () => {
+    const lastUserIndex = messages.reduce(
+      (index, message, current) => (message.role === "user" ? current : index),
+      -1,
+    );
+    if (lastUserIndex < 0) return;
+    void sendMessage(
+      messages[lastUserIndex].content,
+      messages.slice(0, lastUserIndex),
+    );
+  };
+
+  const newChat = () => {
+    if (!messages.length) return;
+    if (!window.confirm("清空当前对话？")) return;
+    setMessages([]);
+    setUsage(null);
+    setLatency(null);
+    setError("");
+    storage.setDeepSeekMessages([]);
+  };
+
+  const exportChat = () => {
+    if (!messages.length) return;
+    const lines = messages.map((message) => {
+      const who = message.role === "user" ? "我" : agentName;
+      const reasoning = message.reasoning
+        ? `\n\n<details><summary>思考过程</summary>\n\n${message.reasoning}\n\n</details>`
+        : "";
+      return `## ${who} · ${formatTime(
+        message.createdAt,
+      )}\n\n${message.content}${reasoning}`;
+    });
+    const blob = new Blob([`# ${BRAND} 对话\n\n${lines.join("\n\n")}\n`], {
+      type: "text/markdown;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `waymuse-chat-${new Date().toISOString().slice(0, 10)}.md`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const statusLabel =
+    connectState === "ok"
+      ? "已连接"
+      : connectState === "testing"
+        ? "测试中"
+        : connectState === "error"
+          ? "连接失败"
+          : apiKey
+            ? "待测试"
+            : "本地演示";
+
+  const suggestions = [
+    "明天考试，我有点慌，陪我安排一下复习",
+    "我想准备第一份实习，有什么方案？",
+    "今天有点累，想聊一会儿",
+  ];
+
+  return (
+    <>
+      <div className="wr-chat-head">
+        <button className="wr-round" aria-label="设置" onClick={onSettings}>
+          <Settings />
+        </button>
+        <div className="wr-chat-title">
+          <span className="wr-chat-orb">
+            {agentAvatar ? <img src={agentAvatar} alt="" /> : "✦"}
+          </span>
+          <b>{agentName}</b>
+        </div>
+        <button
+          className="wr-round"
+          aria-label="搜索聊天记录"
+          aria-expanded={searchOpen}
+          onClick={() => setSearchOpen((value) => !value)}
+        >
+          <Search />
+        </button>
+      </div>
+
+      <div className="wr-chat-scroll">
+        {searchOpen && (
+          <div className="wr-chat-search">
+            <Search size={18} />
+            <input
+              autoFocus
+              aria-label="搜索聊天记录"
+              placeholder="搜索聊天记录…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <button
+              aria-label="关闭搜索"
+              onClick={() => {
+                setSearchOpen(false);
+                setSearchQuery("");
+              }}
+            >
+              <X size={20} />
+            </button>
+            <button
+              onClick={newChat}
+              disabled={!messages.length}
+              aria-label="新对话"
+            >
+              <Plus size={20} />
+            </button>
+          </div>
+        )}
+        {searchOpen &&
+          searchQuery.trim() &&
+          !messages.some((m) =>
+            m.content.toLowerCase().includes(searchQuery.trim().toLowerCase()),
+          ) && <p className="wr-chat-search-empty">没有找到相关聊天记录</p>}
+
+        <div className="wr-chat-status-line">
+          <span className={`wr-ai-status ${connectState}`}>{statusLabel}</span>
+          <span>{apiKey ? config.model : "示例回复 · 不请求模型"}</span>
+          {streaming && (
+            <button type="button" className="wr-chat-stop" onClick={stop}>
+              <Square size={13} /> 停止
+            </button>
+          )}
+        </div>
+
+        {showConfig && (
+          <section className="wr-ai-config">
+            <div className="wr-ai-config-head">
+              <div>
+                <b>连接 DeepSeek</b>
+                <small>配置只保存在本机；发送时才会请求 api.deepseek.com</small>
+              </div>
+              <KeyRound size={20} />
+            </div>
+
+            <label className="wr-ai-field">
+              <span>API Key</span>
+              <div className="wr-ai-key">
+                <input
+                  type={showKey ? "text" : "password"}
+                  value={apiKey}
+                  onChange={(event) => setApiKey(event.target.value)}
+                  placeholder="sk-…"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <button
+                  type="button"
+                  aria-label={showKey ? "隐藏密钥" : "显示密钥"}
+                  onClick={() => setShowKey((value) => !value)}
+                >
+                  {showKey ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </label>
+            <label className="wr-ai-check">
+              <input
+                type="checkbox"
+                checked={rememberKey}
+                onChange={(event) => setRememberKey(event.target.checked)}
+              />
+              记住密钥（写入本机 localStorage）
+            </label>
+            <p className="wr-ai-warning">
+              默认只存本次会话。正式版应通过后端代理，不要把长期 Key 打进 App。
+            </p>
+
+            <label className="wr-ai-field">
+              <span>Base URL</span>
+              <input
+                value={config.baseUrl}
+                onChange={(event) =>
+                  updateConfig("baseUrl", event.target.value)
+                }
+                placeholder="https://api.deepseek.com"
+                spellCheck={false}
+              />
+            </label>
+            <label className="wr-ai-field">
+              <span>模型</span>
+              <input
+                list="wr-chat-models"
+                value={config.model}
+                onChange={(event) => updateConfig("model", event.target.value)}
+                spellCheck={false}
+              />
+              <datalist id="wr-chat-models">
+                {modelOptions.map((model) => (
+                  <option value={model} key={model} />
+                ))}
+              </datalist>
+            </label>
+
+            <p className="wr-ai-warning">
+              回复温度与长度由「设置 → 陪伴风格」决定：{profile.tone} · 温度{" "}
+              {profile.temperature.toFixed(1)} · {profile.responseLength}回复。
+            </p>
+
+            <label className="wr-ai-check">
+              <input
+                type="checkbox"
+                checked={config.thinking}
+                onChange={(event) =>
+                  updateConfig("thinking", event.target.checked)
+                }
+              />
+              深度思考（更慢，会返回思考过程）
+            </label>
+            {config.thinking && (
+              <label className="wr-ai-field">
+                <span>思考强度</span>
+                <select
+                  value={config.reasoningEffort}
+                  onChange={(event) =>
+                    updateConfig(
+                      "reasoningEffort",
+                      event.target.value as DeepSeekConfig["reasoningEffort"],
+                    )
+                  }
+                >
+                  <option value="low">low · 更快</option>
+                  <option value="high">high · 默认</option>
+                  <option value="max">max · 最充分</option>
+                </select>
+              </label>
+            )}
+
+            <label className="wr-ai-check">
+              <input
+                type="checkbox"
+                checked={config.useContext}
+                onChange={(event) =>
+                  updateConfig("useContext", event.target.checked)
+                }
+              />
+              带入本地演示数据（记忆 / 课程 / 任务）
+            </label>
+
+            <details className="wr-ai-advanced">
+              <summary>
+                系统提示词 <ChevronDown size={16} />
+              </summary>
+              <textarea
+                rows={4}
+                value={config.systemPrompt}
+                onChange={(event) =>
+                  updateConfig("systemPrompt", event.target.value)
+                }
+              />
+            </details>
+
+            <div className="wr-ai-config-actions">
+              <button
+                type="button"
+                className="wr-ai-primary"
+                onClick={() => void testConnection()}
+                disabled={connectState === "testing"}
+              >
+                {connectState === "testing" ? "测试中…" : "测试连接"}
+              </button>
+              <button
+                type="button"
+                className="wr-ai-secondary"
+                onClick={saveSettings}
+              >
+                保存并开始
+              </button>
+            </div>
+            <div className="wr-ai-config-actions">
+              <button type="button" className="wr-ai-ghost" onClick={clearKey}>
+                清除密钥
+              </button>
+              <button
+                type="button"
+                className="wr-ai-ghost danger"
+                onClick={() => setShowConfig(false)}
+              >
+                收起设置
+              </button>
+            </div>
+
+            {connectText && (
+              <p
+                className={`wr-ai-connect-note ${connectState}`}
+                role={connectState === "error" ? "alert" : "status"}
+              >
+                {connectState === "ok" && <CheckCircle2 size={16} />}
+                {connectState === "error" && <TriangleAlert size={16} />}
+                {connectText}
+              </p>
+            )}
+          </section>
+        )}
+
+        {!showConfig && !messages.length && (
+          <div className="wr-ai-empty">
+            <div className="wr-ai-empty-mark">✦</div>
+            <h2>和 {agentName} 聊聊</h2>
+            <p>
+              {apiKey
+                ? "想聊聊近况，还是一起学点什么？"
+                : "先试试聊天、选择方案，再到计划里查看。当前为示例演示。"}
+            </p>
+            {!apiKey && (
+              <button
+                type="button"
+                className="wr-ai-primary"
+                onClick={onSettings}
+              >
+                连接 DeepSeek
+              </button>
+            )}
+            <div className="wr-ai-suggestions">
+              {suggestions.map((text) => (
+                <button
+                  type="button"
+                  key={text}
+                  onClick={() => {
+                    void sendMessage(text, messages);
+                  }}
+                >
+                  {text}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!showConfig && messages.length > 0 && (
+          <div className="wr-ai-toolbar">
+            <span>{messages.length} 条消息</span>
+            <div>
+              <button type="button" onClick={exportChat}>
+                <Download size={15} /> 导出
+              </button>
+              <button type="button" onClick={newChat}>
+                <Trash2 size={15} /> 新对话
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!showConfig && (
+          <>
+            {messages.length > 0 && (
+              <div className="wr-chat-date">
+                今天 · {formatTime(messages[0].createdAt)}
+              </div>
+            )}
+            <div className="wr-ai-messages">
+              {messages
+                .filter(
+                  (message) =>
+                    !searchOpen ||
+                    !searchQuery.trim() ||
+                    message.content
+                      .toLowerCase()
+                      .includes(searchQuery.trim().toLowerCase()),
+                )
+                .map((message) =>
+                  message.role === "user" ? (
+                    <div className="wr-ai-row user" key={message.id}>
+                      <div className="wr-ai-bubble user">{message.content}</div>
+                      <small>{formatTime(message.createdAt)}</small>
+                    </div>
+                  ) : (
+                    <div className="wr-ai-row assistant" key={message.id}>
+                      <div className="wr-ai-bubble assistant">
+                        <div className="wr-ai-who">
+                          <span>✦</span> {agentName}
+                          <small>{message.model ?? config.model}</small>
+                        </div>
+                        {message.reasoning && (
+                          <details className="wr-ai-reasoning">
+                            <summary>思考过程</summary>
+                            <pre>{message.reasoning}</pre>
+                          </details>
+                        )}
+                        {message.content ? (
+                          <div className="wr-reply-parts">
+                            {parseReply(message.content)
+                              .text.split(/\n\s*\n/)
+                              .filter(Boolean)
+                              .map((part, i) => (
+                                <div className="wr-reply-part" key={i}>
+                                  <MarkdownText text={part} />
+                                </div>
+                              ))}
+                          </div>
+                        ) : (
+                          <span className="wr-ai-typing">正在生成…</span>
+                        )}
+                        {message.stopped && (
+                          <span className="wr-ai-stopped">已停止生成</span>
+                        )}
+                        <div className="wr-ai-meta">
+                          {message.usage && (
+                            <span>{message.usage.total_tokens} tokens</span>
+                          )}
+                          {message.latencyMs && (
+                            <span>{message.latencyMs} ms</span>
+                          )}
+                          {message.finishReason === "length" && (
+                            <span className="danger">已截断</span>
+                          )}
+                          {message.finishReason === "content_filter" && (
+                            <span className="danger">内容过滤</span>
+                          )}
+                          {message.finishReason ===
+                            "insufficient_system_resource" && (
+                            <span className="danger">服务中断</span>
+                          )}
+                        </div>
+                      </div>
+                      {(!streaming ||
+                        message.id !== messages[messages.length - 1]?.id) &&
+                        parseReply(message.content).plans.map((plan, index) => {
+                          const proposed = planTasks(message.id, index, plan);
+                          const selected = proposed.some((t) =>
+                            tasks.some((existing) => existing.id === t.id),
+                          );
+                          return (
+                            <section
+                              className="wr-plan-proposal"
+                              key={index}
+                              aria-label={plan.title}
+                            >
+                              <small>
+                                {selected
+                                  ? "已加入你的计划"
+                                  : "建议方案 · 等你确认"}
+                              </small>
+                              <h3>{plan.title}</h3>
+                              <p>{plan.summary}</p>
+                              <ol>
+                                {plan.steps.map((step, i) => (
+                                  <li key={i}>{step}</li>
+                                ))}
+                              </ol>
+                              {selected ? (
+                                <div className="wr-plan-actions">
+                                  <button onClick={onViewPlans}>
+                                    查看计划
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      onTasksChange(
+                                        tasks.filter(
+                                          (t) =>
+                                            !proposed.some(
+                                              (p) => p.id === t.id,
+                                            ),
+                                        ),
+                                      )
+                                    }
+                                  >
+                                    撤回方案
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  className="wr-ai-primary"
+                                  onClick={() =>
+                                    onTasksChange([
+                                      ...tasks,
+                                      ...proposed.filter(
+                                        (t) =>
+                                          !tasks.some(
+                                            (existing) => existing.id === t.id,
+                                          ),
+                                      ),
+                                    ])
+                                  }
+                                >
+                                  选这个方案，加入计划
+                                </button>
+                              )}
+                            </section>
+                          );
+                        })}
+                      <small>
+                        {message.model === "本地演示 · 示例回复"
+                          ? "示例演示 · "
+                          : ""}
+                        {formatTime(message.createdAt)}
+                      </small>
+                    </div>
+                  ),
+                )}
+              <div ref={bottomRef} />
+            </div>
+          </>
+        )}
+
+        {!showConfig && error && (
+          <div className="wr-ai-error" role="alert">
+            <TriangleAlert size={18} />
+            <div>
+              <b>请求失败</b>
+              <p>{error}</p>
+              <button type="button" onClick={retry} disabled={streaming}>
+                <RotateCcw size={15} /> 重试上一条
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!showConfig && (usage || latency) && (
+          <div className="wr-ai-usage">
+            {usage && (
+              <span>
+                上次：{usage.prompt_tokens} 输入 / {usage.completion_tokens}{" "}
+                输出 / {usage.total_tokens} tokens
+              </span>
+            )}
+            {latency && <span>{latency} ms</span>}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}

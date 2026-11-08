@@ -1,0 +1,679 @@
+﻿/*
+ * WayMuse white surface + avatar-derived glass tint.
+ * The tint variables are set at runtime from the uploaded avatar.
+ * Everything here is scoped to the classic phone app (.wr-*), so the
+ * desktop PersonalShell stays on its own token set.
+ */
+
+:root {
+  --wm-tint: #8fa3b0;
+  --wm-tint-rgb: 143, 163, 176;
+  --wm-tint-deep: #4f6674;
+  --wm-glass: rgba(255, 255, 255, 0.72);
+  --wm-line: rgba(var(--wm-tint-rgb), 0.16);
+  --wm-shadow: 0 10px 28px rgba(var(--wm-tint-rgb), 0.12);
+}
+
+.wr-page {
+  background: #ffffff;
+  color: #17181a;
+}
+
+.wr-phone {
+  background: #ffffff;
+}
+
+@media (min-width: 700px) {
+  .wr-phone {
+    border: 1px solid rgba(var(--wm-tint-rgb), 0.15);
+    box-shadow: 0 30px 80px rgba(var(--wm-tint-rgb), 0.16);
+  }
+}
+
+.wr-content {
+  background: #ffffff;
+}
+
+/* iOS-style frosted surfaces with a tint sampled from the avatar. */
+.wr-brief,
+.wr-task-card,
+.wr-memory-card,
+.wr-persona-card,
+.wr-settings-profile,
+.wr-settings-group,
+.wr-intake-card,
+.wr-onboard-note {
+  background: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.96),
+    rgba(var(--wm-tint-rgb), 0.1)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: var(--wm-shadow);
+  -webkit-backdrop-filter: blur(24px) saturate(1.18);
+  backdrop-filter: blur(24px) saturate(1.18);
+}
+
+.wr-brief-date,
+.wr-onboard-kicker,
+.wr-settings-brand span {
+  color: var(--wm-tint-deep);
+}
+
+.wr-brief p,
+.wr-onboard-body p,
+.wr-settings-row small {
+  color: #777b80;
+}
+
+.wr-chips span {
+  background: rgba(var(--wm-tint-rgb), 0.12);
+  color: #5d666d;
+}
+
+.wr-divider {
+  background: rgba(var(--wm-tint-rgb), 0.14);
+}
+
+.wr-course-row {
+  background: rgba(255, 255, 255, 0.82);
+  border-color: rgba(var(--wm-tint-rgb), 0.12);
+}
+
+.wr-course-row small {
+  color: #777b80;
+}
+
+.wr-course-row time {
+  color: var(--wm-tint-deep);
+}
+
+.wr-course-empty {
+  border-color: rgba(var(--wm-tint-rgb), 0.28);
+  background: rgba(var(--wm-tint-rgb), 0.06);
+  color: #6f767c;
+}
+
+.wr-mini-grid button {
+  background: rgba(var(--wm-tint-rgb), 0.08);
+}
+
+.wr-round {
+  border-color: rgba(var(--wm-tint-rgb), 0.24);
+  background: rgba(255, 255, 255, 0.72);
+  color: #3d454b;
+  box-shadow: inset 0 1px 0 #ffffff;
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+/* Dock + composer */
+.wr-dock {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(var(--wm-tint-rgb), 0.18);
+  box-shadow:
+    inset 0 1px 0 #ffffff,
+    0 18px 40px rgba(var(--wm-tint-rgb), 0.16);
+  -webkit-backdrop-filter: blur(30px) saturate(1.25);
+  backdrop-filter: blur(30px) saturate(1.25);
+}
+
+.wr-compose {
+  background: rgba(255, 255, 255, 0.86);
+  border-color: rgba(var(--wm-tint-rgb), 0.18);
+}
+
+.wr-compose input {
+  color: #17181a;
+  font-size: 16px;
+}
+
+.wr-compose input::placeholder {
+  color: #9a9ea3;
+}
+
+.wr-compose button {
+  color: #6f767c;
+}
+
+.wr-task-line {
+  color: #17181a;
+}
+
+.wr-task-line + .wr-task-line {
+  border-top-color: rgba(var(--wm-tint-rgb), 0.14);
+}
+
+.wr-check {
+  border-color: rgba(var(--wm-tint-rgb), 0.4);
+}
+
+.wr-check.done {
+  background: var(--wm-tint-deep);
+  border-color: var(--wm-tint-deep);
+}
+
+.wr-done-text {
+  color: #9a9ea3;
+}
+
+.wr-persona-card a,
+.wr-brief-end a {
+  color: var(--wm-tint-deep);
+}
+
+.wr-dock nav button {
+  color: #8e8e93;
+}
+
+.wr-dock nav button.active {
+  background: rgba(var(--wm-tint-rgb), 0.14);
+  color: #17181a;
+}
+
+.wr-small-orb {
+  background: linear-gradient(
+    135deg,
+    rgba(var(--wm-tint-rgb), 0.55),
+    var(--wm-tint-deep)
+  );
+}
+
+/* Segmented controls */
+.wr-segment {
+  background: rgba(var(--wm-tint-rgb), 0.1);
+}
+
+.wr-segment button.selected {
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(var(--wm-tint-rgb), 0.16);
+}
+
+/* Memory and persona tinted glass */
+.wr-memory-tip {
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.96),
+    rgba(var(--wm-tint-rgb), 0.18)
+  );
+  color: #17181a;
+}
+
+.wr-agent-mark,
+.wr-persona-orb {
+  background: radial-gradient(
+    circle at 30% 20%,
+    #ffffff,
+    rgba(var(--wm-tint-rgb), 0.55),
+    var(--wm-tint-deep)
+  );
+  color: #ffffff;
+}
+
+.wr-persona-orb {
+  overflow: hidden;
+}
+
+.wr-persona-orb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.wr-settings-page,
+.wr-intake-page,
+.wr-onboard,
+.wr-sheet,
+.wr-entry {
+  background: #ffffff;
+}
+
+.wr-settings-top,
+.wr-settings-scroll,
+.wr-settings-page {
+  color: #17181a;
+}
+
+.wr-settings-label {
+  color: #777b80;
+}
+
+.wr-settings-name span {
+  border-color: rgba(var(--wm-tint-rgb), 0.22);
+  color: var(--wm-tint-deep);
+}
+
+.wr-settings-row {
+  color: #17181a;
+}
+
+.wr-settings-row + .wr-settings-row {
+  border-top-color: rgba(var(--wm-tint-rgb), 0.12);
+}
+
+.wr-settings-row b {
+  color: #6f767c;
+}
+
+.wr-settings-row > svg {
+  color: #9a9ea3;
+}
+
+.wr-settings-field input,
+.wr-settings-field select,
+.wr-settings-field textarea,
+.wr-onboard-form label > input,
+.wr-onboard-form label > select,
+.wr-onboard-form label > textarea {
+  border-color: rgba(var(--wm-tint-rgb), 0.2);
+  background: #ffffff;
+  color: #17181a;
+  outline-color: var(--wm-tint);
+}
+
+.wr-onboard-form label,
+.wr-onboard-label {
+  color: #6f767c;
+}
+
+.wr-onboard-dots span.active {
+  background: var(--wm-tint);
+}
+
+.wr-companion-card {
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(var(--wm-tint-rgb), 0.16);
+}
+
+.wr-companion-card.selected {
+  background: rgba(var(--wm-tint-rgb), 0.14);
+  border-color: var(--wm-tint);
+}
+
+.wr-tone-chips button,
+.wr-length-seg button,
+.wr-settings-choice,
+.wr-settings-segment button {
+  border-color: rgba(var(--wm-tint-rgb), 0.2);
+  background: rgba(255, 255, 255, 0.8);
+  color: #5d666d;
+}
+
+.wr-tone-chips button.selected,
+.wr-length-seg button.selected,
+.wr-settings-choice.selected,
+.wr-settings-segment button.selected {
+  background: var(--wm-tint-deep);
+  border-color: var(--wm-tint-deep);
+  color: #ffffff;
+}
+
+.wr-range,
+.wr-settings-range {
+  accent-color: var(--wm-tint);
+}
+
+.wr-custom-style {
+  border-color: rgba(var(--wm-tint-rgb), 0.16);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.wr-custom-style .wr-onboard-label b,
+.wr-settings-value {
+  color: var(--wm-tint-deep);
+}
+
+.wr-settings-avatar {
+  background: radial-gradient(
+    circle at 30% 20%,
+    #ffffff,
+    rgba(var(--wm-tint-rgb), 0.45),
+    var(--wm-tint)
+  );
+}
+
+.wr-avatar-upload {
+  border-color: rgba(var(--wm-tint-rgb), 0.24);
+  color: var(--wm-tint-deep);
+}
+
+.wr-avatar-preview {
+  border-color: rgba(var(--wm-tint-rgb), 0.2);
+  background: rgba(var(--wm-tint-rgb), 0.1);
+}
+
+.wr-avatar-fallback {
+  color: var(--wm-tint-deep);
+}
+
+.wr-switch.on {
+  background: var(--wm-tint-deep);
+}
+
+.wr-switch {
+  background: #e5e5ea;
+}
+
+/* Onboarding */
+.wr-progress {
+  background: rgba(var(--wm-tint-rgb), 0.14);
+}
+
+.wr-progress i {
+  background: var(--wm-tint-deep);
+  box-shadow: none;
+}
+
+.wr-onboard-dots span {
+  background: rgba(var(--wm-tint-rgb), 0.4);
+  box-shadow: none;
+}
+
+.wr-onboard-emblem {
+  border-color: rgba(255, 255, 255, 0.9);
+  background: radial-gradient(
+    circle at 35% 25%,
+    #ffffff,
+    rgba(var(--wm-tint-rgb), 0.32),
+    var(--wm-tint)
+  );
+  color: #ffffff;
+  box-shadow: 0 20px 55px rgba(var(--wm-tint-rgb), 0.2);
+}
+
+.wr-onboard-note {
+  color: #6f767c;
+}
+
+.wr-onboard-input {
+  border-bottom-color: rgba(var(--wm-tint-rgb), 0.42);
+  color: #17181a;
+}
+
+.wr-onboard-input::placeholder {
+  color: #9a9ea3;
+}
+
+.wr-avatar-choices button {
+  border-color: rgba(var(--wm-tint-rgb), 0.18);
+  background: rgba(var(--wm-tint-rgb), 0.08);
+  color: var(--wm-tint-deep);
+}
+
+.wr-onboard-connection {
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(var(--wm-tint-rgb), 0.16);
+}
+
+.wr-onboard-connection > svg {
+  color: var(--wm-tint-deep);
+}
+
+.wr-onboard-connection > span:last-child {
+  color: var(--wm-tint-deep);
+}
+
+.wr-onboard-next {
+  box-shadow: 0 12px 30px rgba(var(--wm-tint-rgb), 0.18);
+}
+
+/* Chat header and message stream */
+.wr-chat-head {
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid rgba(var(--wm-tint-rgb), 0.14);
+}
+
+.wr-chat-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+
+.wr-chat-orb {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 20%,
+    #ffffff,
+    rgba(var(--wm-tint-rgb), 0.55),
+    var(--wm-tint-deep)
+  );
+  color: #ffffff;
+  font-size: 16px;
+  box-shadow: 0 6px 18px rgba(var(--wm-tint-rgb), 0.2);
+}
+
+.wr-chat-orb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.wr-chat-date {
+  padding: 8px 0 10px;
+  color: #8e8e93;
+  font-size: 11px;
+  text-align: center;
+}
+
+.wr-chat-title b {
+  max-width: 180px;
+  overflow: hidden;
+  color: #111114;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wr-chat-head .wr-round {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  background: rgba(var(--wm-tint-rgb), 0.1);
+}
+
+.wr-chat-head .wr-round svg {
+  width: 19px;
+  height: 19px;
+}
+
+.wr-agent-mark {
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+  box-shadow: 0 6px 18px rgba(var(--wm-tint-rgb), 0.2);
+}
+
+.wr-agent-mark small {
+  top: 43px;
+  font-size: 11px;
+  color: #62686e;
+}
+
+.wr-chat-status-line {
+  margin: 0 2px 10px;
+  color: #8e8e93;
+  font-size: 11px;
+}
+
+.wr-ai-messages {
+  gap: 10px;
+  padding-bottom: 8px;
+}
+
+.wr-ai-row {
+  max-width: 82%;
+  gap: 0;
+}
+
+.wr-ai-row.user {
+  max-width: 82%;
+}
+
+.wr-ai-row.assistant {
+  max-width: 100%;
+}
+
+.wr-ai-row > small {
+  display: none;
+}
+
+.wr-ai-user-wrap {
+  flex-direction: row-reverse;
+  gap: 6px;
+}
+
+.wr-ai-user-avatar {
+  width: 26px;
+  height: 26px;
+  flex-basis: 26px;
+  border-color: rgba(var(--wm-tint-rgb), 0.2);
+}
+
+.wr-ai-bubble {
+  max-width: 72%;
+  padding: 10px 14px;
+  border-radius: 18px;
+  font-size: 15.5px;
+  line-height: 1.65;
+}
+
+.wr-ai-bubble.user {
+  background: #007aff;
+  border: 0;
+  color: #ffffff;
+  border-bottom-right-radius: 6px;
+}
+
+.wr-ai-bubble.assistant {
+  width: auto;
+  max-width: 72%;
+  background: #e9e9eb;
+  border: 0;
+  color: #111114;
+  border-bottom-left-radius: 6px;
+  box-shadow: none;
+}
+
+.wr-ai-who {
+  display: none;
+}
+
+.wr-ai-reasoning {
+  background: rgba(255, 255, 255, 0.7);
+  color: #6f767c;
+}
+
+.wr-ai-meta {
+  color: #8e8e93;
+}
+
+.wr-ai-typing,
+.wr-ai-empty p {
+  color: #8e8e93;
+}
+
+.wr-ai-empty-mark {
+  background: radial-gradient(
+    circle at 30% 20%,
+    #ffffff,
+    rgba(var(--wm-tint-rgb), 0.3),
+    var(--wm-tint)
+  );
+  color: #ffffff;
+}
+
+/* Connection panels keep the same white glass language. */
+.wr-ai-config,
+.wr-ai-error,
+.wr-ai-toolbar {
+  background: rgba(255, 255, 255, 0.82);
+  border-color: rgba(var(--wm-tint-rgb), 0.16);
+  box-shadow: var(--wm-shadow);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+}
+
+.wr-ai-config-head {
+  color: #17181a;
+}
+
+.wr-ai-config-head small,
+.wr-ai-field span,
+.wr-ai-note,
+.wr-ai-status {
+  color: #777b80;
+}
+
+.wr-ai-field input,
+.wr-ai-field select,
+.wr-ai-field textarea {
+  background: #ffffff;
+  border-color: rgba(var(--wm-tint-rgb), 0.18);
+  color: #17181a;
+}
+
+.wr-ai-config-actions button,
+.wr-ai-toolbar button {
+  color: var(--wm-tint-deep);
+}
+
+.wr-ai-config-actions .primary,
+.wr-ai-send,
+.wr-ai-primary {
+  background: var(--wm-tint-deep);
+  border-color: var(--wm-tint-deep);
+  color: #ffffff;
+}
+
+.wr-ai-key button {
+  color: #777b80;
+}
+
+/* Intake surfaces */
+.wr-intake-tabs,
+.wr-picker,
+.wr-intake-tab {
+  background: rgba(var(--wm-tint-rgb), 0.08);
+  border-color: rgba(var(--wm-tint-rgb), 0.16);
+}
+
+.wr-intake-card input,
+.wr-intake-card select,
+.wr-intake-card textarea {
+  border-color: rgba(var(--wm-tint-rgb), 0.2);
+  background: #ffffff;
+  color: #17181a;
+  outline-color: var(--wm-tint);
+}
+
+.wr-intake-primary {
+  background: var(--wm-tint-deep);
+  color: #ffffff;
+}
+
+.wr-intake-tabs button.selected,
+.wr-intake-tab.selected {
+  background: #ffffff;
+}
+
+.wr-attachment-menu {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(var(--wm-tint-rgb), 0.16);
+  box-shadow: var(--wm-shadow);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+}
+

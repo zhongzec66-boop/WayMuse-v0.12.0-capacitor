@@ -1,0 +1,109 @@
+﻿/* Memory guide and entries. */
+
+.wr-memory-tip {
+  position: relative;
+  padding: var(--space-20);
+  border: var(--border-1) solid var(--glass-line);
+  border-radius: var(--radius-28);
+  background: var(--glass-strong);
+  box-shadow: var(--glass-shadow);
+  color: var(--ink);
+  text-align: center;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+.wr-memory-tip > button:first-child {
+  position: absolute;
+  top: var(--space-8);
+  right: var(--space-8);
+  width: var(--control-44);
+  height: var(--control-44);
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--ink-2);
+}
+
+.wr-memory-tip h2 {
+  margin: 0 0 var(--space-8);
+  font-size: var(--text-20);
+  font-weight: var(--weight-semibold);
+}
+
+.wr-memory-tip p {
+  margin: 0 0 var(--space-16);
+  color: var(--ink-2);
+  font-size: var(--text-14);
+  line-height: var(--leading-body);
+}
+
+.wr-tip-row {
+  width: 100%;
+  min-height: var(--control-44);
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0 0 var(--space-8);
+  padding: var(--space-12);
+  border: var(--border-1) solid var(--glass-line);
+  border-radius: var(--radius-16);
+  background: var(--surface);
+  color: var(--ink);
+  text-align: left;
+}
+
+.wr-tip-row svg:last-child {
+  margin-left: auto;
+  color: var(--ink-3);
+}
+
+.wr-memory-card {
+  margin-top: var(--space-16);
+  padding: var(--space-16);
+  border: var(--border-1) solid var(--glass-line);
+  border-radius: var(--radius-28);
+  background: var(--glass-bg);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+.wr-memory-card-title {
+  padding-bottom: var(--space-12);
+  border-bottom: var(--border-1) solid var(--divider);
+  color: var(--ink);
+  font-size: var(--text-17);
+  font-weight: var(--weight-semibold);
+}
+
+.wr-memory-card-title span {
+  float: right;
+  color: var(--ink-3);
+  font-size: var(--text-12);
+  font-weight: var(--weight-regular);
+}
+
+.wr-memory-line {
+  min-height: var(--tile-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  border-bottom: var(--border-1) solid var(--divider);
+  color: var(--ink-2);
+  font-size: var(--text-14);
+}
+
+.wr-memory-line:last-child {
+  border-bottom: 0;
+}
+
+.wr-memory-line button {
+  min-width: var(--control-44);
+  min-height: var(--control-44);
+  display: grid;
+  place-items: center;
+  color: var(--ink-3);
+}

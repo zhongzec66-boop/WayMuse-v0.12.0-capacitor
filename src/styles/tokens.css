@@ -1,0 +1,207 @@
+/*
+ * WayMuse design tokens - the only place where raw visual values live.
+ * Components may only reference these variables for color, type, radius,
+ * spacing and motion.
+ */
+
+:root {
+  color-scheme: light;
+
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei",
+    system-ui, sans-serif;
+
+  --text-12: 12px;
+  --text-14: 14px;
+  --text-17: 17px;
+  --text-20: 20px;
+  --text-26: 26px;
+  --text-28: 28px;
+  --text-34: 34px;
+  --leading-tight: 1.2;
+  --leading-body: 1.5;
+  --leading-relaxed: 1.7;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --space-0: 0;
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-28: 28px;
+  --space-32: 32px;
+  --space-40: 40px;
+  --space-48: 48px;
+  --space-56: 56px;
+  --space-64: 64px;
+  --space-68: 68px;
+  --space-72: 72px;
+  --space-84: 84px;
+
+  --radius-16: 16px;
+  --radius-28: 28px;
+  --radius-40: 40px;
+  --radius-pill: 999px;
+
+  --border-1: 1px;
+  --border-2: 2px;
+
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --dur-3: 350ms;
+  --dur-skeleton: 1400ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --motion-rise: 8px;
+  --motion-press: 0.97;
+  --motion-modal: 0.92;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
+  --bg-top: #cfe3da;
+  --bg-mid: #eef0ea;
+  --bg-bottom: #f6e9d6;
+  --bg-gradient: linear-gradient(
+    180deg,
+    var(--bg-top) 0%,
+    var(--bg-mid) 52%,
+    var(--bg-bottom) 100%
+  );
+
+  --glass-bg: rgba(255, 255, 255, 0.58);
+  --glass-strong: rgba(255, 255, 255, 0.78);
+  --glass-line: rgba(255, 255, 255, 0.7);
+  --glass-shadow: 0 8px 28px rgba(31, 77, 58, 0.1);
+  --glass-blur: blur(24px) saturate(1.5);
+  --glass-fallback: #f4f6f1;
+
+  --ink: #17201b;
+  --ink-2: #4f5a54;
+  --ink-3: #59645e;
+  --white: #ffffff;
+  --transparent: transparent;
+  --on-primary: #ffffff;
+  --on-accent: #241a0d;
+
+  --primary: #1f4d3a;
+  --primary-soft: rgba(31, 77, 58, 0.1);
+  --primary-line: rgba(31, 77, 58, 0.2);
+  --accent: #d98a1f;
+  --accent-ink: #8a5410;
+  --accent-soft: rgba(217, 138, 31, 0.16);
+  --danger: #9c3326;
+  --danger-soft: rgba(179, 64, 47, 0.12);
+  --success: #1f4d3a;
+  --success-soft: rgba(31, 77, 58, 0.12);
+
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface-muted: rgba(255, 255, 255, 0.46);
+  --field-bg: rgba(255, 255, 255, 0.72);
+  --field-line: rgba(23, 32, 27, 0.12);
+  --divider: rgba(23, 32, 27, 0.1);
+  --scrim: rgba(23, 32, 27, 0.3);
+  --shadow-modal: 0 24px 64px rgba(31, 77, 58, 0.18);
+
+  --page-width: 430px;
+  --page-pad: 16px;
+  --title-top: 16px;
+  --control-44: 44px;
+  --icon-28: 28px;
+  --icon-20: 20px;
+  --icon-16: 16px;
+  --dock-inset: 12px;
+  --dock-height: 128px;
+  --compose-height: 46px;
+  --tab-highlight-width: 75px;
+  --tab-highlight-height: 46px;
+  --tile-height: 56px;
+  --content-bottom: calc(var(--dock-height) + var(--space-16));
+  --z-base: 1;
+  --z-sticky: 10;
+  --z-dock: 20;
+  --z-overlay: 30;
+  --z-page: 40;
+  --z-modal: 50;
+
+  --shadow-soft: 0 4px 16px rgba(31, 77, 58, 0.08);
+  --shadow-float: 0 12px 36px rgba(31, 77, 58, 0.16);
+
+  @media (prefers-color-scheme: dark) {
+    color-scheme: dark;
+
+    --bg-top: #1a2622;
+    --bg-mid: #141816;
+    --bg-bottom: #231d16;
+    --bg-gradient: linear-gradient(
+      180deg,
+      var(--bg-top) 0%,
+      var(--bg-mid) 52%,
+      var(--bg-bottom) 100%
+    );
+
+    --glass-bg: rgba(255, 255, 255, 0.08);
+    --glass-strong: rgba(255, 255, 255, 0.14);
+    --glass-line: rgba(255, 255, 255, 0.16);
+    --glass-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+    --glass-fallback: #202a25;
+
+    --ink: #eceeec;
+    --ink-2: #a3aaa5;
+    --ink-3: #8f9892;
+    --white: #ffffff;
+    --transparent: transparent;
+    --on-primary: #10231a;
+    --on-accent: #241a0d;
+
+    --primary: #9ed2b4;
+    --primary-soft: rgba(158, 210, 180, 0.12);
+    --primary-line: rgba(158, 210, 180, 0.24);
+    --accent: #e6a64a;
+    --accent-ink: #e6a64a;
+    --accent-soft: rgba(230, 166, 74, 0.16);
+    --danger-soft: rgba(224, 122, 106, 0.14);
+    --success: #9ed2b4;
+    --success-soft: rgba(158, 210, 180, 0.12);
+
+    --surface: rgba(255, 255, 255, 0.08);
+    --surface-muted: rgba(255, 255, 255, 0.05);
+    --field-bg: rgba(255, 255, 255, 0.06);
+    --field-line: rgba(255, 255, 255, 0.14);
+    --divider: rgba(255, 255, 255, 0.12);
+    --scrim: rgba(0, 0, 0, 0.52);
+    --shadow-modal: 0 24px 64px rgba(0, 0, 0, 0.42);
+    --shadow-soft: 0 4px 16px rgba(0, 0, 0, 0.24);
+    --shadow-float: 0 12px 36px rgba(0, 0, 0, 0.36);
+  }
+
+  @supports not (
+    (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+  ) {
+    --glass-bg: var(--glass-fallback);
+    --glass-strong: var(--glass-fallback);
+    --glass-blur: none;
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    --glass-bg: var(--glass-fallback);
+    --glass-strong: var(--glass-fallback);
+    --glass-blur: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    --dur-1: 0.01ms;
+    --dur-2: 0.01ms;
+    --dur-3: 0.01ms;
+    --dur-skeleton: 0.01ms;
+    --motion-rise: 0px;
+    --motion-press: 1;
+    --motion-modal: 1;
+  }
+}

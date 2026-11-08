@@ -1,0 +1,87 @@
+﻿/* Destructive confirmation and error boundary. */
+
+.wr-confirm {
+  padding: var(--space-4);
+}
+
+.wr-confirm p {
+  margin: 0 0 var(--space-16);
+  color: var(--ink-2);
+  font-size: var(--text-17);
+  line-height: var(--leading-relaxed);
+}
+
+.wr-confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-8);
+}
+
+.wr-confirm-actions button {
+  min-height: var(--control-44);
+  border: var(--border-1) solid var(--glass-line);
+  border-radius: var(--radius-16);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--text-17);
+}
+
+.wr-confirm-actions button.danger {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: var(--on-primary);
+}
+
+.wr-error {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--space-32);
+  color: var(--ink);
+}
+
+.wr-error-mark {
+  width: var(--space-48);
+  height: var(--space-48);
+  display: grid;
+  place-items: center;
+  margin-bottom: var(--space-16);
+  border-radius: var(--radius-pill);
+  background: var(--danger);
+  color: var(--on-primary);
+  font-size: var(--text-26);
+  font-weight: var(--weight-semibold);
+}
+
+.wr-error h1 {
+  margin: 0 0 var(--space-8);
+  font-size: var(--text-26);
+}
+
+.wr-error p {
+  margin: 0 0 var(--space-20);
+  color: var(--ink-2);
+  font-size: var(--text-17);
+  line-height: var(--leading-body);
+}
+
+.wr-error-actions {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.wr-error-actions button {
+  min-height: var(--control-44);
+  border: var(--border-1) solid var(--glass-line);
+  border-radius: var(--radius-16);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--text-17);
+}
+
+.wr-error-actions button.danger {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: var(--on-primary);
+}

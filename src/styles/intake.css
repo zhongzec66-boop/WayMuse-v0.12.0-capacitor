@@ -1,0 +1,179 @@
+﻿/* Manual course/file/voice intake. */
+
+.wr-intake-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-8);
+  margin-bottom: var(--space-16);
+}
+
+.wr-intake-tabs button {
+  min-height: var(--space-64);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  border: var(--border-1) solid var(--glass-line);
+  border-radius: var(--radius-16);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: var(--text-12);
+}
+
+.wr-intake-tabs button.active {
+  border-color: var(--primary-line);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.wr-intake-tabs svg {
+  width: var(--icon-20);
+  height: var(--icon-20);
+}
+
+.wr-intake-card {
+  padding: var(--space-16);
+  border: var(--border-1) solid var(--glass-line);
+  border-radius: var(--radius-28);
+  background: var(--glass-bg);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+.wr-intake-card h2 {
+  margin: 0 0 var(--space-8);
+  color: var(--ink);
+  font-size: var(--text-20);
+  font-weight: var(--weight-semibold);
+}
+
+.wr-intake-card p {
+  margin: 0 0 var(--space-16);
+  color: var(--ink-2);
+  font-size: var(--text-14);
+  line-height: var(--leading-body);
+}
+
+.wr-intake-card label {
+  display: block;
+  margin: var(--space-12) 0;
+  color: var(--ink-2);
+  font-size: var(--text-12);
+}
+
+.wr-intake-card input:not([type="file"]),
+.wr-intake-card select {
+  display: block;
+  width: 100%;
+  min-height: var(--control-44);
+  box-sizing: border-box;
+  margin-top: var(--space-8);
+  padding: 0 var(--space-12);
+  border: var(--border-1) solid var(--field-line);
+  border-radius: var(--radius-16);
+  background: var(--field-bg);
+  color: var(--ink);
+  font-size: var(--text-17);
+  outline-color: var(--primary);
+}
+
+.wr-intake-card textarea {
+  display: block;
+  width: 100%;
+  min-height: calc(var(--space-4) * 20);
+  box-sizing: border-box;
+  margin-top: var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  border: var(--border-1) solid var(--field-line);
+  border-radius: var(--radius-16);
+  background: var(--field-bg);
+  color: var(--ink);
+  font-size: var(--text-17);
+  outline-color: var(--primary);
+  resize: vertical;
+}
+
+.wr-intake-time {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-8);
+}
+
+.wr-intake-primary {
+  width: 100%;
+  min-height: var(--control-44);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  margin-top: var(--space-16);
+  border-radius: var(--radius-16);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: var(--text-17);
+  font-weight: var(--weight-medium);
+}
+
+.wr-intake-primary:disabled {
+  opacity: 0.5;
+}
+
+.wr-hidden-input {
+  display: none;
+}
+
+.wr-intake-picker {
+  width: 100%;
+  min-height: var(--control-44);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  margin: var(--space-8) 0;
+  padding: var(--space-12);
+  border: var(--border-1) solid var(--primary-line);
+  border-radius: var(--radius-16);
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: var(--text-14);
+}
+
+.wr-intake-preview {
+  display: grid;
+  gap: var(--space-4);
+  margin: var(--space-12) 0;
+  padding: var(--space-12);
+  border-radius: var(--radius-16);
+  background: var(--surface-muted);
+  word-break: break-all;
+}
+
+.wr-intake-preview small {
+  color: var(--ink-2);
+}
+
+.wr-intake-preview img {
+  max-width: 100%;
+  max-height: calc(var(--space-4) * 65);
+  object-fit: contain;
+  border-radius: var(--radius-16);
+}
+
+.wr-intake-preview audio {
+  width: 100%;
+}
+
+.wr-intake-disclaimer {
+  margin-top: var(--space-12);
+  color: var(--ink-3);
+  font-size: var(--text-12);
+  line-height: var(--leading-body);
+}
+
+.wr-intake-error {
+  margin: var(--space-12) var(--space-4);
+  color: var(--danger);
+  font-size: var(--text-14);
+}

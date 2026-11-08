@@ -1,0 +1,107 @@
+﻿/* Today brief and course rows. */
+
+.wr-brief {
+  padding: var(--space-16);
+  border: var(--border-1) solid var(--glass-line);
+  border-radius: var(--radius-28);
+  background: var(--glass-bg);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+.wr-brief-date {
+  color: var(--accent-ink);
+  font-size: var(--text-14);
+  font-weight: var(--weight-semibold);
+}
+
+.wr-brief h2 {
+  margin: var(--space-16) 0;
+  color: var(--ink);
+  font-size: var(--text-26);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+}
+
+.wr-brief p {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: var(--text-17);
+  line-height: var(--leading-body);
+}
+
+.wr-brief-label {
+  margin: var(--space-24) 0 var(--space-8);
+  color: var(--ink-3);
+  font-size: var(--text-12);
+  font-weight: var(--weight-semibold);
+}
+
+.wr-brief-end {
+  margin: var(--space-16) 0 0;
+  color: var(--ink-2);
+  font-size: var(--text-14);
+  line-height: var(--leading-body);
+}
+
+.wr-course-list {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.wr-course-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-12);
+  border: var(--border-1) solid var(--glass-line);
+  border-radius: var(--radius-16);
+  background: var(--surface);
+}
+
+.wr-course-row span {
+  min-width: 0;
+  flex: 1;
+}
+
+.wr-course-row b {
+  display: block;
+  color: var(--ink);
+  font-size: var(--text-17);
+  font-weight: var(--weight-semibold);
+}
+
+.wr-course-row small {
+  display: block;
+  margin-top: var(--space-4);
+  color: var(--ink-2);
+  font-size: var(--text-12);
+}
+
+.wr-course-row time {
+  color: var(--primary);
+  font-size: var(--text-14);
+  white-space: nowrap;
+}
+
+.wr-course-row button {
+  min-width: var(--control-44);
+  min-height: var(--control-44);
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  color: var(--ink-3);
+}
+
+.wr-course-empty {
+  width: 100%;
+  min-height: var(--tile-height);
+  padding: var(--space-12);
+  border: var(--border-1) dashed var(--primary-line);
+  border-radius: var(--radius-16);
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: var(--text-14);
+  text-align: left;
+}
