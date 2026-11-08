@@ -141,10 +141,7 @@ export default function TodayPage({
                         : `已逾期 · ${task.deadline}`}
                     </small>
                   </span>
-                  <button
-                    aria-label="去任务页"
-                    onClick={() => nav("任务")}
-                  >
+                  <button aria-label="去任务页" onClick={() => nav("任务")}>
                     <ChevronRight size={15} />
                   </button>
                 </div>

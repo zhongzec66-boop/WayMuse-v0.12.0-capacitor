@@ -42,7 +42,8 @@ export function useNativeTabs(
   useEffect(() => {
     if (!ios || !entered) return;
     let disposed = false;
-    let listener: Awaited<ReturnType<typeof LiquidGlass.addListener>> | undefined;
+    let listener:
+      Awaited<ReturnType<typeof LiquidGlass.addListener>> | undefined;
     void LiquidGlass.addListener("tabSelected", ({ id }) => {
       if (pages.includes(id as Page)) navigateRef.current(id as Page);
     })
@@ -71,7 +72,8 @@ export function useNativeTabs(
     }
 
     let cancelled = false;
-    let layoutListener: Awaited<ReturnType<typeof LiquidGlass.addListener>> | undefined;
+    let layoutListener:
+      Awaited<ReturnType<typeof LiquidGlass.addListener>> | undefined;
 
     // 转屏、安全区变化时同步高度
     void LiquidGlass.addListener("tabBarLayoutChanged", ({ height }) => {

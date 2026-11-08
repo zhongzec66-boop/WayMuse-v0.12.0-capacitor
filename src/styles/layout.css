@@ -17,6 +17,28 @@
   backdrop-filter: var(--glass-blur);
 }
 
+/* 输入区上方：与页面底部同色 + 遮罩渐隐，上滚的内容在这里溶解掉，
+   不再被输入框一刀切出半截字（截图里的计划卡就是这样被切的）。 */
+.wr-dock::before {
+  content: "";
+  position: absolute;
+  right: calc(var(--dock-inset) * -1);
+  bottom: 100%;
+  left: calc(var(--dock-inset) * -1);
+  height: 48px;
+  background: var(--bg-bottom);
+  -webkit-backdrop-filter: blur(12px) saturate(1.3);
+  backdrop-filter: blur(12px) saturate(1.3);
+  -webkit-mask-image: linear-gradient(
+    to top,
+    #000 0%,
+    #000 42%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(to top, #000 0%, #000 42%, transparent 100%);
+  pointer-events: none;
+}
+
 .wr-compose {
   height: 50px;
   display: flex;

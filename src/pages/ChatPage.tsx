@@ -460,6 +460,9 @@ export default function ChatPage({
             <BotAvatar source={agentAvatar} replying={streaming} />
           </span>
           <b>{agentName}</b>
+          <span className={`wr-chat-sub ${connectState}`}>
+            {streaming ? "正在回复…" : statusLabel}
+          </span>
         </div>
         <button
           className="wr-round"
@@ -506,15 +509,16 @@ export default function ChatPage({
             m.content.toLowerCase().includes(searchQuery.trim().toLowerCase()),
           ) && <p className="wr-chat-search-empty">没有找到相关聊天记录</p>}
 
-        <div className="wr-chat-status-line">
-          <span className={`wr-ai-status ${connectState}`}>{statusLabel}</span>
-          {apiKey && <span>{config.model}</span>}
-          {streaming && (
-            <button type="button" className="wr-chat-stop" onClick={stop}>
-              <Square size={13} /> 停止
-            </button>
-          )}
-        </div>
+        {(apiKey || streaming) && (
+          <div className="wr-chat-status-line">
+            {apiKey && <span>{config.model}</span>}
+            {streaming && (
+              <button type="button" className="wr-chat-stop" onClick={stop}>
+                <Square size={13} /> 停止
+              </button>
+            )}
+          </div>
+        )}
 
         {showConfig && (
           <section className="wr-ai-config">

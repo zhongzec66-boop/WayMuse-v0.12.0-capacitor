@@ -11,14 +11,19 @@
     -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei",
     system-ui, sans-serif;
 
+  --text-11: 11px;
   --text-12: 12px;
+  --text-13: 13px;
   --text-14: 14px;
+  --text-15: 15px;
+  --text-16: 16px;
   --text-17: 17px;
   --text-20: 20px;
   --text-26: 26px;
   --text-28: 28px;
   --text-34: 34px;
   --leading-tight: 1.2;
+  --leading-chat: 1.38;
   --leading-body: 1.5;
   --leading-relaxed: 1.7;
   --weight-regular: 400;
@@ -44,6 +49,8 @@
   --space-84: 84px;
 
   --radius-16: 16px;
+  --radius-18: 18px;
+  --radius-20: 20px;
   --radius-28: 28px;
   --radius-40: 40px;
   --radius-pill: 999px;
@@ -81,6 +88,14 @@
   --glass-shadow: 0 8px 28px rgba(31, 77, 58, 0.1);
   --glass-blur: blur(24px) saturate(1.5);
   --glass-fallback: #f4f6f1;
+  /* 聊天区：参照 iMessage 的紧凑度量——气泡更窄、行高更紧、字号 16。 */
+  --topbar-blur: blur(22px) saturate(1.7);
+  --chat-surface: rgba(255, 255, 255, 0.66);
+  --chat-surface-line: rgba(255, 255, 255, 0.72);
+  --chat-user-bg: var(--primary);
+  --chat-user-ink: var(--on-primary);
+  --chat-max-user: 74%;
+  --chat-max-ai: 84%;
 
   --ink: #17201b;
   --ink-2: #4f5a54;
@@ -153,6 +168,8 @@
     --glass-line: rgba(255, 255, 255, 0.16);
     --glass-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
     --glass-fallback: #202a25;
+    --chat-surface: rgba(255, 255, 255, 0.1);
+    --chat-surface-line: rgba(255, 255, 255, 0.14);
 
     --ink: #eceeec;
     --ink-2: #a3aaa5;
