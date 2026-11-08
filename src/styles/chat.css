@@ -16,7 +16,7 @@
   left: 0;
   z-index: var(--z-sticky);
   display: grid;
-  grid-template-columns: 44px 1fr 44px;
+  grid-template-columns: 44px 1fr auto;
   align-items: center;
   gap: var(--space-8);
   padding: calc(var(--safe-top) + 10px) var(--page-pad) var(--space-12);
@@ -1264,4 +1264,131 @@
   color: var(--on-primary);
   font-size: var(--text-11);
   font-weight: var(--weight-medium);
+}
+
+/* ── 头部右侧动作组 ─────────────────────────────── */
+
+.wr-chat-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* ── 语音通话浮层 ───────────────────────────────── */
+
+.wr-call {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(var(--safe-top) + 48px) var(--page-pad)
+    calc(var(--safe-bottom) + 40px);
+  background: radial-gradient(
+    120% 80% at 50% 0%,
+    #dfeaf6 0%,
+    #eef2f7 45%,
+    #f7f0e7 100%
+  );
+  animation: wm-call-in var(--dur-3) var(--ease) both;
+}
+
+@keyframes wm-call-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.wr-call-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-16);
+  text-align: center;
+}
+
+.wr-call-face {
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.9),
+    0 18px 40px rgba(16, 36, 56, 0.14);
+}
+
+.wr-call-status {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-17);
+  font-weight: var(--weight-medium);
+}
+
+.wr-call-note {
+  max-width: 260px;
+  margin: 0;
+  color: var(--ink-3);
+  font-size: var(--text-12);
+  line-height: var(--leading-body);
+}
+
+.wr-call-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-20);
+}
+
+.wr-call-mic {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--on-primary);
+  box-shadow: 0 10px 24px rgba(37, 99, 168, 0.28);
+}
+
+.wr-call-mic:disabled {
+  opacity: 0.5;
+}
+
+.wr-call-mic.listening {
+  background: var(--danger);
+  animation: wm-call-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes wm-call-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(163, 58, 44, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 0 14px rgba(163, 58, 44, 0);
+  }
+}
+
+.wr-call-hangup {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--danger);
+  box-shadow: var(--shadow-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wr-call,
+  .wr-call-mic.listening {
+    animation: none;
+  }
 }

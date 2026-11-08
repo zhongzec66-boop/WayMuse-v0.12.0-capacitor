@@ -5,6 +5,7 @@ import {
   Eye,
   EyeOff,
   FileText,
+  PhoneCall,
   KeyRound,
   Plus,
   RotateCcw,
@@ -18,6 +19,7 @@ import {
 import { localSuggestions, parseReply, planTasks } from "../agent";
 import { BRAND } from "../brand";
 import BotAvatar from "../BotAvatar";
+import VoiceCall from "../VoiceCall";
 import { storage, createMemory } from "../storage";
 import { newId } from "../id";
 import {
@@ -160,6 +162,9 @@ export default function ChatPage({
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [callOpen, setCallOpen] = useState(false);
+  const [breezeKey] = useState(() => storage.getBreezeKey());
+  const [breezeVoice] = useState(() => storage.getBreezeVoice());
   const [error, setError] = useState("");
   const [connectState, setConnectState] = useState<ConnectState>("idle");
   const [connectText, setConnectText] = useState("");
@@ -489,6 +494,11 @@ export default function ChatPage({
             ? "待测试"
             : "未连接";
 
+  // 通话模式下要念的最新一条回复（剥掉 <plans>/<memories> 契约块）
+  const lastAssistant = [...messages]
+    .reverse()
+    .find((m) => m.role === "assistant" && m.content.trim());
+  const lastReply = lastAssistant ? parseReply(lastAssistant.content).text : "";
   const suggestions = [
     "明天考试，我有点慌，陪我安排一下复习",
     "我想准备第一份实习，有什么方案？",
@@ -510,15 +520,34 @@ export default function ChatPage({
             {streaming ? "正在回复…" : statusLabel}
           </span>
         </div>
-        <button
-          className="wr-round"
-          aria-label="搜索聊天记录"
-          aria-expanded={searchOpen}
-          onClick={() => setSearchOpen((value) => !value)}
-        >
-          <Search />
-        </button>
+        <div className="wr-chat-actions">
+          <button
+            className="wr-round"
+            aria-label="语音通话"
+            onClick={() => setCallOpen(true)}
+          >
+            <PhoneCall />
+          </button>
+          <button
+            className="wr-round"
+            aria-label="搜索聊天记录"
+            aria-expanded={searchOpen}
+            onClick={() => setSearchOpen((value) => !value)}
+          >
+            <Search />
+          </button>
+        </div>
       </div>
+
+      <VoiceCall
+        open={callOpen}
+        busy={streaming}
+        reply={lastReply}
+        breezeKey={breezeKey}
+        breezeVoice={breezeVoice}
+        onFinal={(text) => void sendMessage(text, messages)}
+        onClose={() => setCallOpen(false)}
+      />
 
       <div className="wr-chat-scroll">
         {searchOpen && (

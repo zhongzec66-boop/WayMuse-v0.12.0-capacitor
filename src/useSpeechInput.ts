@@ -16,7 +16,10 @@ import {
  * 不会跳转到别的页面。识别失败或非 iOS 环境时
  * `supported` 为 false，调用方退回原来的语音录入入口。
  */
-export function useSpeechInput(onText: (text: string) => void): {
+export function useSpeechInput(
+  onText: (text: string) => void,
+  onFinal?: (text: string) => void,
+): {
   supported: boolean;
   listening: boolean;
   error: string;
@@ -26,6 +29,8 @@ export function useSpeechInput(onText: (text: string) => void): {
   const [error, setError] = useState("");
   const onTextRef = useRef(onText);
   onTextRef.current = onText;
+  const onFinalRef = useRef(onFinal);
+  onFinalRef.current = onFinal;
 
   useEffect(() => {
     if (!isNativeExtrasSupported()) return;
@@ -41,6 +46,7 @@ export function useSpeechInput(onText: (text: string) => void): {
         onTextRef.current(text);
         setListening(false);
         void haptic("light");
+        if (text.trim() && onFinalRef.current) onFinalRef.current(text.trim());
       });
       const failed = await speechEvents.error(({ message }) => {
         if (!alive) return;

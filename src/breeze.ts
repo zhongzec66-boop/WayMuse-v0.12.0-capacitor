@@ -117,3 +117,25 @@ export function stopSpeaking(): void {
 export function isSpeaking(): boolean {
   return Boolean(currentAudio && !currentAudio.paused);
 }
+
+/** 播完才 resolve，语音通话用它来判断「说完了」。 */
+export async function speakAndWait(
+  text: string,
+  config: BreezeConfig,
+): Promise<void> {
+  const blob = await synthesizeSpeech(text, config);
+  stopSpeaking();
+  const url = URL.createObjectURL(blob);
+  currentUrl = url;
+  const audio = new Audio(url);
+  currentAudio = audio;
+  await new Promise<void>((resolve) => {
+    const done = () => {
+      stopSpeaking();
+      resolve();
+    };
+    audio.onended = done;
+    audio.onerror = done;
+    void audio.play().catch(done);
+  });
+}
