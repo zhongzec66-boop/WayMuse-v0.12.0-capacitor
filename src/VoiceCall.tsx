@@ -6,6 +6,7 @@ import {
   beginCallAudio,
   endAudioSession,
   endCallAudio,
+  getAudioRoute,
   haptic,
   isNativeExtrasSupported,
 } from "./nativeExtras";
@@ -52,6 +53,7 @@ export default function VoiceCall({
   const [note, setNote] = useState("");
   const [paused, setPaused] = useState(false);
   const [barged, setBarged] = useState(false);
+  const [route, setRoute] = useState("");
   const spokenRef = useRef("");
   const finalRef = useRef(onFinal);
   finalRef.current = onFinal;
@@ -171,11 +173,13 @@ export default function VoiceCall({
     void haptic("medium");
     void beginCallAudio();
     void startLiveActivity("正在通话", "在听你说");
+    void getAudioRoute().then(setRoute);
   }, [open]);
 
   /* ── 状态同步到灵动岛 ───────────────────────── */
   useEffect(() => {
     if (!open) return;
+    void getAudioRoute().then(setRoute);
     const detail = speaking
       ? "正在说"
       : busy
@@ -235,6 +239,7 @@ export default function VoiceCall({
           {status}
         </p>
         {note && <p className="wr-call-note">{note}</p>}
+        {route && <p className="wr-call-note">声音：{route}</p>}
         {!native && (
           <p className="wr-call-note">
             语音识别只在 iOS App 内可用；这里可以先看文字。

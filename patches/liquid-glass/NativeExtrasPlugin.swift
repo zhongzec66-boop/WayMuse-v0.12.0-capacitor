@@ -32,6 +32,7 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "endAudioSession", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "beginCallAudio", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "endCallAudio", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "audioRoute", returnType: CAPPluginReturnPromise),
     ]
 
     private let engine = AVAudioEngine()
@@ -399,6 +400,41 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
         try activateSession()
     }
 
+    /// 播放专用会话：`.playback` 分类下系统只会用扬声器（除非插了耳机）。
+    /// 之前用 `.playAndRecord` + `.voiceChat` + override 的做法在真机上仍会
+    /// 掉回听筒，所以播放阶段直接换分类，最稳。
+    private func activatePlaybackSession() throws {
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(
+            .playback,
+            mode: .spokenAudio,
+            options: [.duckOthers]
+        )
+        try session.setActive(true, options: .notifyOthersOnDeactivation)
+    }
+
+    /// 播完后如果还在通话里，切回录音分类，麦克风才能继续工作。
+    private func restoreCallSession() {
+        guard inCall else { return }
+        try? activateSession()
+    }
+
+    /// 当前输出端口，用于排查「声音到底从哪出来」。
+    @objc func audioRoute(_ call: CAPPluginCall) {
+        let session = AVAudioSession.sharedInstance()
+        let outputs = session.currentRoute.outputs.map { output -> [String: String] in
+            [
+                "port": output.portType.rawValue,
+                "name": output.portName,
+            ]
+        }
+        call.resolve([
+            "outputs": outputs,
+            "category": session.category.rawValue,
+            "mode": session.mode.rawValue,
+        ])
+    }
+
     @objc func playAudio(_ call: CAPPluginCall) {
         guard let base64 = call.getString("base64"),
               let data = Data(base64Encoded: base64) else {
@@ -407,7 +443,8 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
         }
         DispatchQueue.main.async {
             do {
-                try self.configureSpeakerSession()
+                // 播放阶段切到 .playback：这是唯一能保证走扬声器的分类
+                try self.activatePlaybackSession()
                 self.player?.stop()
                 let player = try AVAudioPlayer(data: data)
                 player.delegate = self
@@ -477,6 +514,8 @@ extension NativeExtrasPlugin: AVAudioPlayerDelegate {
             self.player = nil
             self.pendingPlay?.resolve(["finished": true])
             self.pendingPlay = nil
+            // 播完把会话切回录音分类，通话里的麦克风才能继续用
+            self.restoreCallSession()
         }
     }
 

@@ -60,6 +60,11 @@ interface NativeExtras {
   endAudioSession(): Promise<void>;
   beginCallAudio(): Promise<{ ok: boolean }>;
   endCallAudio(): Promise<void>;
+  audioRoute(): Promise<{
+    outputs: Array<{ port: string; name: string }>;
+    category: string;
+    mode: string;
+  }>;
   addListener(
     event: "speechPartial",
     listener: (event: SpeechPayload) => void,
@@ -196,6 +201,22 @@ export async function stopAudioNative(): Promise<void> {
     await NativeExtras.stopAudio();
   } catch {
     // ignore
+  }
+}
+
+/** 当前是从哪出声的：扬声器 / 听筒 / 耳机。 */
+export async function getAudioRoute(): Promise<string> {
+  if (!isNativeExtrasSupported()) return "";
+  try {
+    const result = await NativeExtras.audioRoute();
+    const port = result.outputs?.[0]?.port ?? "";
+    if (port.includes("Speaker")) return "扬声器";
+    if (port.includes("Receiver")) return "听筒";
+    if (port.includes("Bluetooth") || port.includes("AirPlay")) return "蓝牙";
+    if (port.includes("Headphones") || port.includes("Headset")) return "耳机";
+    return result.outputs?.[0]?.name ?? "";
+  } catch {
+    return "";
   }
 }
 
