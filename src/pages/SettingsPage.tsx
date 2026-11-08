@@ -4,6 +4,7 @@ import ConnectionsPanel from "./ConnectionsPanel";
 import BotAvatar from "../BotAvatar";
 import AvatarPicker from "../AvatarPicker";
 import { speak } from "../breeze";
+import { haptic } from "../nativeExtras";
 import { storage } from "../storage";
 import { APP_VERSION } from "../version";
 import { DeepSeekError, listDeepSeekModels } from "../deepseek/client";
@@ -613,8 +614,16 @@ export default function SettingsPage({
               合成成功。这个音色之后会用在语音通话里。
             </p>
           )}
+          <button
+            type="button"
+            className="wr-settings-test"
+            onClick={() => void haptic("medium")}
+          >
+            试一下震动
+          </button>
           <p className="wr-settings-note">
             没有 key 也能用文字聊天；语音只是额外的朗读通道。
+            震动没反应的话，先检查系统是否开了「低电量模式」。
           </p>
         </div>
 

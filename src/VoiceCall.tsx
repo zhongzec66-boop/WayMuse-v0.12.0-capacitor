@@ -7,7 +7,11 @@ import {
   startLiveActivity,
   updateLiveActivity,
 } from "./liveActivity";
-import { haptic, isNativeExtrasSupported } from "./nativeExtras";
+import {
+  endAudioSession,
+  haptic,
+  isNativeExtrasSupported,
+} from "./nativeExtras";
 import { useSpeechInput } from "./useSpeechInput";
 
 /**
@@ -82,6 +86,7 @@ export default function VoiceCall({
       spokenRef.current = "";
       setNote("");
       stopSpeaking();
+      void endAudioSession();
       void endLiveActivity();
       return;
     }

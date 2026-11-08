@@ -27,6 +27,9 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "readEvents", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "addEvent", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "addReminder", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "playAudio", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "stopAudio", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "endAudioSession", returnType: CAPPluginReturnPromise),
     ]
 
     private let engine = AVAudioEngine()
@@ -34,6 +37,8 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
     private var task: SFSpeechRecognitionTask?
     private var recognizing = false
     private let eventStore = EKEventStore()
+    private var player: AVAudioPlayer?
+    private var pendingPlay: CAPPluginCall?
 
     // MARK: - 触觉反馈
 
@@ -357,9 +362,89 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
         task?.cancel()
         task = nil
         recognizing = false
-        try? AVAudioSession.sharedInstance().setActive(
-            false,
-            options: .notifyOthersOnDeactivation
+        // 注意：这里**不** setActive(false)。一旦停掉会话，随后用 WebView 播 TTS
+        // 就会被系统路由回听筒（声音突然变得很小）。会话留到 endAudioSession 再关。
+    }
+
+    // MARK: - 音频播放（锁扬声器）
+
+    /// 统一把会话配成「播放 + 录音」并强制走扬声器。
+    private func configureSpeakerSession() throws {
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(
+            .playAndRecord,
+            mode: .default,
+            options: [.defaultToSpeaker, .allowBluetooth]
         )
+        try session.setActive(true, options: .notifyOthersOnDeactivation)
+        try session.overrideOutputAudioPort(.speaker)
+    }
+
+    @objc func playAudio(_ call: CAPPluginCall) {
+        guard let base64 = call.getString("base64"),
+              let data = Data(base64Encoded: base64) else {
+            call.reject("audio-data-required")
+            return
+        }
+        DispatchQueue.main.async {
+            do {
+                try self.configureSpeakerSession()
+                self.player?.stop()
+                let player = try AVAudioPlayer(data: data)
+                player.delegate = self
+                player.prepareToPlay()
+                self.player = player
+                self.pendingPlay = call
+                if !player.play() {
+                    self.pendingPlay = nil
+                    call.reject("play-failed")
+                }
+            } catch {
+                self.pendingPlay = nil
+                call.reject("audio-session-failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    @objc func stopAudio(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            self.player?.stop()
+            self.player = nil
+            self.pendingPlay?.resolve(["stopped": true])
+            self.pendingPlay = nil
+            call.resolve()
+        }
+    }
+
+    @objc func endAudioSession(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            self.player?.stop()
+            self.player = nil
+            self.pendingPlay?.resolve(["stopped": true])
+            self.pendingPlay = nil
+            try? AVAudioSession.sharedInstance().setActive(
+                false,
+                options: .notifyOthersOnDeactivation
+            )
+            call.resolve()
+        }
+    }
+}
+
+extension NativeExtrasPlugin: AVAudioPlayerDelegate {
+    public func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        DispatchQueue.main.async {
+            self.player = nil
+            self.pendingPlay?.resolve(["finished": true])
+            self.pendingPlay = nil
+        }
+    }
+
+    public func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        DispatchQueue.main.async {
+            self.player = nil
+            self.pendingPlay?.reject("audio-decode-failed")
+            self.pendingPlay = nil
+        }
     }
 }

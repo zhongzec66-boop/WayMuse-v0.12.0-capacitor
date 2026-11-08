@@ -1,4 +1,16 @@
 import { Capacitor, CapacitorHttp } from "@capacitor/core";
+import { playAudioNative, stopAudioNative } from "./nativeExtras";
+
+/** Blob → base64，用于把音频交给原生播放器。 */
+async function blobToBase64(blob: Blob): Promise<string> {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
 
 /**
  * Breeze TTS 客户端。
@@ -95,6 +107,12 @@ let currentUrl = "";
 /** 播一段音频；重复调用会打断上一段。 */
 export async function speak(text: string, config: BreezeConfig): Promise<void> {
   const blob = await synthesizeSpeech(text, config);
+  // 原生端交给 AVAudioPlayer：会话由我们配，能强制走扬声器，
+  // 不会因为 WebView 自己的会话策略掉回听筒。
+  if (Capacitor.isNativePlatform()) {
+    await playAudioNative(await blobToBase64(blob));
+    return;
+  }
   stopSpeaking();
   currentUrl = URL.createObjectURL(blob);
   const audio = new Audio(currentUrl);
@@ -104,6 +122,7 @@ export async function speak(text: string, config: BreezeConfig): Promise<void> {
 }
 
 export function stopSpeaking(): void {
+  void stopAudioNative();
   if (currentAudio) {
     currentAudio.pause();
     currentAudio = null;
@@ -124,6 +143,10 @@ export async function speakAndWait(
   config: BreezeConfig,
 ): Promise<void> {
   const blob = await synthesizeSpeech(text, config);
+  if (Capacitor.isNativePlatform()) {
+    await playAudioNative(await blobToBase64(blob));
+    return;
+  }
   stopSpeaking();
   const url = URL.createObjectURL(blob);
   currentUrl = url;

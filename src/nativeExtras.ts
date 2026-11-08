@@ -55,6 +55,9 @@ interface NativeExtras {
     title: string;
     due?: string;
   }): Promise<{ ok: boolean }>;
+  playAudio(options: { base64: string }): Promise<{ finished?: boolean }>;
+  stopAudio(): Promise<void>;
+  endAudioSession(): Promise<void>;
   addListener(
     event: "speechPartial",
     listener: (event: SpeechPayload) => void,
@@ -176,6 +179,31 @@ export async function addEventToCalendar(
     return true;
   } catch {
     return false;
+  }
+}
+
+/** 把一段音频交给原生播（锁扬声器，播完才 resolve）。 */
+export async function playAudioNative(base64: string): Promise<void> {
+  if (!isNativeExtrasSupported()) return;
+  await NativeExtras.playAudio({ base64 });
+}
+
+export async function stopAudioNative(): Promise<void> {
+  if (!isNativeExtrasSupported()) return;
+  try {
+    await NativeExtras.stopAudio();
+  } catch {
+    // ignore
+  }
+}
+
+/** 通话结束时把音频会话关掉，恢复系统默认路由。 */
+export async function endAudioSession(): Promise<void> {
+  if (!isNativeExtrasSupported()) return;
+  try {
+    await NativeExtras.endAudioSession();
+  } catch {
+    // ignore
   }
 }
 

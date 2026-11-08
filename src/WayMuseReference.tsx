@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { BRAND } from "./brand";
 import { newId } from "./id";
 import Onboarding from "./Onboarding";
-import { readCalendarEvents } from "./nativeExtras";
+import { haptic, readCalendarEvents } from "./nativeExtras";
 import type { CalendarEvent } from "./nativeExtras";
 import { useKeyboardInset } from "./useKeyboardInset";
 import WayMuseIntake from "./WayMuseIntake";
@@ -136,6 +136,9 @@ export default function WayMuseReference() {
 
   const submit = () => {
     if (!draft.trim()) return;
+    // 原生输入框的发送键直接走这里，所以触觉反馈要加在这一层，
+    // 否则从原生输入框发消息就完全没有震动。
+    void haptic("light");
     if (overlay === "新增任务") {
       setTasks([{ id: newId(), text: draft.trim(), done: false }, ...tasks]);
       setOverlay("");
