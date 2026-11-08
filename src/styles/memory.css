@@ -539,7 +539,8 @@
   box-shadow: var(--card-shadow);
   color: var(--ink);
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
-  font-size: var(--text-14);
+  /* 必须 ≥16px：iOS 在聚焦 <16px 的输入框时会自动放大整个页面且不还原 */
+  font-size: 16px;
   line-height: 1.65;
   resize: none;
 }
@@ -575,4 +576,50 @@
   color: var(--ink);
   font-size: var(--text-16);
   line-height: var(--leading-body);
+}
+
+/* ── 点名字弹出的快捷菜单 ─────────────────────────── */
+
+/* 用组合选择器压过 .wr-sheet 的玻璃底色：
+   这里必须是不透明面板，否则在 backdrop-filter 不起作用的环境里
+   菜单会整块透明、字全叠在聊天记录上。 */
+.wr-sheet.wr-titlemenu {
+  display: grid;
+  gap: var(--space-4);
+  min-height: 0;
+  max-height: 70%;
+  padding: var(--space-12);
+  background: var(--card-bg);
+  box-shadow: 0 -12px 40px rgba(16, 36, 56, 0.16);
+}
+
+.wr-titlemenu > button {
+  width: 100%;
+  min-height: var(--control-44);
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: 0 var(--space-16);
+  border-radius: var(--radius-16);
+  color: var(--ink);
+  font-size: var(--text-16);
+  text-align: left;
+}
+
+.wr-titlemenu > button:active {
+  background: var(--surface-muted);
+}
+
+.wr-titlemenu > button > em {
+  margin-left: auto;
+  color: var(--card-caption);
+  font-size: var(--text-12);
+  font-style: normal;
+}
+
+.wr-titlemenu > button:last-child {
+  margin-top: var(--space-8);
+  justify-content: center;
+  color: var(--ink-3);
+  font-size: var(--text-14);
 }

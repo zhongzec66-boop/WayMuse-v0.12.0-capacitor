@@ -1,25 +1,27 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic, PhoneOff } from "lucide-react";
+import { ChevronDown, Mic, MicOff, PhoneOff } from "lucide-react";
 import BotAvatar from "./BotAvatar";
 import { speakAndWait, stopSpeaking } from "./breeze";
-import {
-  endLiveActivity,
-  startLiveActivity,
-  updateLiveActivity,
-} from "./liveActivity";
 import {
   endAudioSession,
   haptic,
   isNativeExtrasSupported,
 } from "./nativeExtras";
+import {
+  endLiveActivity,
+  startLiveActivity,
+  updateLiveActivity,
+} from "./liveActivity";
 import { useSpeechInput } from "./useSpeechInput";
 
 /**
  * 语音通话浮层。
  *
- * 一个最小闭环：听 → 提交 → 等回复 → 念出来 → 继续听。
- * 不额外造一条对话通道，直接复用聊天页已有的 submit 与 streaming 状态，
- * 所以历史和上下文都跟文字对话一致。
+ * 目标体验是「像打电话」：说话 → 它答 → 说完自动接着听，中间不需要再按。
+ * 所以这里是一个自驱的状态机：
+ *   idle → listening →（识别出句子）→ thinking → speaking → listening …
+ *
+ * 唯一需要用户按的是麦克风（暂停/继续）和挂断。
  */
 export default function VoiceCall({
   open,
@@ -42,6 +44,7 @@ export default function VoiceCall({
 }) {
   const [speaking, setSpeaking] = useState(false);
   const [note, setNote] = useState("");
+  const [paused, setPaused] = useState(false);
   const spokenRef = useRef("");
   const finalRef = useRef(onFinal);
   finalRef.current = onFinal;
@@ -52,7 +55,9 @@ export default function VoiceCall({
     (text) => finalRef.current(text),
   );
 
-  // 说完了就念回复
+  const native = isNativeExtrasSupported();
+
+  /* ── 念回复 ─────────────────────────────────── */
   useEffect(() => {
     if (!open || busy || !reply) return;
     if (reply === spokenRef.current) return;
@@ -80,48 +85,91 @@ export default function VoiceCall({
     };
   }, [open, busy, reply, breezeKey, breezeVoice]);
 
-  // 进入通话就开始听，同时把状态推到灵动岛/锁屏
+  /* ── 自动接着听：说完 / 念完之后自己开麦 ─────── */
+  useEffect(() => {
+    if (!open) return;
+    if (paused || busy || speaking || speech.listening || speech.error) return;
+    const timer = window.setTimeout(() => speech.start(), 420);
+    return () => window.clearTimeout(timer);
+  }, [open, paused, busy, speaking, speech.listening, speech.error]);
+
+  /* ── 开合 ──────────────────────────────────── */
   useEffect(() => {
     if (!open) {
       spokenRef.current = "";
       setNote("");
+      setPaused(false);
       stopSpeaking();
       void endAudioSession();
       void endLiveActivity();
       return;
     }
     void haptic("medium");
-    void startLiveActivity("正在通话", "点一下屏幕回来说话");
+    void startLiveActivity("正在通话", "在听你说");
   }, [open]);
 
-  // 状态变化时更新实时活动
+  /* ── 状态同步到灵动岛 ───────────────────────── */
   useEffect(() => {
     if (!open) return;
-    const detail = speaking ? "正在说" : busy ? "正在想" : "在听你说";
+    const detail = speaking
+      ? "正在说"
+      : busy
+        ? "正在整理"
+        : speech.listening
+          ? "在听你说"
+          : "等你开口";
     void updateLiveActivity("WayMuse 通话中", detail);
-  }, [open, speaking, busy]);
+  }, [open, speaking, busy, speech.listening]);
 
   if (!open) return null;
 
-  const status = speaking
-    ? "正在说…"
+  const phase = speaking
+    ? "speaking"
     : busy
-      ? "正在想…"
+      ? "thinking"
       : speech.listening
-        ? "在听你说"
-        : "点麦克风开始说";
+        ? "listening"
+        : paused
+          ? "paused"
+          : "idle";
+
+  const status =
+    phase === "speaking"
+      ? "正在说…"
+      : phase === "thinking"
+        ? "正在整理你说的话…"
+        : phase === "listening"
+          ? "在听你说"
+          : phase === "paused"
+            ? "已暂停，点麦克风继续"
+            : "马上就开始听";
 
   return (
     <div className="wr-call" role="dialog" aria-label="语音通话">
+      <button className="wr-call-close" aria-label="结束通话" onClick={onClose}>
+        <ChevronDown size={20} />
+        <span>结束</span>
+      </button>
+
       <div className="wr-call-body">
-        <BotAvatar
-          className="wr-call-face"
-          replying={busy || speaking}
-          mood={speaking ? "happy" : busy ? "thinking" : "idle"}
-        />
-        <p className="wr-call-status">{status}</p>
+        <div className={`wr-call-stage ${phase}`}>
+          {/* 波纹：收音时向外扩，说话时呼吸 */}
+          <span className="wr-call-ring r1" aria-hidden="true" />
+          <span className="wr-call-ring r2" aria-hidden="true" />
+          <span className="wr-call-ring r3" aria-hidden="true" />
+          <BotAvatar
+            className="wr-call-face"
+            replying={busy || speaking}
+            mood={speaking ? "happy" : busy ? "thinking" : "idle"}
+          />
+        </div>
+
+        <p className="wr-call-status" aria-live="polite">
+          {phase === "thinking" && <span className="wr-call-spinner" />}
+          {status}
+        </p>
         {note && <p className="wr-call-note">{note}</p>}
-        {!isNativeExtrasSupported() && (
+        {!native && (
           <p className="wr-call-note">
             语音识别只在 iOS App 内可用；这里可以先看文字。
           </p>
@@ -131,17 +179,21 @@ export default function VoiceCall({
       <div className="wr-call-actions">
         <button
           className={speech.listening ? "wr-call-mic listening" : "wr-call-mic"}
-          aria-label={speech.listening ? "结束这次说话" : "开始说话"}
+          aria-label={paused ? "继续说话" : "暂停听"}
           disabled={speaking || busy}
-          onClick={() => speech.toggle()}
+          onClick={() => {
+            if (paused) {
+              setPaused(false);
+              speech.start();
+              return;
+            }
+            setPaused(true);
+            speech.toggle();
+          }}
         >
-          <Mic size={22} />
+          {paused ? <MicOff size={22} /> : <Mic size={22} />}
         </button>
-        <button
-          className="wr-call-hangup"
-          aria-label="结束通话"
-          onClick={onClose}
-        >
+        <button className="wr-call-hangup" aria-label="挂断" onClick={onClose}>
           <PhoneOff size={18} />
         </button>
       </div>

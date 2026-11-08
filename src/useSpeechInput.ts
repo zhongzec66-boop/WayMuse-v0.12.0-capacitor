@@ -24,6 +24,7 @@ export function useSpeechInput(
   listening: boolean;
   error: string;
   toggle: () => void;
+  start: () => void;
 } {
   const [listening, setListening] = useState(false);
   const [error, setError] = useState("");
@@ -68,6 +69,18 @@ export function useSpeechInput(
     };
   }, []);
 
+  const begin = async () => {
+    setError("");
+    try {
+      await startSpeech("zh-CN");
+      setListening(true);
+      void haptic("medium");
+    } catch {
+      setListening(false);
+      setError("语音识别不可用，检查麦克风和语音识别权限");
+    }
+  };
+
   const toggle = () => {
     void (async () => {
       if (listening) {
@@ -75,15 +88,7 @@ export function useSpeechInput(
         await stopSpeech();
         return;
       }
-      setError("");
-      try {
-        await startSpeech("zh-CN");
-        setListening(true);
-        void haptic("medium");
-      } catch {
-        setListening(false);
-        setError("语音识别不可用，检查麦克风和语音识别权限");
-      }
+      await begin();
     })();
   };
 
@@ -92,5 +97,9 @@ export function useSpeechInput(
     listening,
     error,
     toggle,
+    start: () => {
+      if (!isNativeExtrasSupported()) return;
+      void begin();
+    },
   };
 }

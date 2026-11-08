@@ -174,6 +174,7 @@ export default function ChatPage({
   const [breezeKey] = useState(() => storage.getBreezeKey());
   const [breezeVoice] = useState(() => storage.getBreezeVoice());
   const [searchOn, setSearchOn] = useState(() => storage.getSearchEnabled());
+  const [titleMenu, setTitleMenu] = useState(false);
   const [searchKey] = useState(() => storage.getSearchKey());
   const [searchProvider] = useState<SearchProvider>(
     () => storage.getSearchProvider() as SearchProvider,
@@ -535,7 +536,14 @@ export default function ChatPage({
         <button className="wr-round" aria-label="设置" onClick={onSettings}>
           <Settings />
         </button>
-        <div className="wr-chat-title">
+        <button
+          className="wr-chat-title"
+          aria-label="打开快捷操作"
+          onClick={() => {
+            void haptic("medium");
+            setTitleMenu(true);
+          }}
+        >
           <span className="wr-chat-orb">
             <BotAvatar source={agentAvatar} replying={streaming} />
           </span>
@@ -543,38 +551,51 @@ export default function ChatPage({
           <span className={`wr-chat-sub ${connectState}`}>
             {streaming ? "正在回复…" : statusLabel}
           </span>
-        </div>
-        <div className="wr-chat-actions">
-          <button
-            className={searchOn ? "wr-round wr-round-on" : "wr-round"}
-            aria-label={searchOn ? "关闭联网搜索" : "打开联网搜索"}
-            aria-pressed={searchOn}
-            onClick={() => {
-              const next = !searchOn;
-              setSearchOn(next);
-              storage.setSearchEnabled(next);
-              void haptic("light");
-            }}
-          >
-            <Globe />
-          </button>
-          <button
-            className="wr-round"
-            aria-label="语音通话"
-            onClick={() => onCallOpenChange(true)}
-          >
-            <PhoneCall />
-          </button>
-          <button
-            className="wr-round"
-            aria-label="搜索聊天记录"
-            aria-expanded={searchOpen}
-            onClick={() => setSearchOpen((value) => !value)}
-          >
-            <Search />
-          </button>
-        </div>
+        </button>
+        {/* 右侧留白，保证标题严格居中 */}
+        <span className="wr-chat-head-spacer" aria-hidden="true" />
       </div>
+
+      {titleMenu && (
+        <div
+          className="wr-overlay wr-overlay-fixed"
+          onClick={() => setTitleMenu(false)}
+        >
+          <div
+            className="wr-sheet wr-titlemenu"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              onClick={() => {
+                setTitleMenu(false);
+                onCallOpenChange(true);
+              }}
+            >
+              <PhoneCall size={19} /> 语音通话
+            </button>
+            <button
+              onClick={() => {
+                const next = !searchOn;
+                setSearchOn(next);
+                storage.setSearchEnabled(next);
+                void haptic("light");
+              }}
+            >
+              <Globe size={19} /> 联网搜索
+              <em>{searchOn ? "已开" : "已关"}</em>
+            </button>
+            <button
+              onClick={() => {
+                setTitleMenu(false);
+                setSearchOpen(true);
+              }}
+            >
+              <Search size={19} /> 搜索聊天记录
+            </button>
+            <button onClick={() => setTitleMenu(false)}>取消</button>
+          </div>
+        </div>
+      )}
 
       <VoiceCall
         open={callOpen}
