@@ -5,6 +5,7 @@ import BotAvatar from "../BotAvatar";
 import AvatarPicker from "../AvatarPicker";
 import { speak } from "../breeze";
 import { getAudioRoute, haptic } from "../nativeExtras";
+import { VOICES } from "../voices";
 import { storage } from "../storage";
 import { APP_VERSION } from "../version";
 import { DeepSeekError, listDeepSeekModels } from "../deepseek/client";
@@ -77,6 +78,7 @@ export default function SettingsPage({
   const [searchKey, setSearchKey] = useState(() => storage.getSearchKey());
   const [searchOn, setSearchOn] = useState(() => storage.getSearchEnabled());
   const [audioRoute, setAudioRoute] = useState("");
+  const currentVoice = VOICES.find((voice) => voice.id === breezeVoice);
   const safeTop = (() => {
     if (typeof window === "undefined") return 0;
     const raw = getComputedStyle(document.documentElement)
@@ -598,18 +600,22 @@ export default function SettingsPage({
           </label>
           <label className="wr-settings-field">
             <span>
-              Voice ID
-              <small>Breeze 控制台里那个 voc_ 开头的 ID</small>
+              声音
+              <small>{currentVoice?.desc ?? "选一个读给你听的音色"}</small>
             </span>
-            <input
+            <select
               value={breezeVoice}
-              placeholder="voc_…"
-              spellCheck={false}
               onChange={(event) => {
                 setBreezeVoice(event.target.value);
                 storage.setBreezeVoice(event.target.value);
               }}
-            />
+            >
+              {VOICES.map((voice) => (
+                <option key={voice.id} value={voice.id}>
+                  {voice.name}
+                </option>
+              ))}
+            </select>
           </label>
           <button
             type="button"

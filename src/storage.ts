@@ -1,5 +1,6 @@
 import { BRAND } from "./brand";
 import { normalizeConfig } from "./deepseek/config";
+import { DEFAULT_VOICE_ID } from "./voices";
 import type { DeepSeekConfig, DeepSeekMessage } from "./deepseek/types";
 import { normalizeProfile } from "./profile";
 import type { UserProfile } from "./profile";
@@ -339,9 +340,9 @@ export const storage = {
   getBreezeKey: () => readText("breeze-key", ""),
   setBreezeKey: (key: string) => writeText("breeze-key", key.trim()),
   getBreezeVoice: () =>
-    readText("breeze-voice", "voc_xeh3w54cqvnp") || "voc_xeh3w54cqvnp",
+    readText("breeze-voice", DEFAULT_VOICE_ID) || DEFAULT_VOICE_ID,
   setBreezeVoice: (voice: string) =>
-    writeText("breeze-voice", voice.trim() || "voc_xeh3w54cqvnp"),
+    writeText("breeze-voice", voice.trim() || DEFAULT_VOICE_ID),
   getDeepSeekMessages: readDeepSeekMessages,
   setDeepSeekMessages: (messages: DeepSeekMessage[]) =>
     writeJson("deepseek-messages", messages.slice(-120)),
