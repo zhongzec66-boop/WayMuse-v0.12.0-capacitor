@@ -150,14 +150,10 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
 
         do {
             let session = AVAudioSession.sharedInstance()
-            // 通话中必须用 .voiceChat：它会打开系统级回声消除，
-            // 让麦克风在播放 TTS 的同时仍然能听清用户说话（打断的前提）。
-            try session.setCategory(
-                .playAndRecord,
-                mode: callAudioMode,
-                options: [.duckOthers, .defaultToSpeaker, .allowBluetooth]
-            )
-            try session.setActive(true, options: .notifyOthersOnDeactivation)
+            // 录音也走统一入口：它会在 setCategory 之后重新把输出强制到扬声器，
+            // 否则每次开口监听都会把声音打回听筒。
+            _ = session
+            try self.activateSession()
 
             let request = SFSpeechAudioBufferRecognitionRequest()
             request.shouldReportPartialResults = true
@@ -383,15 +379,24 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
     // MARK: - 音频播放（锁扬声器）
 
     /// 统一把会话配成「播放 + 录音」并强制走扬声器。
-    private func configureSpeakerSession() throws {
+    /// 唯一的会话配置入口。
+    ///
+    /// 关键点：`overrideOutputAudioPort(.speaker)` 必须在 `setCategory` **之后**
+    /// 调用。每次重新 setCategory 都会把输出端口打回默认（.voiceChat 下就是听筒），
+    /// 所以只要有一次没跟着重新 override，声音就会突然变小。
+    private func activateSession() throws {
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(
             .playAndRecord,
             mode: callAudioMode,
-            options: [.defaultToSpeaker, .allowBluetooth]
+            options: [.defaultToSpeaker, .allowBluetooth, .duckOthers]
         )
         try session.setActive(true, options: .notifyOthersOnDeactivation)
         try session.overrideOutputAudioPort(.speaker)
+    }
+
+    private func configureSpeakerSession() throws {
+        try activateSession()
     }
 
     @objc func playAudio(_ call: CAPPluginCall) {

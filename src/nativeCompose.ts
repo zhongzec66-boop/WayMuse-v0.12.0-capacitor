@@ -39,7 +39,11 @@ interface NativeComposePlugin {
     listener: (event: { text: string }) => void,
   ): Promise<PluginListenerHandle>;
   addListener(
-    eventName: "composeAttach" | "composeVoice",
+    eventName:
+      | "composeAttach"
+      | "composeVoice"
+      | "composeVoiceStart"
+      | "composeVoiceEnd",
     listener: () => void,
   ): Promise<PluginListenerHandle>;
 }
@@ -77,6 +81,8 @@ export function useNativeCompose(options: {
   onSubmit: () => void;
   onAttach: () => void;
   onVoice: () => void;
+  onVoiceStart?: () => void;
+  onVoiceEnd?: () => void;
 }): boolean {
   const { enabled, hidden, text, placeholder } = options;
   const [active, setActive] = useState(false);
@@ -123,6 +129,17 @@ export function useNativeCompose(options: {
     track(
       NativeCompose.addListener("composeVoice", () => {
         handlers.current.onVoice();
+      }),
+    );
+    // 长按说话：按下开始识别，松手结束
+    track(
+      NativeCompose.addListener("composeVoiceStart", () => {
+        handlers.current.onVoiceStart?.();
+      }),
+    );
+    track(
+      NativeCompose.addListener("composeVoiceEnd", () => {
+        handlers.current.onVoiceEnd?.();
       }),
     );
 

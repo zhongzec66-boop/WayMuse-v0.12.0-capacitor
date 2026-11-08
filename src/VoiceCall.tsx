@@ -16,14 +16,20 @@ import {
 } from "./liveActivity";
 import { useSpeechInput } from "./useSpeechInput";
 
+/** 按句切分，打断时才能「从下一句接着念」。 */
+function splitSentences(text: string): string[] {
+  return text
+    .split(/(?<=[。！？!?…；;\n])/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
 /**
  * 语音通话浮层。
  *
- * 目标体验是「像打电话」：说话 → 它答 → 说完自动接着听，中间不需要再按。
- * 所以这里是一个自驱的状态机：
- *   idle → listening →（识别出句子）→ thinking → speaking → listening …
- *
- * 唯一需要用户按的是麦克风（暂停/继续）和挂断。
+ * 像打电话：说话 → 它答 → 说完自动接着听。
+ * 它念的时候你可以直接开口打断；打断只是暂停，不会丢掉剩下的内容——
+ * 你不说话，它会从被中断的那一句接着念完。
  */
 export default function VoiceCall({
   open,
@@ -35,9 +41,7 @@ export default function VoiceCall({
   onClose,
 }: {
   open: boolean;
-  /** 聊天是否还在生成回复 */
   busy: boolean;
-  /** 最新一条助手回复（已剥掉契约块）；变化时触发朗读 */
   reply: string;
   breezeKey: string;
   breezeVoice: string;
@@ -47,87 +51,118 @@ export default function VoiceCall({
   const [speaking, setSpeaking] = useState(false);
   const [note, setNote] = useState("");
   const [paused, setPaused] = useState(false);
+  const [barged, setBarged] = useState(false);
   const spokenRef = useRef("");
   const finalRef = useRef(onFinal);
   finalRef.current = onFinal;
 
-  // 打断用：正在念的文本、是否正在念
+  // 播报队列：按句排队；打断时保留，稍后接着念
+  const queueRef = useRef<string[]>([]);
+  const stoppedRef = useRef(false);
   const speakingRef = useRef(false);
   const spokenTextRef = useRef("");
-  const [barged, setBarged] = useState(false);
+  const resumeTimerRef = useRef<number | null>(null);
 
   const bargeIn = () => {
-    spokenRef.current = "";
+    stoppedRef.current = true;
     stopSpeaking();
     setSpeaking(false);
     setBarged(true);
     void haptic("medium");
+    // 用户只是插一句、没有继续说的话，2.6 秒后把剩下的念完
+    if (resumeTimerRef.current) window.clearTimeout(resumeTimerRef.current);
+    resumeTimerRef.current = window.setTimeout(() => {
+      if (queueRef.current.length > 0) void runQueue();
+    }, 2600);
   };
 
-  // 通话模式下不做逐字回填；partial 用来判断「用户开口打断」
   const speech = useSpeechInput(
     (partial) => {
       if (!speakingRef.current) return;
       const said = partial.trim().replace(/\s+/g, "");
       if (said.length < 4) return;
-      // 回声防护：如果识别到的就是正在念的内容，说明是喇叭串进麦克风
+      // 回声防护：识别到的就是正在念的内容，说明喇叭串进了麦克风
       const playing = spokenTextRef.current.replace(/\s+/g, "");
       if (playing.includes(said) || said.includes(playing.slice(0, 6))) return;
       bargeIn();
     },
-    (text) => finalRef.current(text),
+    (text) => {
+      // 用户真的说了新内容：放弃剩下的播报，进入新一轮
+      queueRef.current = [];
+      if (resumeTimerRef.current) {
+        window.clearTimeout(resumeTimerRef.current);
+        resumeTimerRef.current = null;
+      }
+      finalRef.current(text);
+    },
   );
 
   speakingRef.current = speaking;
   const native = isNativeExtrasSupported();
 
-  /* ── 念回复 ─────────────────────────────────── */
-  useEffect(() => {
-    if (!open || busy || !reply) return;
-    if (reply === spokenRef.current) return;
-    spokenRef.current = reply;
+  const runQueue = async () => {
     if (!breezeKey.trim()) {
       setNote("没填 Breeze key，先只能看文字");
       return;
     }
-    let alive = true;
-    setSpeaking(true);
+    stoppedRef.current = false;
     setBarged(false);
-    spokenTextRef.current = reply;
     setNote("");
-    void speakAndWait(reply, { apiKey: breezeKey, voiceId: breezeVoice })
-      .catch(() => {
-        if (alive) setNote("朗读失败，检查 Breeze key 或网络");
-      })
-      .finally(() => {
-        if (!alive) return;
+    setSpeaking(true);
+    while (queueRef.current.length > 0) {
+      const sentence = queueRef.current[0];
+      spokenTextRef.current = sentence;
+      try {
+        await speakAndWait(sentence, {
+          apiKey: breezeKey,
+          voiceId: breezeVoice,
+        });
+      } catch {
+        setNote("朗读失败，检查 Breeze key 或网络");
+        break;
+      }
+      if (stoppedRef.current) {
+        // 被打断：当前位置不动，之后从这里继续
         setSpeaking(false);
-        void haptic("light");
-      });
+        return;
+      }
+      queueRef.current.shift();
+    }
+    queueRef.current = [];
+    setSpeaking(false);
+  };
+
+  /* ── 收到新回复：重新排一份播报队列 ───────────── */
+  useEffect(() => {
+    if (!open || busy || !reply) return;
+    if (reply === spokenRef.current) return;
+    spokenRef.current = reply;
+    queueRef.current = splitSentences(reply);
+    void runQueue();
     return () => {
-      alive = false;
+      stoppedRef.current = true;
       stopSpeaking();
-      setSpeaking(false);
     };
   }, [open, busy, reply, breezeKey, breezeVoice]);
 
-  /* ── 自动接着听：说完 / 念完之后自己开麦 ─────── */
+  /* ── 自动接着听（说话时也要听着，否则没法打断）── */
   useEffect(() => {
     if (!open) return;
-    // 注意：这里**不**排除 speaking。说话时麦克风必须继续工作，
-    // 否则用户没法打断（配合原生 .voiceChat 的回声消除）。
     if (paused || busy || speech.listening || speech.error) return;
     const timer = window.setTimeout(() => speech.start(), 420);
     return () => window.clearTimeout(timer);
-  }, [open, paused, busy, speaking, speech.listening, speech.error]);
+  }, [open, paused, busy, speech.listening, speech.error]);
 
   /* ── 开合 ──────────────────────────────────── */
   useEffect(() => {
     if (!open) {
       spokenRef.current = "";
+      queueRef.current = [];
       setNote("");
       setPaused(false);
+      setBarged(false);
       stopSpeaking();
+      if (resumeTimerRef.current) window.clearTimeout(resumeTimerRef.current);
       void endCallAudio();
       void endAudioSession();
       void endLiveActivity();
@@ -165,15 +200,15 @@ export default function VoiceCall({
 
   const status =
     phase === "speaking"
-      ? "正在说…（开口就能打断）"
+      ? "正在说，开口就能打断"
       : phase === "thinking"
-        ? "正在整理你说的话…"
+        ? "正在整理你说的话"
         : phase === "listening"
           ? barged
             ? "你说，我在听"
             : "在听你说"
           : phase === "paused"
-            ? "已暂停，点麦克风继续"
+            ? "已暂停"
             : "马上就开始听";
 
   return (
@@ -185,7 +220,6 @@ export default function VoiceCall({
 
       <div className="wr-call-body">
         <div className={`wr-call-stage ${phase}`}>
-          {/* 波纹：收音时向外扩，说话时呼吸 */}
           <span className="wr-call-ring r1" aria-hidden="true" />
           <span className="wr-call-ring r2" aria-hidden="true" />
           <span className="wr-call-ring r3" aria-hidden="true" />
@@ -212,7 +246,7 @@ export default function VoiceCall({
         <button
           className={speech.listening ? "wr-call-mic listening" : "wr-call-mic"}
           aria-label={paused ? "继续说话" : "暂停听"}
-          disabled={speaking || busy}
+          disabled={busy}
           onClick={() => {
             if (paused) {
               setPaused(false);

@@ -4,6 +4,8 @@ import { newId } from "./id";
 import Onboarding from "./Onboarding";
 import { haptic, readCalendarEvents } from "./nativeExtras";
 import type { CalendarEvent } from "./nativeExtras";
+import { subscribeChrome } from "./chrome";
+import { installGlobalHaptics } from "./haptics";
 import { useKeyboardInset } from "./useKeyboardInset";
 import WayMuseIntake from "./WayMuseIntake";
 import ChatPage from "./pages/ChatPage";
@@ -69,6 +71,7 @@ export default function WayMuseReference() {
   const [showTip, setShowTip] = useState(true);
   // 通话是覆盖全屏的原生+Web 混合界面，必须把原生 Tab 栏和原生输入框一起藏掉
   const [callOpen, setCallOpen] = useState(false);
+  const [chromeHidden, setChromeHidden] = useState(false);
   const [courses, setCourses] = useState<Course[]>(storage.getCourses);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [hasEntered, setHasEntered] = useState(storage.getEntered);
@@ -123,6 +126,14 @@ export default function WayMuseReference() {
     };
   }, [page]);
 
+  // 任何网页浮层打开时，让原生 Tab 栏与输入框让位
+  useEffect(() => subscribeChrome(setChromeHidden), []);
+
+  // 全局触觉反馈：任何按钮按下都给一下轻震
+  useEffect(() => {
+    installGlobalHaptics();
+  }, []);
+
   const todayWeekday = getShanghaiWeekday();
   const todayCourses = courses
     .filter((course) => course.weekday === todayWeekday)
@@ -161,7 +172,7 @@ export default function WayMuseReference() {
   const nativeTabsActive = useNativeTabs(
     page,
     hasEntered,
-    callOpen ? "通话" : overlay,
+    callOpen || chromeHidden ? "通话" : overlay,
     nav,
   );
   const openIntake = (kind: Kind) => {
@@ -307,7 +318,7 @@ export default function WayMuseReference() {
           setAttachmentMenu={setAttachmentMenu}
           draft={draft}
           setDraft={setDraft}
-          overlay={callOpen ? "通话" : overlay}
+          overlay={callOpen || chromeHidden ? "通话" : overlay}
           submit={submit}
           openIntake={openIntake}
           onAttach={(payload) => {

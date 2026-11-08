@@ -21,6 +21,7 @@ import { localSuggestions, parseReply, planTasks } from "../agent";
 import { BRAND } from "../brand";
 import BotAvatar from "../BotAvatar";
 import VoiceCall from "../VoiceCall";
+import { useHideNativeChrome } from "../chrome";
 import { haptic } from "../nativeExtras";
 import { formatSearchContext, webSearch } from "../search";
 import type { SearchProvider } from "../search";
@@ -520,6 +521,8 @@ export default function ChatPage({
             : "未连接";
 
   // 通话模式下要念的最新一条回复（剥掉 <plans>/<memories> 契约块）
+  useHideNativeChrome(Boolean(titleMenu));
+
   const lastAssistant = [...messages]
     .reverse()
     .find((m) => m.role === "assistant" && m.content.trim());

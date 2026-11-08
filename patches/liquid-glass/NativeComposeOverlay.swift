@@ -16,6 +16,10 @@ final class NativeComposeOverlay: NSObject {
     var onSubmit: ((String) -> Void)?
     var onAttach: (() -> Void)?
     var onVoice: (() -> Void)?
+    var onVoiceStart: (() -> Void)?
+    var onVoiceEnd: (() -> Void)?
+    /// 这次按下是不是「长按说话」，用来在松手时配对收尾
+    private var voicePressActive = false
 
     // MARK: - 视图
 
@@ -161,6 +165,11 @@ final class NativeComposeOverlay: NSObject {
         textField.translatesAutoresizingMaskIntoConstraints = false
 
         actionButton.addTarget(self, action: #selector(handleAction), for: .touchUpInside)
+        // 长按说话：按下开始识别，松手结束
+        actionButton.addTarget(self, action: #selector(handleVoiceDown), for: .touchDown)
+        actionButton.addTarget(self, action: #selector(handleVoiceUp), for: .touchUpInside)
+        actionButton.addTarget(self, action: #selector(handleVoiceUp), for: .touchUpOutside)
+        actionButton.addTarget(self, action: #selector(handleVoiceUp), for: .touchCancel)
         actionButton.translatesAutoresizingMaskIntoConstraints = false
 
         stack.addArrangedSubview(attachButton)
@@ -250,10 +259,25 @@ final class NativeComposeOverlay: NSObject {
     @objc private func handleAction() {
         let text = textField.text ?? ""
         if text.isEmpty {
-            onVoice?()
+            // 兜底：没收到按下事件时，仍按一次点击处理
+            if !voicePressActive {
+                onVoice?()
+            }
             return
         }
         onSubmit?(text)
+    }
+
+    @objc private func handleVoiceDown() {
+        guard (textField.text ?? "").isEmpty else { return }
+        voicePressActive = true
+        onVoiceStart?()
+    }
+
+    @objc private func handleVoiceUp() {
+        guard voicePressActive else { return }
+        voicePressActive = false
+        onVoiceEnd?()
     }
 }
 

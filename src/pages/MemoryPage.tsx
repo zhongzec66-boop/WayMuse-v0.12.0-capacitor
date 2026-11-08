@@ -12,6 +12,7 @@ import {
 } from "../docs";
 import type { DocId } from "../docs";
 import type { Memory, Overlay, Page } from "../types";
+import { useHideNativeChrome } from "../chrome";
 import { useBubbleField } from "../useBubbleField";
 
 type Bubble = {
@@ -74,6 +75,9 @@ export default function MemoryPage({
   };
 
   useBubbleField(fieldRef, bubbles.length, tapRef);
+
+  // 编辑器和单条详情都是铺满屏幕的，原生 Tab 栏必须让位
+  useHideNativeChrome(Boolean(editing) || Boolean(picked));
 
   const openDoc = (id: DocId) => {
     setEditing(id);

@@ -53,7 +53,7 @@ export default function Dock({
   const composeText =
     overlay === "新增任务" || overlay === "添加记忆" ? "" : draft;
   // 同一个 agent，五个工作面：占位符跟着当前页走，提示它此刻能帮什么。
-  const placeholder =
+  const basePlaceholder =
     page === "Today"
       ? "今天要做什么"
       : page === "任务"
@@ -62,7 +62,8 @@ export default function Dock({
           ? "记点什么"
           : page === "角色"
             ? "说点什么"
-            : "点击输入或录制语音…";
+            : "点击输入或按住说话";
+
   const fileRef = useRef<HTMLInputElement | null>(null);
   const imageRef = useRef<HTMLInputElement | null>(null);
   // 右侧麦克风：原生本地识别，逐字回填到输入框，不跳页
@@ -105,6 +106,13 @@ export default function Dock({
   };
 
   // iOS 上用原生输入框；其它环境（Web / 插件缺失）自动回退到下面的 <input>。
+  // 状态直接体现在输入框里，不再弹浮条
+  const placeholder = speech.listening
+    ? "正在听，松手结束"
+    : speech.error
+      ? speech.error
+      : basePlaceholder;
+
   const nativeComposeActive = useNativeCompose({
     enabled: isNativeComposeSupported(),
     hidden: overlay !== "",
@@ -119,6 +127,12 @@ export default function Dock({
         return;
       }
       openIntake("语音");
+    },
+    onVoiceStart: () => {
+      if (speech.supported) speech.start();
+    },
+    onVoiceEnd: () => {
+      if (speech.supported) speech.stop();
     },
   });
 
@@ -140,21 +154,7 @@ export default function Dock({
           </button>
         </div>
       )}
-      {speech.listening && (
-        <button
-          className="wr-listening"
-          type="button"
-          onClick={() => speech.toggle()}
-        >
-          <span className="wr-listening-dot" />
-          正在听，点这里结束
-        </button>
-      )}
-      {speech.error && !speech.listening && (
-        <div className="wr-listening error" role="alert">
-          {speech.error}
-        </div>
-      )}
+
       <input
         ref={fileRef}
         type="file"
@@ -193,6 +193,7 @@ export default function Dock({
         />
         <button
           className={speech.listening ? "wr-compose-mic listening" : undefined}
+          data-no-haptic="true"
           aria-label={
             draft
               ? "发送"
@@ -203,16 +204,31 @@ export default function Dock({
                 : "录制语音"
           }
           onClick={() => {
+            // 有文字时这个按钮就是「发送」；长按说话由下面的 pointer 事件处理
             if (draft) {
               void haptic("light");
               submit();
-              return;
+            } else if (!speech.supported) {
+              openIntake("语音");
             }
-            if (speech.supported) {
-              speech.toggle();
-              return;
-            }
-            openIntake("语音");
+          }}
+          onPointerDown={() => {
+            if (draft || !speech.supported) return;
+            void haptic("medium");
+            speech.start();
+          }}
+          onPointerUp={() => {
+            if (draft || !speech.supported) return;
+            void haptic("light");
+            speech.stop();
+          }}
+          onPointerCancel={() => {
+            if (draft || !speech.supported) return;
+            speech.stop();
+          }}
+          onPointerLeave={() => {
+            if (draft || !speech.supported || !speech.listening) return;
+            speech.stop();
           }}
         >
           {draft ? (

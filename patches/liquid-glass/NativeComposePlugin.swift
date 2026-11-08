@@ -39,6 +39,12 @@ public class NativeComposePlugin: CAPPlugin, CAPBridgedPlugin {
         created.onVoice = { [weak self] in
             self?.notifyListeners("composeVoice", data: [:])
         }
+        created.onVoiceStart = { [weak self] in
+            self?.notifyListeners("composeVoiceStart", data: [:])
+        }
+        created.onVoiceEnd = { [weak self] in
+            self?.notifyListeners("composeVoiceEnd", data: [:])
+        }
         overlay = created
         return created
     }

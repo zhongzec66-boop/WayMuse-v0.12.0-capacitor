@@ -25,6 +25,7 @@ export function useSpeechInput(
   error: string;
   toggle: () => void;
   start: () => void;
+  stop: () => void;
 } {
   const [listening, setListening] = useState(false);
   const [error, setError] = useState("");
@@ -55,7 +56,12 @@ export function useSpeechInput(
       const failed = await speechEvents.error(({ message }) => {
         if (!alive) return;
         setListening(false);
-        setError(message || "识别中断");
+        // 「没听到人说话」是正常收尾，不是错误：既不要报错，也别把英文原文给用户
+        if (/no speech|no match|1110|recognition request/i.test(message)) {
+          setError("");
+          return;
+        }
+        setError("没听清，再说一次");
       });
       const cancelled = await speechEvents.cancelled(() => {
         if (alive) setListening(false);
@@ -108,6 +114,10 @@ export function useSpeechInput(
     start: () => {
       if (!isNativeExtrasSupported()) return;
       void begin();
+    },
+    stop: () => {
+      setListening(false);
+      void stopSpeech();
     },
   };
 }
