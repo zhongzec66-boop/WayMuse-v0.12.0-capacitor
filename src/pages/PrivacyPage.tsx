@@ -13,13 +13,13 @@ import { APP_VERSION } from "../version";
 const sections = [
   {
     icon: <HardDrive />,
-    title: "这份演示保存在哪里",
-    body: "称呼、WayMuse 头像、学校、专业、年级、主要课程、课程、任务、记忆和是否完成首次进入，都只保存在当前设备的浏览器存储中。没有账户，也没有云端副本。",
+    title: "数据保存在何处",
+    body: "称呼、WayMuse 头像、自定义助理人格、学校、专业、年级、主要课程、课程、任务、记忆和是否完成首次进入，都只保存在当前设备的浏览器存储中。没有账户，也没有云端副本。",
   },
   {
     icon: <GraduationCap />,
     title: "WayMuse 头像与学业档案",
-    body: "WayMuse 头像由你主动选择，浏览器会裁成 256px JPEG 后只存本机；学校、专业、年级和主要课程也只存本机。只有你开启“带入本地演示数据”并发送消息时，这些档案才会作为上下文发送给 DeepSeek。",
+    body: "WayMuse 头像由你主动选择，浏览器会裁成 256px JPEG 后只存本机；学校、专业、年级和主要课程也只存本机。只有你开启“带入本机资料”并发送消息时，这些档案才会作为上下文发送给 DeepSeek。",
   },
   {
     icon: <Mic />,
@@ -29,7 +29,7 @@ const sections = [
   {
     icon: <Sparkles />,
     title: "可选：聊天页的 DeepSeek 接入",
-    body: "只有你在聊天页或设置 → AI 连接中填写自己的 API Key、连接 DeepSeek 并发送消息时，对话内容和你选择带入的本地演示数据才会发送到 api.deepseek.com。密钥默认只保存在本次会话；勾选“记住密钥”后会写入本机。不连接 DeepSeek 时，聊天页不会发起任何 AI 请求。",
+    body: "只有你在聊天页或设置中填写自己的 API Key、连接 DeepSeek 并发送消息时，对话内容和自定义助理人格才会发送到 api.deepseek.com；你选择带入的本机资料也会一同发送。密钥默认只保存在本次会话；勾选“记住密钥”后会写入本机。不连接 DeepSeek 时，聊天页不会发起任何 AI 请求。",
   },
   {
     icon: <CloudOff />,
@@ -39,7 +39,7 @@ const sections = [
   {
     icon: <ShieldCheck />,
     title: "你的控制",
-    body: "你可以在设置中单独删除课程和记忆，也可以使用“清除全部演示数据”一次性删除本机数据并回到首次进入。卸载 App 或清除浏览器数据同样会删除这些内容。",
+    body: "你可以在设置中单独删除课程和记忆，也可以使用“清除全部数据”一次性删除本机数据并回到首次进入。卸载 App 或清除浏览器数据同样会删除这些内容。",
   },
   {
     icon: <Trash2 />,
@@ -61,9 +61,7 @@ export default function PrivacyPage({ onClose }: { onClose: () => void }) {
       <div className="wr-settings-scroll">
         <div className="wr-privacy-intro">
           <ShieldCheck size={26} />
-          <p>
-            这还是一个本地演示。下面写清楚哪些数据留在设备上、哪些能力需要你主动开启，避免把“规划中”误认为已经发生。
-          </p>
+          <p>资料默认保存在本机。外部连接需要你主动开启。</p>
         </div>
         {sections.map(({ icon, title, body }) => (
           <section className="wr-privacy-section" key={title}>
@@ -81,7 +79,7 @@ export default function PrivacyPage({ onClose }: { onClose: () => void }) {
           </div>
           <p>
             上架后可通过 App Store 产品页的“App
-            支持”链接联系开发者。当前演示版没有客服系统或账户注销入口，因为还没有创建账户。
+            支持”链接联系开发者。当前没有客服系统或账户注销入口，因为还没有创建账户。
           </p>
         </section>
         <p className="wr-privacy-foot">

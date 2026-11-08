@@ -1,4 +1,4 @@
-import type { Course, Task } from "./types";
+import type { Task } from "./types";
 
 export type Plan = { title: string; summary: string; steps: string[] };
 export const PLAN_INSTRUCTION = `【简短聊天与方案协议】
@@ -63,63 +63,4 @@ export function planTasks(
     done: false,
     priority: "medium",
   }));
-}
-
-export function demoReply(
-  text: string,
-  tasks: Task[],
-  memories: string[] = [],
-  courses: Course[] = [],
-): string {
-  const open = tasks.filter((t) => !t.done);
-  if (/进度|完成了|还有什么|查看计划|我的计划/.test(text))
-    return open.length
-      ? `目前还有 ${open.length} 项没完成。\n\n先从「${open[0].text}」开始，怎么样？`
-      : "现在没有未完成的计划。\n\n想休息一下，还是一起定一个小目标？";
-  if (/课程|课表/.test(text) && courses.length)
-    return `课表里有「${courses[0].name}」，从 ${courses[0].start} 到 ${courses[0].end}。\n\n想围绕这门课安排一次复习吗？`;
-  if (/记得|记忆|资料|健康|睡眠/.test(text) && memories.length) {
-    const relevant = /健康|睡眠/.test(text)
-      ? memories.find((m) => /健康|睡眠/.test(m))
-      : /资料/.test(text)
-        ? memories.find((m) => /资料/.test(m))
-        : memories[0];
-    return relevant
-      ? `本机记录里有：${relevant}\n\n你想围绕这个聊聊，还是安排一个小计划？`
-      : "本机还没有这类记录。\n\n可以先在设置的 App 连接里添加模拟样例。";
-  }
-  if (/计划|安排|复习|考试|学习|方案|实习|作业/.test(text)) {
-    const goal = /实习/.test(text)
-      ? "实习准备"
-      : /作业/.test(text)
-        ? "完成作业"
-        : "复习";
-    return `先不用一下子把所有事做完。\n\n${open.length ? `你还有 ${open.length} 项计划没完成，我们先留一点余量。` : "从一小步开始就好。"}\n\n这两个节奏，你更想试哪个？\n<plans>${JSON.stringify(
-      [
-        {
-          title: `轻量${goal} · 25分钟`,
-          summary: "适合现在有点累，先找回节奏。",
-          steps: [
-            `用5分钟列出${goal}最卡住的一个问题`,
-            "专注15分钟，完成一道题或一个小步骤",
-            "用5分钟记下收获和下一处疑问",
-          ],
-        },
-        {
-          title: `专注${goal} · 50分钟`,
-          summary: "适合有一点精力，想推进得更完整。",
-          steps: [
-            "用10分钟梳理重点和薄弱处",
-            "专注25分钟处理最重要的一项",
-            "休息5分钟，再用10分钟自测或检查",
-          ],
-        },
-      ],
-    )}</plans>`;
-  }
-  if (/计划|任务|完成|进度/.test(text))
-    return open.length
-      ? `目前还有 ${open.length} 项没完成。\n\n先从「${open[0].text}」开始，怎么样？`
-      : "现在没有未完成的计划。\n\n想休息一下，还是一起定一个小目标？";
-  return "我在，慢慢说。\n\n你现在更想聊聊，还是想让我陪你把一件事理清楚？";
 }

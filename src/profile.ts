@@ -13,6 +13,7 @@ export type UserProfile = {
   tone: CompanionTone;
   temperature: number;
   responseLength: ResponseLength;
+  persona: string;
 };
 
 export const GRADES = ["大一", "大二", "大三", "大四", "研究生", "其他"];
@@ -39,6 +40,7 @@ export const DEFAULT_PROFILE: UserProfile = {
   tone: "幽默",
   temperature: 0.8,
   responseLength: "短",
+  persona: "",
 };
 
 export function responseTokenBudget(length: ResponseLength): number {
@@ -102,5 +104,7 @@ export function normalizeProfile(value: unknown): UserProfile {
     tone,
     temperature,
     responseLength,
+    persona:
+      typeof input.persona === "string" ? input.persona.slice(0, 1500) : "",
   };
 }

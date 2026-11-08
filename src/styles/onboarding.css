@@ -188,6 +188,7 @@
   background: var(--primary-soft);
   color: var(--primary);
   font-size: var(--text-34);
+  object-fit: cover;
 }
 
 .wr-onboard-emblem.small {
@@ -469,6 +470,7 @@
   background: var(--primary-soft);
   color: var(--primary);
   font-size: var(--text-34);
+  object-fit: cover;
 }
 
 @keyframes wm-step-in {

@@ -133,7 +133,7 @@ export default function TaskPage({
             </>
           )}
           {tasks.length === 0 && (
-            <p className="wr-empty-hint">暂无任务，点击右上角 ＋ 添加</p>
+            <p className="wr-empty-hint">暂无任务，点击右上角添加</p>
           )}
         </>
       ) : (

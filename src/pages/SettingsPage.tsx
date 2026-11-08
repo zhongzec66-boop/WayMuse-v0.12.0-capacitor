@@ -2,7 +2,6 @@ import { useState } from "react";
 import { ArrowLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
 import ConnectionsPanel from "./ConnectionsPanel";
 import AvatarPicker from "../AvatarPicker";
-import { BRAND } from "../brand";
 import { storage } from "../storage";
 import { APP_VERSION } from "../version";
 import { DeepSeekError, listDeepSeekModels } from "../deepseek/client";
@@ -23,11 +22,8 @@ export default function SettingsPage({
   onProfileChange,
   agentName,
   onAgentNameChange,
-  onImportMemory,
   agentAvatar,
   onAgentAvatarChange,
-  notifications,
-  setNotifications,
   setOverlay,
   nav,
   setHasEntered,
@@ -37,11 +33,8 @@ export default function SettingsPage({
   onProfileChange: (profile: UserProfile) => void;
   agentName: string;
   onAgentNameChange: (name: string) => void;
-  onImportMemory: (text: string) => void;
   agentAvatar: string;
   onAgentAvatarChange: (value: string) => void;
-  notifications: boolean;
-  setNotifications: Dispatch<SetStateAction<boolean>>;
   setOverlay: Dispatch<SetStateAction<Overlay>>;
   nav: (page: Page) => void;
   setHasEntered: Dispatch<SetStateAction<boolean>>;
@@ -171,18 +164,13 @@ export default function SettingsPage({
             ),
           )}
         </nav>
-        <p className="wr-settings-hint">
-          档案与陪伴设置自动保存在本机；模型配置需要点「保存」。
-        </p>
         <div className="wr-settings-profile">
           <div className="wr-settings-profile-head">
             <div className="wr-settings-avatar">
-              {agentAvatar ? <img src={agentAvatar} alt="" /> : <span>✦</span>}
+              <img src={agentAvatar || "/avatar.svg"} alt="" />
             </div>
             <div>
-              <div className="wr-settings-brand">
-                {agentName} <span>✦</span>
-              </div>
+              <div className="wr-settings-brand">{agentName}</div>
               <div className="wr-settings-name">
                 {displayName}
                 <span>{profile.companionType}</span>
@@ -211,9 +199,6 @@ export default function SettingsPage({
           <div className="wr-settings-avatar-row">
             <AvatarPicker value={agentAvatar} onChange={onAgentAvatarChange} />
           </div>
-          <p className="wr-settings-hint">
-            这是 WayMuse 的头像，会用在聊天和角色页；只保存在本机。
-          </p>
         </div>
 
         <div className="wr-settings-label" id="setting-个人档案">
@@ -272,7 +257,6 @@ export default function SettingsPage({
               maxLength={600}
             />
           </label>
-          <p className="wr-settings-hint">修改会立即保存在本机。</p>
         </div>
 
         <div className="wr-settings-label" id="setting-陪伴风格">
@@ -346,9 +330,16 @@ export default function SettingsPage({
               ))}
             </div>
           </div>
-          <p className="wr-settings-hint">
-            默认用短句分段聊天，需要详细讲解时再展开。
-          </p>
+          <label className="wr-settings-field">
+            <span>自定义助理人格</span>
+            <textarea
+              rows={5}
+              value={profile.persona}
+              onChange={(event) => updateProfile("persona", event.target.value)}
+              placeholder="例如：像耐心的学长一样交流，先听我说完，再帮我整理下一步。"
+              maxLength={1500}
+            />
+          </label>
         </div>
 
         <div className="wr-settings-label" id="setting-模型连接">
@@ -356,10 +347,7 @@ export default function SettingsPage({
         </div>
         <div className="wr-settings-group">
           <div className="wr-settings-row">
-            <span>
-              DeepSeek
-              <small>聊天页使用的真实 API</small>
-            </span>
+            <span>DeepSeek</span>
             <b
               className={
                 deepSeekStatus === "error"
@@ -474,24 +462,13 @@ export default function SettingsPage({
             />
             深度思考（回复更慢）
           </label>
-          <details>
-            <summary>自定义提示词</summary>
-            <textarea
-              aria-label="自定义提示词"
-              value={deepSeek.systemPrompt}
-              onChange={(e) => updateDeepSeek("systemPrompt", e.target.value)}
-            />
-          </details>
-          <p className="wr-settings-hint">
-            未配置模型时使用明确标注的示例回复。连接模型后，发送的聊天及启用的上下文会交给所配置的模型服务。
-          </p>
         </div>
 
         <div className="wr-settings-label" id="setting-App 连接">
           App 连接
         </div>
         <div className="wr-settings-group">
-          <ConnectionsPanel onImport={onImportMemory} />
+          <ConnectionsPanel />
         </div>
         <div className="wr-settings-label">通用</div>
         <div className="wr-settings-group">
@@ -515,47 +492,23 @@ export default function SettingsPage({
             className="wr-settings-row"
             onClick={() => setOverlay("隐私与数据")}
           >
-            <span>
-              隐私说明
-              <small>数据存在哪里、如何被使用</small>
-            </span>
+            <span>隐私说明</span>
             <ChevronRight />
           </button>
           <button className="wr-settings-row" onClick={onExport}>
-            <span>
-              导出演示数据
-              <small>下载一份 JSON 备份</small>
-            </span>
+            <span>导出本机数据</span>
             <ChevronRight />
           </button>
           <button
             className="wr-settings-row wr-settings-danger"
             onClick={() => setOverlay("清除数据")}
           >
-            <span>
-              清除全部演示数据
-              <small>档案、课程、任务、记忆与本机设置</small>
-            </span>
+            <span>清除全部数据</span>
             <ChevronRight />
           </button>
         </div>
 
-        <div className="wr-settings-label">通知</div>
-        <div className="wr-settings-group">
-          <button
-            className="wr-settings-row"
-            onClick={() => setNotifications(!notifications)}
-          >
-            <span>
-              接收消息通知<small>正式版接入系统权限后生效</small>
-            </span>
-            <span className={notifications ? "wr-switch on" : "wr-switch"}>
-              <i />
-            </span>
-          </button>
-        </div>
-
-        <div className="wr-settings-label">演示</div>
+        <div className="wr-settings-label">首次进入</div>
         <div className="wr-settings-group">
           <button
             className="wr-settings-row"
@@ -565,9 +518,7 @@ export default function SettingsPage({
               setHasEntered(false);
             }}
           >
-            <span>
-              重新体验首次进入<small>返回欢迎与设置流程</small>
-            </span>
+            <span>重新体验首次进入</span>
             <ChevronRight />
           </button>
         </div>
@@ -575,16 +526,10 @@ export default function SettingsPage({
         <div className="wr-settings-label">关于</div>
         <div className="wr-settings-group">
           <div className="wr-settings-row">
-            <span>
-              版本
-              <small>演示版 · 未连接账户或云端</small>
-            </span>
+            <span>版本</span>
             <b>{APP_VERSION}</b>
           </div>
         </div>
-        <p className="wr-settings-foot">
-          {BRAND} 仍在开发中。上架前会补齐真实服务、隐私政策与支持入口。
-        </p>
       </div>
     </div>
   );

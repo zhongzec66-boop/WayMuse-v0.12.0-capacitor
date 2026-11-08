@@ -120,6 +120,25 @@
   object-fit: cover;
 }
 
+.wr-chat-orb .wr-bot-avatar {
+  width: 100%;
+  height: 100%;
+}
+
+.wr-bot-avatar.replying .wr-bot-eyes {
+  transform-origin: 256px 270px;
+  animation: wm-bot-blink 2.2s ease-in-out infinite;
+}
+
+@keyframes wm-bot-blink {
+  0%, 42%, 48%, 100% { transform: scaleY(1); }
+  45% { transform: scaleY(0.08); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wr-bot-avatar.replying .wr-bot-eyes { animation: none; }
+}
+
 .wr-chat-date {
   padding: var(--space-8) 0;
   color: var(--ink-3);
@@ -443,6 +462,7 @@
   background: var(--primary-soft);
   color: var(--primary);
   font-size: var(--text-26);
+  object-fit: cover;
 }
 
 .wr-ai-empty h2 {

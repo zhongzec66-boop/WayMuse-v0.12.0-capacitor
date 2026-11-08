@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
   CheckCircle2,
-  ChevronDown,
   Download,
   Eye,
   EyeOff,
@@ -15,8 +14,9 @@ import {
   Trash2,
   TriangleAlert,
 } from "lucide-react";
-import { parseReply, planTasks, demoReply } from "../agent";
+import { parseReply, planTasks } from "../agent";
 import { BRAND } from "../brand";
+import BotAvatar from "../BotAvatar";
 import { storage } from "../storage";
 import { newId } from "../id";
 import {
@@ -101,9 +101,14 @@ export default function ChatPage({
   );
   const [showKey, setShowKey] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
-  const [messages, setMessages] = useState<DeepSeekMessage[]>(() =>
-    storage.getDeepSeekMessages(),
-  );
+  const [messages, setMessages] = useState<DeepSeekMessage[]>(() => {
+    const saved = storage.getDeepSeekMessages();
+    return saved.filter(
+      (message, index) =>
+        message.model !== "本地演示 · 示例回复" &&
+        saved[index + 1]?.model !== "本地演示 · 示例回复",
+    );
+  });
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -197,6 +202,11 @@ export default function ChatPage({
   const sendMessage = async (text: string, history: DeepSeekMessage[]) => {
     const content = text.trim();
     if (!content || streaming) return;
+    if (!apiKey.trim()) {
+      setError("请先连接 DeepSeek，再发送消息。");
+      setShowConfig(true);
+      return;
+    }
 
     const userMessage: DeepSeekMessage = {
       id: newId(),
@@ -222,47 +232,6 @@ export default function ChatPage({
     abortRef.current = controller;
     const startedAt = performance.now();
     let firstTokenAt: number | null = null;
-
-    if (!apiKey.trim()) {
-      const reply = demoReply(
-        content,
-        config.useContext ? tasks : [],
-        config.useContext ? memories : [],
-        config.useContext ? courses : [],
-      );
-      const pieces = reply.split(/(\n\n)/);
-      let shown = "";
-      try {
-        for (const piece of pieces) {
-          await new Promise<void>((resolve, reject) => {
-            const timer = window.setTimeout(resolve, 380);
-            controller.signal.addEventListener(
-              "abort",
-              () => {
-                clearTimeout(timer);
-                reject(new DOMException("Stopped", "AbortError"));
-              },
-              { once: true },
-            );
-          });
-          if (controller.signal.aborted) break;
-          shown += piece;
-          setMessages((current) =>
-            current.map((m) =>
-              m.id === assistantId
-                ? { ...m, content: shown, model: "本地演示 · 示例回复" }
-                : m,
-            ),
-          );
-        }
-      } catch {
-        /* User stopped or left the conversation. */
-      } finally {
-        setStreaming(false);
-        abortRef.current = null;
-      }
-      return;
-    }
 
     const payload: ChatRequestMessage[] = [
       {
@@ -446,7 +415,7 @@ export default function ChatPage({
           ? "连接失败"
           : apiKey
             ? "待测试"
-            : "本地演示";
+            : "未连接";
 
   const suggestions = [
     "明天考试，我有点慌，陪我安排一下复习",
@@ -462,7 +431,7 @@ export default function ChatPage({
         </button>
         <div className="wr-chat-title">
           <span className="wr-chat-orb">
-            {agentAvatar ? <img src={agentAvatar} alt="" /> : "✦"}
+            <BotAvatar source={agentAvatar} replying={streaming} />
           </span>
           <b>{agentName}</b>
         </div>
@@ -513,7 +482,7 @@ export default function ChatPage({
 
         <div className="wr-chat-status-line">
           <span className={`wr-ai-status ${connectState}`}>{statusLabel}</span>
-          <span>{apiKey ? config.model : "示例回复 · 不请求模型"}</span>
+          {apiKey && <span>{config.model}</span>}
           {streaming && (
             <button type="button" className="wr-chat-stop" onClick={stop}>
               <Square size={13} /> 停止
@@ -631,21 +600,8 @@ export default function ChatPage({
                   updateConfig("useContext", event.target.checked)
                 }
               />
-              带入本地演示数据（记忆 / 课程 / 任务）
+              带入本机资料（记忆 / 课程 / 任务）
             </label>
-
-            <details className="wr-ai-advanced">
-              <summary>
-                系统提示词 <ChevronDown size={16} />
-              </summary>
-              <textarea
-                rows={4}
-                value={config.systemPrompt}
-                onChange={(event) =>
-                  updateConfig("systemPrompt", event.target.value)
-                }
-              />
-            </details>
 
             <div className="wr-ai-config-actions">
               <button
@@ -692,12 +648,12 @@ export default function ChatPage({
 
         {!showConfig && !messages.length && (
           <div className="wr-ai-empty">
-            <div className="wr-ai-empty-mark">✦</div>
+            <img className="wr-ai-empty-mark" src="/avatar.svg" alt="" />
             <h2>和 {agentName} 聊聊</h2>
             <p>
               {apiKey
                 ? "想聊聊近况，还是一起学点什么？"
-                : "先试试聊天、选择方案，再到计划里查看。当前为示例演示。"}
+                : "连接 DeepSeek 后开始聊天。"}
             </p>
             {!apiKey && (
               <button
@@ -765,7 +721,7 @@ export default function ChatPage({
                     <div className="wr-ai-row assistant" key={message.id}>
                       <div className="wr-ai-bubble assistant">
                         <div className="wr-ai-who">
-                          <span>✦</span> {agentName}
+                          {agentName}
                           <small>{message.model ?? config.model}</small>
                         </div>
                         {message.reasoning && (
@@ -876,12 +832,7 @@ export default function ChatPage({
                             </section>
                           );
                         })}
-                      <small>
-                        {message.model === "本地演示 · 示例回复"
-                          ? "示例演示 · "
-                          : ""}
-                        {formatTime(message.createdAt)}
-                      </small>
+                      <small>{formatTime(message.createdAt)}</small>
                     </div>
                   ),
                 )}

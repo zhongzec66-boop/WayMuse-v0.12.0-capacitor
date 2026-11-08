@@ -104,15 +104,13 @@ export default function Onboarding({
       >
         {step === 0 && (
           <>
-            <div className="wr-onboard-emblem">✦</div>
+            <img className="wr-onboard-emblem" src="/avatar.svg" alt="" />
             <h1>先建立你的本地档案。</h1>
             <p>
               不用注册账号。先告诉我你的学业背景，再设置 {BRAND}{" "}
               该怎么称呼你、以什么方式陪你。
             </p>
-            <div className="wr-onboard-note">
-              这是本地演示：资料只保存在当前浏览器，不会上传到服务器。
-            </div>
+            <div className="wr-onboard-note">资料只保存在当前设备。</div>
           </>
         )}
 
@@ -191,9 +189,6 @@ export default function Onboarding({
                 onChange={(value) => update("avatar", value)}
               />
             </div>
-            <p className="wr-onboard-hint">
-              这是 WayMuse 的头像，不是你的头像；只保存在本机，可以随时更换。
-            </p>
           </>
         )}
 
@@ -284,7 +279,7 @@ export default function Onboarding({
 
         {step === 4 && (
           <>
-            <div className="wr-onboard-emblem small">✦</div>
+            <img className="wr-onboard-emblem small" src="/avatar.svg" alt="" />
             <h1>你的资料，由你决定。</h1>
             <p>
               学业档案、头像、称呼和陪伴方式都只保存在本机。没有账户，也没有云端副本。
@@ -309,7 +304,7 @@ export default function Onboarding({
       </button>
       {entering && (
         <div className="wr-entry">
-          <div className="wr-entry-mark">✦</div>
+          <img className="wr-entry-mark" src="/avatar.svg" alt="" />
           <div>{profile.callName || "同学"}，陪你走下一步。</div>
         </div>
       )}

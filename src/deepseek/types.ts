@@ -23,7 +23,6 @@ export type DeepSeekConfig = {
   model: string;
   temperature: number;
   maxTokens: number;
-  systemPrompt: string;
   useContext: boolean;
   thinking: boolean;
   reasoningEffort: "low" | "high" | "max";

@@ -43,9 +43,7 @@ export default function MemoryPage({
         </div>
       )}
       <div className="wr-memory-card">
-        <div className="wr-memory-card-title">
-          我对你的了解 <span>演示资料</span>
-        </div>
+        <div className="wr-memory-card-title">我对你的了解</div>
         {memories.map((m, i) => (
           <div className="wr-memory-line" key={i}>
             <span>{m}</span>

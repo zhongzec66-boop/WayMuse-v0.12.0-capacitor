@@ -24,7 +24,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             <div className="wr-error-mark">!</div>
             <h1>页面遇到问题</h1>
             <p>
-              本地演示数据可能已损坏。可以先重新加载；如果仍然失败，清除本机演示数据后再试。
+              本机数据可能已损坏。可以先重新加载；如果仍然失败，再清除数据。
             </p>
             <div className="wr-error-actions">
               <button type="button" onClick={() => window.location.reload()}>

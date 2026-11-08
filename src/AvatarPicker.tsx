@@ -26,7 +26,7 @@ export default function AvatarPicker({
         {value ? (
           <img src={value} alt="头像预览" />
         ) : (
-          <span className="wr-avatar-fallback">✦</span>
+          <img src="/avatar.svg" alt="WayMuse 默认头像" />
         )}
         {busy && (
           <span className="wr-avatar-busy">
@@ -55,7 +55,6 @@ export default function AvatarPicker({
             <Trash2 size={14} /> 移除
           </button>
         )}
-        <small>JPG/PNG，自动裁成方形，只保存在本机。</small>
         {error && <em role="alert">{error}</em>}
       </div>
       <input

@@ -18,31 +18,13 @@ import { storage } from "./storage";
 import type { Course, Kind, Overlay, Page, Task } from "./types";
 import { useNativeTabs } from "./useNativeTabs";
 
-const seedTasks: Task[] = [
-  {
-    id: "seed-1",
-    text: "梳理两个感兴趣的实习方向",
-    done: false,
-    priority: "high",
-  },
-  {
-    id: "seed-2",
-    text: "整理一版课程与项目经历",
-    done: false,
-    priority: "medium",
-  },
-  {
-    id: "seed-3",
-    text: "阅读三份相近背景的去向经历",
-    done: true,
-    priority: "low",
-  },
-];
-const seedMemories = [
+const seedTasks: Task[] = [];
+const seedMemories: string[] = [];
+const oldSeedMemories = new Set([
   "大二，计算机相关专业",
   "希望明年暑假找到第一份实习",
   "对产品和数据分析方向感兴趣",
-];
+]);
 
 // 今天和课程筛选统一使用 Asia/Shanghai，避免跨时区或跨午夜时日期与星期不一致。
 function getShanghaiWeekday(now = new Date()): number {
@@ -65,9 +47,13 @@ export default function WayMuseReference() {
   const [attachmentMenu, setAttachmentMenu] = useState(false);
   const [intakeKind, setIntakeKind] = useState<Kind>("课表");
   const [taskMode, setTaskMode] = useState<"任务" | "定时">("任务");
-  const [tasks, setTasks] = useState<Task[]>(() => storage.getTasks(seedTasks));
+  const [tasks, setTasks] = useState<Task[]>(() =>
+    storage.getTasks(seedTasks).filter((task) => !task.id.startsWith("seed-")),
+  );
   const [memories, setMemories] = useState<string[]>(() =>
-    storage.getMemories(seedMemories),
+    storage
+      .getMemories(seedMemories)
+      .filter((memory) => !oldSeedMemories.has(memory)),
   );
   const [draft, setDraft] = useState("");
   const [pendingChat, setPendingChat] = useState<{
@@ -79,7 +65,6 @@ export default function WayMuseReference() {
   );
   const profileName = profile.callName.trim() || "同学";
   const [showTip, setShowTip] = useState(true);
-  const [notifications, setNotifications] = useState(true);
   const [courses, setCourses] = useState<Course[]>(storage.getCourses);
   const [hasEntered, setHasEntered] = useState(storage.getEntered);
   const [agentName, setAgentName] = useState(
@@ -159,7 +144,7 @@ export default function WayMuseReference() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `waymuse-demo-${new Date().toISOString().slice(0, 10)}.json`;
+      link.download = `waymuse-data-${new Date().toISOString().slice(0, 10)}.json`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -178,7 +163,6 @@ export default function WayMuseReference() {
     setProfile({ ...DEFAULT_PROFILE });
     setTaskMode("任务");
     setShowTip(true);
-    setNotifications(true);
     setPage("Today");
     setAttachmentMenu(false);
     setIntakeKind("课表");
@@ -309,18 +293,11 @@ export default function WayMuseReference() {
               setAgentName(value);
               storage.setAgentName(value);
             }}
-            onImportMemory={(text) =>
-              setMemories((current) =>
-                current.includes(text) ? current : [text, ...current],
-              )
-            }
             agentAvatar={agentAvatar}
             onAgentAvatarChange={(value) => {
               setAgentAvatar(value);
               storage.setAgentAvatar(value);
             }}
-            notifications={notifications}
-            setNotifications={setNotifications}
             setOverlay={setOverlay}
             nav={nav}
             setHasEntered={setHasEntered}

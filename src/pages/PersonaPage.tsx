@@ -30,7 +30,7 @@ export default function PersonaPage({
       </div>
       <div className="wr-persona">
         <div className="wr-persona-orb">
-          {agentAvatar ? <img src={agentAvatar} alt="" /> : "✦"}
+          <img src={agentAvatar || "/avatar.svg"} alt="" />
         </div>
         <h2>{agentName}</h2>
         <p>

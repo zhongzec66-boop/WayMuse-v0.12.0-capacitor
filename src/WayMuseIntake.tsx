@@ -282,7 +282,7 @@ export default function WayMuseIntake({
               保存资料记录
             </button>
             <div className="wr-intake-disclaimer">
-              演示版只保存文件名和你的备注，不会保存文件内容或发送到服务器。关闭页面后文件预览会消失。
+              当前只保存文件名和备注，不保存文件内容。
             </div>
           </div>
         )}

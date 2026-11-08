@@ -91,7 +91,10 @@ export default function Dock({
           )}
         </button>
       </div>
-      <nav id="waymuse-native-tab-slot" className={nativeTabsActive ? 'wr-native-tabs' : undefined}>
+      <nav
+        id="waymuse-native-tab-slot"
+        className={nativeTabsActive ? "wr-native-tabs" : undefined}
+      >
         <div
           className="wr-tab-highlight"
           aria-hidden="true"
@@ -116,7 +119,7 @@ export default function Dock({
             <ListTodo />,
             <Sparkles />,
             <span className="wr-small-orb">
-              {agentAvatar ? <img src={agentAvatar} alt="" /> : "✦"}
+              <img src={agentAvatar || "/avatar.svg"} alt="" />
             </span>,
           ];
           return (

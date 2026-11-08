@@ -2,7 +2,7 @@
   "id": "/",
   "name": "__BRAND__",
   "short_name": "__BRAND__",
-  "description": "面向大学生个人的 AI 助理演示",
+  "description": "面向大学生的个人 AI 助理",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

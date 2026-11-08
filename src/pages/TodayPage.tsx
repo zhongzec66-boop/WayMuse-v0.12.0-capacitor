@@ -74,7 +74,7 @@ export default function TodayPage({
         <strong>欢迎，{profileName}</strong>
       </div>
       <article className="wr-brief">
-        <div className="wr-brief-date">☀　{date} · 你的简报</div>
+        <div className="wr-brief-date">{date}</div>
         <h2>{brief.title}</h2>
         <p>{brief.body}</p>
         <div className="wr-brief-label">我记得这些</div>
@@ -112,7 +112,7 @@ export default function TodayPage({
             className="wr-course-empty"
             onClick={() => openIntake("课表")}
           >
-            暂无今天的课程，点这里添加课表 ＋
+            暂无今天的课程，添加课表
           </button>
         )}
         <div className="wr-divider" />
@@ -136,7 +136,7 @@ export default function TodayPage({
           </div>
         ) : (
           <button className="wr-course-empty" onClick={() => nav("任务")}>
-            去任务页添加要推进的事 ＋
+            去任务页添加要推进的事
           </button>
         )}
         <p className="wr-brief-end">

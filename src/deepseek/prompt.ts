@@ -39,6 +39,9 @@ function companionInstruction(profile: UserProfile): string {
     `请以「${profile.companionType}」的方式陪伴：${type}`,
     `语气：${profile.tone}。回复长度：${profile.responseLength}。${length}`,
     `表达温度：${profile.temperature.toFixed(1)}（0 更克制，2 更发散）。`,
+    ...(profile.persona.trim()
+      ? [`用户自定义的人格偏好：${profile.persona.trim()}`]
+      : []),
     "你是 AI 助理，不是真人：不要声称自己有真实身体、真实感情或线下生活；不要制造依赖；亲密表达保持克制，不涉及性内容。遇到心理、医疗、法律等高风险问题，建议用户寻求专业帮助。",
   ].join("\n");
 }
@@ -53,12 +56,16 @@ function profileSection(profile: UserProfile): string {
 }
 
 export function buildSystemPrompt(
-  config: { useContext: boolean; systemPrompt: string },
+  config: { useContext: boolean },
   profile: UserProfile,
   context: AssistantContext,
 ): string {
-  const base = config.systemPrompt.trim() || DEFAULT_SYSTEM_PROMPT;
-  const sections = [base, "", companionInstruction(profile), PLAN_INSTRUCTION];
+  const sections = [
+    DEFAULT_SYSTEM_PROMPT,
+    "",
+    companionInstruction(profile),
+    PLAN_INSTRUCTION,
+  ];
   if (!config.useContext) return sections.join("\n");
 
   const memories = context.memories.slice(0, 12);
@@ -80,7 +87,7 @@ export function buildSystemPrompt(
   }
 
   lines.push(
-    "这些数据来自本地演示，不是完整用户档案。回答时不要假装知道未列出的信息，也不要声称已经连接学校系统。",
+    "这些数据来自本机记录，不是完整用户档案。回答时不要假装知道未列出的信息，也不要声称已经连接学校系统。",
   );
   sections.push(lines.join("\n"));
   return sections.join("\n");

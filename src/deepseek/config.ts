@@ -1,4 +1,3 @@
-import { DEFAULT_SYSTEM_PROMPT } from "./prompt";
 import type { DeepSeekConfig } from "./types";
 
 export const DEFAULT_DEEPSEEK_CONFIG: DeepSeekConfig = {
@@ -6,7 +5,6 @@ export const DEFAULT_DEEPSEEK_CONFIG: DeepSeekConfig = {
   model: "deepseek-flash",
   temperature: 0.7,
   maxTokens: 2048,
-  systemPrompt: DEFAULT_SYSTEM_PROMPT,
   useContext: true,
   thinking: false,
   reasoningEffort: "high",
@@ -38,10 +36,6 @@ export function normalizeConfig(value: unknown): DeepSeekConfig {
     input.maxTokens <= 393216
       ? Math.round(input.maxTokens)
       : DEFAULT_DEEPSEEK_CONFIG.maxTokens;
-  const systemPrompt =
-    typeof input.systemPrompt === "string"
-      ? input.systemPrompt.slice(0, 6000)
-      : DEFAULT_DEEPSEEK_CONFIG.systemPrompt;
   const reasoningEffort =
     input.reasoningEffort === "low" ||
     input.reasoningEffort === "high" ||
@@ -53,7 +47,6 @@ export function normalizeConfig(value: unknown): DeepSeekConfig {
     model,
     temperature,
     maxTokens,
-    systemPrompt,
     useContext: input.useContext !== false,
     thinking: input.thinking === true,
     reasoningEffort,
