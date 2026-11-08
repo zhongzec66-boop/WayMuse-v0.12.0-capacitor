@@ -1,7 +1,6 @@
-import { ChevronRight, Clock3, Plus, SlidersHorizontal } from "lucide-react";
+import { Plus, SlidersHorizontal } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
-import { BRAND } from "../brand";
-import type { Course, Kind, Memory, Overlay, Page, Task } from "../types";
+import type { Course, Kind, Overlay, Page, Task } from "../types";
 
 /** 全站统一 Asia/Shanghai。 */
 function shanghaiParts() {
@@ -36,21 +35,50 @@ function greeting(minutes: number): string {
   return "晚上好";
 }
 
+/** 一年中的第几周，用来给「第 N 周」一个真实的数字。 */
+function weekOfYear(): number {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 1);
+  const days = Math.floor(
+    (now.getTime() - start.getTime()) / (24 * 60 * 60 * 1000),
+  );
+  return Math.ceil((days + start.getDay() + 1) / 7);
+}
+
+type EntryState = "done" | "live" | "next" | "due" | "overdue";
+
+type Entry = {
+  key: string;
+  minutes: number;
+  clock: string;
+  title: string;
+  meta: string;
+  state: EntryState;
+  kind: "course" | "task";
+  courseId?: string;
+};
+
+const STATE_LABEL: Record<EntryState, string> = {
+  done: "已结束",
+  live: "进行中",
+  next: "待开始",
+  due: "今天到期",
+  overdue: "逾期",
+};
+
 export default function TodayPage({
   profileName,
   date,
-  memories,
   tasks,
   todayCourses,
-  setCourses,
   courses,
+  setCourses,
   setOverlay,
   openIntake,
   nav,
 }: {
   profileName: string;
   date: string;
-  memories: Memory[];
   tasks: Task[];
   todayCourses: Course[];
   courses: Course[];
@@ -62,18 +90,43 @@ export default function TodayPage({
   const { ymd: todayKey, minutes: now, clock } = shanghaiParts();
 
   const active = tasks.filter((t) => !t.done);
-  const dueTasks = active
-    .filter((t) => t.deadline && t.deadline <= todayKey)
-    .sort((a, b) => (a.time ?? "99:99").localeCompare(b.time ?? "99:99"));
+  const dueTasks = active.filter((t) => t.deadline && t.deadline <= todayKey);
 
-  const finished = todayCourses.filter((c) => toMinutes(c.end) < now);
-  const upcoming = todayCourses.filter((c) => toMinutes(c.end) >= now);
-  const focus = upcoming[0];
-  const focusLive = focus ? toMinutes(focus.start) <= now : false;
+  const entries: Entry[] = [
+    ...todayCourses.map<Entry>((c) => {
+      const start = toMinutes(c.start);
+      const end = toMinutes(c.end);
+      return {
+        key: `c-${c.id}`,
+        minutes: start,
+        clock: c.start,
+        title: c.name,
+        meta: [c.start + "–" + c.end, c.place].filter(Boolean).join(" · "),
+        state: end < now ? "done" : start <= now ? "live" : "next",
+        kind: "course",
+        courseId: c.id,
+      };
+    }),
+    ...dueTasks.map<Entry>((t) => ({
+      key: `t-${t.id}`,
+      minutes: t.time ? toMinutes(t.time) : 23 * 60 + 59,
+      clock: t.time ?? "23:59",
+      title: t.text,
+      meta:
+        t.deadline && t.deadline < todayKey
+          ? `应完成于 ${t.deadline}`
+          : (t.category ?? "今天到期"),
+      state: t.deadline && t.deadline < todayKey ? "overdue" : "due",
+      kind: "task",
+    })),
+  ].sort((a, b) => a.minutes - b.minutes);
 
   const weekTotal = tasks.filter((t) => t.deadline).length;
   const weekDone = tasks.filter((t) => t.deadline && t.done).length;
   const percent = weekTotal ? Math.round((weekDone / weekTotal) * 100) : 0;
+
+  // 只把「还没开始的课」算成接下来；已过点但没做的事不算
+  const nextEntry = entries.find((e) => e.state === "next");
 
   return (
     <>
@@ -98,120 +151,62 @@ export default function TodayPage({
       </div>
 
       <p className="wr-today-sub">
-        {greeting(now)}，{profileName} · {date}
+        {greeting(now)}，{profileName} · {date} · 第 {weekOfYear()} 周
       </p>
 
-      {/* ── 今天进行中 ─────────────────────────────── */}
-      <section className="wr-tcard" aria-label="今天进行中">
-        <header className="wr-tcard-head">
-          <span>
-            <Clock3 size={15} /> 今天进行中
-          </span>
-          <em>更新于 {clock}</em>
+      {/* ── 今天的时间轴 ───────────────────────────── */}
+      <section className="wr-dayline" aria-label="今天的时间轴">
+        <header className="wr-dayline-head">
+          <span>时间轴</span>
+          <em>
+            现在 {clock}
+            {nextEntry ? ` · 接下来 ${nextEntry.clock}` : ""}
+          </em>
         </header>
 
-        {focus ? (
-          <div className="wr-focus">
-            <div className="wr-focus-top">
-              <b>{focus.name}</b>
-              <span
-                className={
-                  focusLive
-                    ? "wr-state wr-state-live"
-                    : "wr-state wr-state-soon"
-                }
-              >
-                {focusLive ? "进行中" : "即将开始"}
-              </span>
-            </div>
-            <p className="wr-focus-time">
-              {focus.start} – {focus.end}
-              {focus.place && <span>· {focus.place}</span>}
-            </p>
-            <button className="wr-focus-action" onClick={() => nav("聊天")}>
-              和 {BRAND} 聊聊
-            </button>
-          </div>
-        ) : (
-          <p className="wr-tcard-empty">
-            {todayCourses.length
-              ? "今天的课都结束了，剩下时间归你安排。"
-              : "今天没有课。"}
+        {entries.length === 0 ? (
+          <p className="wr-dayline-empty">
+            今天没有课，也没有到期的事。要不要说说你现在想做什么？
           </p>
-        )}
-
-        {finished.length > 0 && (
-          <>
-            <div className="wr-tcard-divider">已结束</div>
-            {finished.map((c) => (
-              <div className="wr-ended" key={c.id}>
-                <span className="wr-ended-bar" aria-hidden="true" />
-                <span className="wr-ended-main">
-                  <b>{c.name}</b>
-                  <small>
-                    {c.start} – {c.end}
-                    {c.place ? ` · ${c.place}` : ""}
-                  </small>
+        ) : (
+          <ol className="wr-timeline">
+            {entries.map((e) => (
+              <li key={e.key} data-state={e.state} data-kind={e.kind}>
+                <span className="wr-timeline-time">{e.clock}</span>
+                <span className="wr-timeline-dot" aria-hidden="true" />
+                <span className="wr-timeline-body">
+                  <b>{e.title}</b>
+                  {e.meta && <small>{e.meta}</small>}
                 </span>
-                <button
-                  aria-label={`删除课程 ${c.name}`}
-                  onClick={() =>
-                    setCourses(courses.filter((x) => x.id !== c.id))
-                  }
-                >
-                  移除
-                </button>
-              </div>
+                <span className="wr-timeline-state">
+                  {STATE_LABEL[e.state]}
+                </span>
+                {e.kind === "course" && e.courseId && (
+                  <button
+                    className="wr-timeline-x"
+                    aria-label={`移除课程 ${e.title}`}
+                    onClick={() =>
+                      setCourses(courses.filter((c) => c.id !== e.courseId))
+                    }
+                  >
+                    ×
+                  </button>
+                )}
+              </li>
             ))}
-          </>
+          </ol>
         )}
 
         {todayCourses.length === 0 && (
-          <button className="wr-tcard-cta" onClick={() => openIntake("课表")}>
-            添加课表，我就能把一天的节奏排出来
-            <ChevronRight size={15} />
+          <button className="wr-dayline-cta" onClick={() => openIntake("课表")}>
+            还没有课表，加一份我就能把一天的节奏排出来
           </button>
         )}
       </section>
 
-      {/* ── 今天到期 ───────────────────────────────── */}
-      <section className="wr-tcard" aria-label="今天到期">
-        <header className="wr-tcard-head">
-          <span>今天到期</span>
-          <em>{dueTasks.length} 项</em>
-        </header>
-
-        {dueTasks.length === 0 ? (
-          <p className="wr-tcard-empty">现在没有到期的任务。</p>
-        ) : (
-          <ul className="wr-due-list">
-            {dueTasks.slice(0, 5).map((t) => (
-              <li key={t.id}>
-                <span className="wr-due-time">{t.time ?? "—"}</span>
-                <span className="wr-due-main">
-                  <b>{t.text}</b>
-                  <small>
-                    {t.deadline && t.deadline < todayKey
-                      ? `已逾期 · ${t.deadline}`
-                      : (t.category ?? "今天")}
-                  </small>
-                </span>
-                <button aria-label="去计划页" onClick={() => nav("任务")}>
-                  <ChevronRight size={15} />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <button className="wr-tcard-link" onClick={() => nav("任务")}>
-          查看全部计划 <ChevronRight size={14} />
-        </button>
-      </section>
-
       {/* ── 本周 ───────────────────────────────────── */}
-      <section className="wr-tcard" aria-label="本周进度">
-        <header className="wr-tcard-head">
+      <section className="wr-weekline" aria-label="本周进度">
+        <header>
           <span>本周</span>
           <em>
             {weekDone}/{weekTotal}
@@ -226,32 +221,9 @@ export default function TodayPage({
         >
           <span style={{ width: `${percent}%` }} />
         </div>
-        <p className="wr-tcard-empty">
-          {weekTotal
-            ? percent === 100
-              ? "本周的都完成了。"
-              : `还剩 ${weekTotal - weekDone} 项带日期的任务。`
-            : "还没有带日期的任务。"}
-        </p>
-      </section>
-
-      {/* ── 我记得 ─────────────────────────────────── */}
-      <section className="wr-tcard" aria-label="我记得">
-        <header className="wr-tcard-head">
-          <span>我记得</span>
-          <button className="wr-tcard-edit" onClick={() => nav("记忆")}>
-            管理
-          </button>
-        </header>
-        {memories.length === 0 ? (
-          <p className="wr-tcard-empty">还没有记住任何事。聊天时我会先问你。</p>
-        ) : (
-          <div className="wr-memory-chips">
-            {memories.slice(0, 3).map((m) => (
-              <span key={m.id}>{m.text}</span>
-            ))}
-          </div>
-        )}
+        <button className="wr-weekline-link" onClick={() => nav("任务")}>
+          看全部计划
+        </button>
       </section>
     </>
   );

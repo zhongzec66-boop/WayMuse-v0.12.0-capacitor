@@ -1,5 +1,6 @@
-/* Today 页：模块卡片（冷白主题）。
-   参照图的结构：每张卡一个左上标签 + 右上「更新于」，卡内分主项与已结束。 */
+/* Today 页：一条竖着的「今天」时间轴。
+   这是学生场景独有的结构 —— 一天是按课表和截止时间走的，
+   不是一堆可以互换的模块卡片。 */
 
 .wr-head-actions {
   display: flex;
@@ -18,7 +19,9 @@
   font-size: var(--text-13);
 }
 
-.wr-tcard {
+/* ── 今天的时间轴 ─────────────────────────────────── */
+
+.wr-dayline {
   margin-bottom: var(--space-12);
   padding: var(--space-16);
   border-radius: var(--card-radius);
@@ -26,70 +29,37 @@
   box-shadow: var(--card-shadow);
 }
 
-.wr-tcard-head {
+.wr-dayline-head {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   margin-bottom: var(--space-12);
 }
 
-.wr-tcard-head > span {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-4);
+.wr-dayline-head > span {
   color: var(--ink);
-  font-size: var(--text-13);
+  font-size: var(--text-15);
   font-weight: var(--weight-semibold);
 }
 
-.wr-tcard-head > span svg {
-  color: var(--primary);
-}
-
-.wr-tcard-head em {
+.wr-dayline-head em {
   color: var(--card-caption);
   font-size: var(--text-11);
   font-style: normal;
+  font-variant-numeric: tabular-nums;
 }
 
-.wr-tcard-edit {
-  color: var(--primary);
-  font-size: var(--text-12);
-}
-
-.wr-tcard-empty {
+.wr-dayline-empty {
   margin: 0;
   color: var(--ink-3);
   font-size: var(--text-13);
   line-height: var(--leading-body);
 }
 
-.wr-tcard-divider {
-  margin: var(--space-12) 0 var(--space-8);
-  color: var(--card-caption);
-  font-size: var(--text-11);
-}
-
-.wr-tcard-link {
+.wr-dayline-cta {
   width: 100%;
   min-height: var(--control-44);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-4);
-  margin-top: var(--space-8);
-  color: var(--primary);
-  font-size: var(--text-13);
-}
-
-.wr-tcard-cta {
-  width: 100%;
-  min-height: var(--control-44);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-8);
-  margin-top: var(--space-8);
+  margin-top: var(--space-12);
   padding: 0 var(--space-12);
   border: var(--border-1) dashed var(--primary-line);
   border-radius: var(--radius-16);
@@ -98,206 +68,182 @@
   text-align: left;
 }
 
-/* ── 正在进行的那一项 ─────────────────────────────── */
-
-.wr-focus {
+.wr-timeline {
   position: relative;
-  padding: var(--space-12) var(--space-12) var(--space-12) var(--space-16);
-  border-radius: var(--radius-16);
-  background: color-mix(in srgb, var(--primary) 7%, var(--card-bg));
+  margin: 0;
+  padding: 0 0 0 4px;
+  list-style: none;
 }
 
-.wr-focus::before {
+/* 竖线穿过所有节点 */
+.wr-timeline::before {
   content: "";
   position: absolute;
-  top: var(--space-12);
-  bottom: var(--space-12);
-  left: 0;
-  width: 3px;
-  border-radius: 3px;
+  top: 6px;
+  bottom: 6px;
+  left: 52px;
+  width: 1px;
+  background: var(--divider);
+}
+
+.wr-timeline li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 40px 13px 1fr auto;
+  align-items: start;
+  gap: var(--space-8);
+  padding: var(--space-8) 0;
+}
+
+.wr-timeline-time {
+  color: var(--primary);
+  font-size: var(--text-12);
+  font-variant-numeric: tabular-nums;
+  line-height: 22px;
+  text-align: right;
+}
+
+.wr-timeline-dot {
+  position: relative;
+  z-index: 1;
+  width: 9px;
+  height: 9px;
+  margin-top: 7px;
+  border: 2px solid var(--card-bg);
+  border-radius: 50%;
   background: var(--primary);
 }
 
-.wr-focus-top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-8);
+.wr-timeline-body {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
 }
 
-.wr-focus-top b {
-  min-width: 0;
+.wr-timeline-body b {
   overflow: hidden;
   color: var(--ink);
-  font-size: var(--text-16);
-  font-weight: var(--weight-semibold);
+  font-size: var(--text-15);
+  font-weight: var(--weight-medium);
+  line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.wr-state {
-  flex: 0 0 auto;
-  padding: 1px 8px;
-  border-radius: var(--radius-pill);
+.wr-timeline-body small {
+  overflow: hidden;
+  color: var(--card-caption);
   font-size: var(--text-11);
-  font-weight: var(--weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.wr-state-live {
+.wr-timeline-state {
+  flex: 0 0 auto;
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+  color: var(--ink-3);
+  font-size: 10px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.wr-timeline-x {
+  position: absolute;
+  top: 4px;
+  right: -4px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--ink-3);
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity var(--dur-1) var(--ease);
+}
+
+.wr-timeline li:hover .wr-timeline-x,
+.wr-timeline li:focus-within .wr-timeline-x {
+  opacity: 1;
+}
+
+/* 状态：已结束整条压暗；进行中用实心点；逾期标红 */
+.wr-timeline li[data-state="done"] .wr-timeline-body b {
+  color: var(--ink-3);
+}
+
+.wr-timeline li[data-state="done"] .wr-timeline-dot {
+  background: var(--divider);
+}
+
+.wr-timeline li[data-state="live"] .wr-timeline-dot {
+  box-shadow: 0 0 0 4px var(--primary-soft);
+}
+
+.wr-timeline li[data-state="live"] .wr-timeline-state {
   background: var(--primary);
   color: var(--on-primary);
 }
 
-.wr-state-soon {
+.wr-timeline li[data-state="next"] .wr-timeline-state {
   background: var(--primary-soft);
   color: var(--primary);
 }
 
-.wr-focus-time {
-  margin: var(--space-4) 0 var(--space-12);
-  color: var(--ink-2);
-  font-size: var(--text-12);
-  font-variant-numeric: tabular-nums;
+.wr-timeline li[data-state="overdue"] .wr-timeline-dot {
+  background: var(--danger);
 }
 
-.wr-focus-time span {
-  margin-left: var(--space-4);
-  color: var(--ink-3);
+.wr-timeline li[data-state="overdue"] .wr-timeline-state {
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
-.wr-focus-action {
-  min-height: 34px;
-  padding: 0 var(--space-16);
-  border-radius: var(--radius-pill);
-  background: var(--primary);
-  color: var(--on-primary);
-  font-size: var(--text-13);
-  font-weight: var(--weight-medium);
+.wr-timeline li[data-state="overdue"] .wr-timeline-time {
+  color: var(--danger);
 }
 
-/* ── 已结束 ───────────────────────────────────────── */
+/* ── 本周 ─────────────────────────────────────────── */
 
-.wr-ended {
+.wr-weekline {
+  margin-bottom: var(--space-12);
+  padding: var(--space-16);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+.wr-weekline > header {
   display: flex;
-  align-items: center;
-  gap: var(--space-12);
-  padding: var(--space-8) 0;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--space-12);
 }
 
-.wr-ended + .wr-ended {
-  border-top: var(--border-1) solid var(--divider);
-}
-
-.wr-ended-bar {
-  width: 3px;
-  height: var(--space-28);
-  flex: 0 0 3px;
-  border-radius: 3px;
-  background: var(--accent-soft);
-}
-
-.wr-ended-main {
-  min-width: 0;
-  flex: 1;
-  display: grid;
-  gap: 2px;
-}
-
-.wr-ended-main b {
-  overflow: hidden;
-  color: var(--ink-2);
-  font-size: var(--text-15);
-  font-weight: var(--weight-medium);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.wr-ended-main small {
-  color: var(--card-caption);
-  font-size: var(--text-11);
-  font-variant-numeric: tabular-nums;
-}
-
-.wr-ended > button {
-  flex: 0 0 auto;
-  padding: 0 var(--space-8);
-  min-height: var(--space-28);
-  color: var(--ink-3);
-  font-size: var(--text-11);
-}
-
-/* ── 今天到期 ─────────────────────────────────────── */
-
-.wr-due-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.wr-due-list li {
-  display: flex;
-  align-items: center;
-  gap: var(--space-12);
-  padding: var(--space-8) 0;
-}
-
-.wr-due-list li + li {
-  border-top: var(--border-1) solid var(--divider);
-}
-
-.wr-due-time {
-  flex: 0 0 46px;
-  color: var(--primary);
-  font-size: var(--text-12);
-  font-variant-numeric: tabular-nums;
-}
-
-.wr-due-main {
-  min-width: 0;
-  flex: 1;
-  display: grid;
-  gap: 2px;
-}
-
-.wr-due-main b {
-  overflow: hidden;
+.wr-weekline > header span {
   color: var(--ink);
   font-size: var(--text-15);
-  font-weight: var(--weight-regular);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-weight: var(--weight-semibold);
 }
 
-.wr-due-main small {
+.wr-weekline > header em {
   color: var(--card-caption);
   font-size: var(--text-11);
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
 }
 
-.wr-due-list li > button {
-  min-width: var(--space-28);
-  min-height: var(--space-28);
-  display: grid;
-  place-items: center;
-  color: var(--ink-3);
+.wr-weekline-link {
+  margin-top: var(--space-8);
+  color: var(--primary);
+  font-size: var(--text-13);
 }
 
-/* ── 我记得 ───────────────────────────────────────── */
-
-.wr-memory-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-8);
-}
-
-.wr-memory-chips span {
-  max-width: 100%;
-  padding: 5px 10px;
-  overflow: hidden;
-  border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--primary) 8%, var(--card-bg));
-  color: var(--ink-2);
-  font-size: var(--text-12);
-  line-height: var(--leading-body);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+@media (prefers-reduced-motion: reduce) {
+  .wr-timeline-x {
+    transition: none;
+  }
 }

@@ -211,7 +211,6 @@ export default function WayMuseReference() {
             <TodayPage
               profileName={profileName}
               date={date}
-              memories={memories}
               tasks={tasks}
               todayCourses={todayCourses}
               courses={courses}
