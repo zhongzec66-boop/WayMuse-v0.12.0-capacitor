@@ -10,7 +10,8 @@ import {
   Send,
   Sparkles,
 } from "lucide-react";
-import type { Dispatch, SetStateAction } from "react";
+import { useRef } from "react";
+import type { ChangeEvent, Dispatch, SetStateAction } from "react";
 import BotAvatar from "../BotAvatar";
 import type { Kind, Overlay, Page } from "../types";
 import {
@@ -28,6 +29,7 @@ export default function Dock({
   overlay,
   submit,
   openIntake,
+  onAttach,
   page,
   nav,
   agentName,
@@ -41,6 +43,7 @@ export default function Dock({
   overlay: Overlay;
   submit: () => void;
   openIntake: (kind: Kind) => void;
+  onAttach: (payload: string) => void;
   page: Page;
   nav: (page: Page) => void;
   agentName: string;
@@ -59,6 +62,31 @@ export default function Dock({
           : page === "角色"
             ? "和助理说点什么…"
             : "点击输入或录制语音…";
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  // 文本类文件直接把内容带进对话；其它类型只带文件名，不假装能解析。
+  const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setAttachmentMenu(false);
+    const isText =
+      file.type.startsWith("text/") ||
+      /\.(txt|md|markdown|csv|tsv|json|log|ya?ml)$/i.test(file.name);
+    const header = JSON.stringify({
+      n: file.name.slice(0, 80),
+      s: file.size,
+      b: !isText,
+    });
+    let payload = `[[FILE:${header}]]` + "\n[[/FILE]]";
+    if (isText && file.size <= 2 * 1024 * 1024) {
+      const text = await file.text();
+      payload =
+        `[[FILE:${header}]]` + "\n" + text.slice(0, 4000) + "\n[[/FILE]]";
+    }
+    onAttach(payload);
+  };
+
   // iOS 上用原生输入框；其它环境（Web / 插件缺失）自动回退到下面的 <input>。
   const nativeComposeActive = useNativeCompose({
     enabled: isNativeComposeSupported(),
@@ -79,9 +107,9 @@ export default function Dock({
             <Camera size={20} />
             上传照片或图片
           </button>
-          <button onClick={() => openIntake("文档")}>
+          <button onClick={() => fileRef.current?.click()}>
             <FilePlus2 size={20} />
-            上传文件
+            选一个文件
           </button>
           <button onClick={() => openIntake("语音")}>
             <Mic2 size={20} />
@@ -93,6 +121,13 @@ export default function Dock({
           </button>
         </div>
       )}
+      <input
+        ref={fileRef}
+        type="file"
+        className="wr-visually-hidden"
+        onChange={handleFile}
+        aria-label="选择要发送的文件"
+      />
       <div
         id={COMPOSE_SLOT_ID}
         className={

@@ -4,6 +4,7 @@ import {
   Download,
   Eye,
   EyeOff,
+  FileText,
   KeyRound,
   Plus,
   RotateCcw,
@@ -36,6 +37,51 @@ import type {
   DeepSeekUsage,
 } from "../deepseek/types";
 import type { Course, Memory, Task } from "../types";
+type FileBlock = {
+  name: string;
+  size: number;
+  binary: boolean;
+  content: string;
+};
+
+/** 解析消息里的 [[FILE:{...}]]…[[/FILE]] 附件块。 */
+function splitFileBlock(content: string): {
+  file: FileBlock | null;
+  rest: string;
+} {
+  const start = content.indexOf("[[FILE:");
+  if (start < 0) return { file: null, rest: content };
+  const headerEnd = content.indexOf("]]", start);
+  if (headerEnd < 0) return { file: null, rest: content };
+  const endMark = content.indexOf("[[/FILE]]", headerEnd);
+  const headerRaw = content.slice(start + 7, headerEnd);
+  const body = endMark > 0 ? content.slice(headerEnd + 2, endMark) : "";
+  let meta: { n?: unknown; s?: unknown; b?: unknown } = {};
+  try {
+    meta = JSON.parse(headerRaw) as typeof meta;
+  } catch {
+    meta = {};
+  }
+  const rest = (
+    content.slice(0, start) + (endMark > 0 ? content.slice(endMark + 9) : "")
+  ).trim();
+  return {
+    file: {
+      name: typeof meta.n === "string" ? meta.n : "文件",
+      size: typeof meta.s === "number" ? meta.s : 0,
+      binary: meta.b === true,
+      content: body.trim(),
+    },
+    rest,
+  };
+}
+
+function formatBytes(n: number): string {
+  if (!n) return "未知大小";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
 
 type ConnectState = "idle" | "testing" | "ok" | "error";
 
@@ -743,10 +789,54 @@ export default function ChatPage({
                 )
                 .map((message) =>
                   message.role === "user" ? (
-                    <div className="wr-ai-row user" key={message.id}>
-                      <div className="wr-ai-bubble user">{message.content}</div>
-                      <small>{formatTime(message.createdAt)}</small>
-                    </div>
+                    (() => {
+                      const parsed = splitFileBlock(message.content);
+                      return (
+                        <div className="wr-ai-row user" key={message.id}>
+                          {parsed.file && (
+                            <div className="wr-file-card">
+                              <span className="wr-file-mark">
+                                <FileText size={16} />
+                              </span>
+                              <span className="wr-file-body">
+                                <b>{parsed.file.name}</b>
+                                <small>
+                                  {formatBytes(parsed.file.size)}
+                                  {parsed.file.binary
+                                    ? " · 仅记录文件名"
+                                    : " · 内容已读入对话"}
+                                </small>
+                              </span>
+                              {!parsed.file.binary &&
+                                parsed.file.content.trim() && (
+                                  <button
+                                    className="wr-file-remember"
+                                    onClick={() =>
+                                      onMemoriesChange([
+                                        ...memories,
+                                        createMemory(
+                                          parsed
+                                            .file!.content.replace(/\s+/g, " ")
+                                            .trim()
+                                            .slice(0, 60),
+                                        ),
+                                      ])
+                                    }
+                                  >
+                                    记住这段
+                                  </button>
+                                )}
+                            </div>
+                          )}
+                          {parsed.rest && (
+                            <div className="wr-ai-bubble user">
+                              {parsed.rest}
+                            </div>
+                          )}
+                          <small>{formatTime(message.createdAt)}</small>
+                        </div>
+                      );
+                    })()
                   ) : (
                     <div className="wr-ai-row assistant" key={message.id}>
                       <div className="wr-ai-bubble assistant">

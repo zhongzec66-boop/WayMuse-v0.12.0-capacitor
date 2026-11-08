@@ -1209,3 +1209,59 @@
   margin: 0 auto var(--space-16);
   border-radius: var(--radius-pill);
 }
+
+/* ── 用户发来的文件卡片 ───────────────────────────── */
+
+.wr-file-card {
+  max-width: var(--chat-max-user);
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: 8px 10px;
+  border: 1px solid var(--chat-surface-line);
+  border-radius: var(--radius-18);
+  border-bottom-right-radius: 5px;
+  background: var(--chat-surface);
+}
+
+.wr-file-mark {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.wr-file-body {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.wr-file-body b {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: var(--text-13);
+  font-weight: var(--weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wr-file-body small {
+  color: var(--ink-3);
+  font-size: var(--text-11);
+}
+
+.wr-file-remember {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: var(--text-11);
+  font-weight: var(--weight-medium);
+}

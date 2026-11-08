@@ -279,6 +279,10 @@ export default function WayMuseReference() {
           overlay={overlay}
           submit={submit}
           openIntake={openIntake}
+          onAttach={(payload) => {
+            setPendingChat({ id: Date.now(), text: payload });
+            setPage("聊天");
+          }}
           page={page}
           nav={nav}
           agentName={agentName}
