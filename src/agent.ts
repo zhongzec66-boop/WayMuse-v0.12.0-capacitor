@@ -1,54 +1,136 @@
 import type { Task } from "./types";
 
-export type Plan = { title: string; summary: string; steps: string[] };
-export const PLAN_INSTRUCTION = `【简短聊天与方案协议】
-无论其他语气设置如何，默认只回复2–4句短句，每段1句，用空行分隔；不写长篇报告，不连续追问。用户要求详细讲解时再展开。
-需要制定计划时，先用1–2句回应，然后最多推荐3个可选方案。只建议，不声称已执行。
-方案以如下格式放在回复末尾，前端会渲染成卡片，不要在正文重复步骤：
-<plans>[{"title":"25分钟起步","summary":"先完成最关键的一小步","steps":["选出一个最不熟悉的知识点","用一道题检验理解"]}]</plans>
-每个方案2–4个可执行步骤。标题不超过24字，说明不超过60字，步骤不超过80字。仅在用户有计划需求时输出方案。只有用户点击确认后才会写入计划。已确认计划、完成状态、课程和记忆由上下文提供；不要编造已连接外部应用。`;
+export type Priority = "high" | "medium" | "low";
 
-export function parseReply(content: string): { text: string; plans: Plan[] } {
-  const start = content.indexOf("<plans>");
-  if (start < 0)
+export type Plan = {
+  title: string;
+  summary: string;
+  steps: string[];
+  /** 可选：YYYY-MM-DD，用户提到时间时给出 */
+  deadline?: string;
+  /** 可选：重要程度，影响 Today 排序 */
+  priority?: Priority;
+};
+
+export type Reply = {
+  text: string;
+  plans: Plan[];
+  /** 值得写入“记忆”的事实，最多 3 条 */
+  memories: string[];
+};
+
+/**
+ * 输出协议：正文之外，允许两个契约块。
+ * 前端会把它们从正文里剥掉，渲染成可确认的卡片。
+ */
+export const PLAN_INSTRUCTION = `【回复协议】
+默认只回 2–3 句短话，每段一行，不写长篇报告，不连续追问。
+
+需要制定计划时，先给一句回应，再在回复末尾附上方案块（前端会渲染成卡片，
+不要在正文里重复步骤）：
+
+<plans>[{"title":"标题（≤24字）","summary":"一句话说明（≤40字）","steps":["步骤1","步骤2"],"deadline":"YYYY-MM-DD","priority":"high|medium|low"}]</plans>
+
+- 每个方案 2–4 个步骤，步骤 ≤30 字。
+- 只有用户提到具体时间（明天考试、周五截止）时才写 deadline，否则省略。
+- priority 仅在明显紧急时给 high，其余可省略。
+
+如果对话里出现了值得长期记住的用户事实（专业、目标、偏好、重要日程），
+再附一个记忆块（最多 2 条，每条 ≤40 字）：
+
+<memories>["明年暑假想找第一份实习","周三下午在图书馆"]</memories>
+
+只建议，不声称已执行。用户点确认后才会写入计划或记忆。`;
+
+function parsePriority(value: unknown): Priority | undefined {
+  return value === "high" || value === "medium" || value === "low"
+    ? value
+    : undefined;
+}
+
+function parseDeadline(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : undefined;
+}
+
+function parsePlan(value: unknown): Plan | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  if (typeof record.title !== "string" || !record.title.trim()) return null;
+  if (!Array.isArray(record.steps)) return null;
+  const steps = record.steps
+    .filter((step): step is string => typeof step === "string" && !!step.trim())
+    .slice(0, 4)
+    .map((step) => step.trim().slice(0, 80));
+  if (!steps.length) return null;
+  return {
+    title: record.title.trim().slice(0, 24),
+    summary:
+      typeof record.summary === "string" ? record.summary.slice(0, 60) : "",
+    steps,
+    deadline: parseDeadline(record.deadline),
+    priority: parsePriority(record.priority),
+  };
+}
+
+function extractBlock(
+  content: string,
+  tag: string,
+): { rest: string; body: string | null } {
+  const open = `<${tag}>`;
+  const close = `</${tag}>`;
+  const start = content.indexOf(open);
+  if (start < 0) return { rest: content, body: null };
+  const end = content.indexOf(close, start);
+  if (end < 0) {
+    // 流式输出还没闭合：先不把半个 JSON 显示成正文
     return {
-      text: content.replace(/<\/?p(?:l(?:a(?:n(?:s)?)?)?)?$/, ""),
-      plans: [],
+      rest: content.slice(0, start),
+      body: content.slice(start + open.length),
     };
-  const text = content.slice(0, start).trim();
-  const end = content.indexOf("</plans>", start);
-  if (end < 0) return { text, plans: [] };
-  try {
-    const raw: unknown = JSON.parse(content.slice(start + 7, end));
-    if (!Array.isArray(raw)) return { text, plans: [] };
-    const plans = raw.slice(0, 3).flatMap((p: unknown): Plan[] => {
-      if (!p || typeof p !== "object") return [];
-      const v = p as Record<string, unknown>;
-      if (
-        typeof v.title !== "string" ||
-        !v.title.trim() ||
-        !Array.isArray(v.steps)
-      )
-        return [];
-      const steps = v.steps
-        .filter(
-          (s: unknown): s is string => typeof s === "string" && !!s.trim(),
-        )
-        .slice(0, 4)
-        .map((s) => s.trim().slice(0, 80));
-      if (!steps.length) return [];
-      return [
-        {
-          title: v.title.trim().slice(0, 24),
-          summary: typeof v.summary === "string" ? v.summary.slice(0, 60) : "",
-          steps,
-        },
-      ];
-    });
-    return { text, plans };
-  } catch {
-    return { text, plans: [] };
   }
+  const rest = content.slice(0, start) + content.slice(end + close.length);
+  return { rest, body: content.slice(start + open.length, end) };
+}
+
+export function parseReply(content: string): Reply {
+  const plansBlock = extractBlock(content, "plans");
+  const memoriesBlock = extractBlock(plansBlock.rest, "memories");
+  const text = memoriesBlock.rest.trim();
+
+  let plans: Plan[] = [];
+  if (plansBlock.body) {
+    try {
+      const raw: unknown = JSON.parse(plansBlock.body);
+      if (Array.isArray(raw)) {
+        plans = raw
+          .slice(0, 3)
+          .map(parsePlan)
+          .filter((plan): plan is Plan => plan !== null);
+      }
+    } catch {
+      plans = [];
+    }
+  }
+
+  let memories: string[] = [];
+  if (memoriesBlock.body) {
+    try {
+      const raw: unknown = JSON.parse(memoriesBlock.body);
+      if (Array.isArray(raw)) {
+        memories = raw
+          .filter((item): item is string => typeof item === "string")
+          .map((item) => item.trim().slice(0, 60))
+          .filter(Boolean)
+          .slice(0, 3);
+      }
+    } catch {
+      memories = [];
+    }
+  }
+
+  return { text, plans, memories };
 }
 
 export function planTasks(
@@ -61,6 +143,112 @@ export function planTasks(
     text,
     category: plan.title,
     done: false,
-    priority: "medium",
+    priority: plan.priority ?? "medium",
+    deadline: plan.deadline,
   }));
+}
+
+function isoDate(offsetDays = 0): string {
+  const date = new Date();
+  date.setDate(date.getDate() + offsetDays);
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * 没有 API Key 时的本地兜底：按关键词给出一套能落地的建议，
+ * 让用户在配置模型之前也能走完「确认 → 写入」的闭环。
+ */
+export function localSuggestions(input: string): Reply {
+  const text = input.toLowerCase();
+  const has = (...words: string[]) => words.some((word) => text.includes(word));
+
+  if (has("考试", "复习", "期末", "测验", "挂科")) {
+    return {
+      text: "考试前慌是正常的。先别想着全复习完，把范围缩小到今天能动手的三件事。",
+      plans: [
+        {
+          title: "今晚 90 分钟复习",
+          summary: "先保重点，再补细节",
+          steps: [
+            "列出这次会考的三类题型",
+            "每类挑两道题限时做完",
+            "把错的题记进一个错题清单",
+          ],
+          deadline: isoDate(1),
+          priority: "high",
+        },
+      ],
+      memories: ["近期有考试，容易焦虑"],
+    };
+  }
+
+  if (has("实习", "简历", "面试", "求职", "投递")) {
+    return {
+      text: "先别急着海投。第一份实习更看重讲得清的一段经历，而不是投递数量。",
+      plans: [
+        {
+          title: "本周简历起步",
+          summary: "先把一段经历写扎实",
+          steps: [
+            "选一个最拿得出手的课程项目",
+            "按背景-做法-结果写三行",
+            "找一个人帮你看一遍",
+          ],
+          priority: "high",
+        },
+      ],
+      memories: ["目标是一份暑期实习"],
+    };
+  }
+
+  if (has("累", "烦", "焦虑", "难受", "压力", "emo", "摆烂")) {
+    return {
+      text: "听起来今天状态不好，这很正常。现在不适合加任务，先把门槛降到最低。",
+      plans: [
+        {
+          title: "15 分钟最小重启",
+          summary: "只做一件很小的事",
+          steps: ["起身喝水，离开屏幕两分钟", "回来只做一件 5 分钟能完成的事"],
+          priority: "low",
+        },
+      ],
+      memories: [],
+    };
+  }
+
+  if (has("论文", "作业", "报告", "ddl", "截止")) {
+    return {
+      text: "有明确截止的事，先把它拆成今天能结束的一段，剩下的明天再说。",
+      plans: [
+        {
+          title: "推进一段就够",
+          summary: "今天只求有产出",
+          steps: [
+            "写下要交付的最小版本",
+            "只完成其中一段（约 25 分钟）",
+            "把剩下的列成明天的清单",
+          ],
+          priority: "medium",
+        },
+      ],
+      memories: [],
+    };
+  }
+
+  return {
+    text: "我还没连上模型，但可以先给你一个通用起步方案。连上 DeepSeek 后我能更具体。",
+    plans: [
+      {
+        title: "把这件事拆小",
+        summary: "先动起来，再谈优化",
+        steps: [
+          "用一句话写下你真正想达成的结果",
+          "找出今天能做的最小一步",
+          "完成后回来告诉我进展",
+        ],
+        priority: "medium",
+      },
+    ],
+    memories: [],
+  };
 }

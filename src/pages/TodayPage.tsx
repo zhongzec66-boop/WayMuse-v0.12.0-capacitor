@@ -1,4 +1,4 @@
-import { SlidersHorizontal, X } from "lucide-react";
+import { ChevronRight, SlidersHorizontal, X } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import type { Course, Kind, Overlay, Page, Task } from "../types";
 
@@ -57,6 +57,17 @@ export default function TodayPage({
   const brief = getBriefContent();
   const suggestedTasks = activeTasks.slice(0, 2);
 
+  // 按截止日期挑出真正"今天要做"的事：逾期排前面
+  const todayKey = (() => {
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60_000;
+    return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+  })();
+  const dueTasks = activeTasks
+    .filter((task) => task.deadline && task.deadline <= todayKey)
+    .sort((a, b) => (a.deadline ?? "").localeCompare(b.deadline ?? ""))
+    .slice(0, 4);
+
   return (
     <>
       <div className="wr-head">
@@ -114,6 +125,32 @@ export default function TodayPage({
           >
             暂无今天的课程，添加课表
           </button>
+        )}
+        {dueTasks.length > 0 && (
+          <>
+            <div className="wr-divider" />
+            <div className="wr-brief-label">今天到期</div>
+            <div className="wr-course-list">
+              {dueTasks.map((task) => (
+                <div className="wr-course-row" key={task.id}>
+                  <span>
+                    <b>{task.text}</b>
+                    <small>
+                      {task.deadline === todayKey
+                        ? "今天"
+                        : `已逾期 · ${task.deadline}`}
+                    </small>
+                  </span>
+                  <button
+                    aria-label="去任务页"
+                    onClick={() => nav("任务")}
+                  >
+                    <ChevronRight size={15} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
         )}
         <div className="wr-divider" />
         <div className="wr-brief-label">今天可以做</div>

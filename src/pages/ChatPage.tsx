@@ -14,7 +14,7 @@ import {
   Trash2,
   TriangleAlert,
 } from "lucide-react";
-import { parseReply, planTasks } from "../agent";
+import { localSuggestions, parseReply, planTasks } from "../agent";
 import { BRAND } from "../brand";
 import BotAvatar from "../BotAvatar";
 import { storage } from "../storage";
@@ -78,6 +78,7 @@ export default function ChatPage({
   tasks,
   onSettings,
   onTasksChange,
+  onMemoriesChange,
   onViewPlans,
 }: {
   agentName: string;
@@ -90,6 +91,7 @@ export default function ChatPage({
   tasks: Task[];
   onSettings: () => void;
   onTasksChange: (tasks: Task[]) => void;
+  onMemoriesChange: (memories: string[]) => void;
   onViewPlans: () => void;
 }) {
   const [config, setConfig] = useState<DeepSeekConfig>(() =>
@@ -202,9 +204,33 @@ export default function ChatPage({
   const sendMessage = async (text: string, history: DeepSeekMessage[]) => {
     const content = text.trim();
     if (!content || streaming) return;
+
+    // 没有 Key 时走本地兜底：仍然给用户「可说 → 可确认 → 可落地」的闭环，
+    // 而不是把连接设置硬塞到用户面前。
     if (!apiKey.trim()) {
-      setError("请先连接 DeepSeek，再发送消息。");
-      setShowConfig(true);
+      const local = localSuggestions(content);
+      const parts = [local.text];
+      if (local.plans.length) {
+        parts.push(`<plans>${JSON.stringify(local.plans)}</plans>`);
+      }
+      if (local.memories.length) {
+        parts.push(`<memories>${JSON.stringify(local.memories)}</memories>`);
+      }
+      const now = Date.now();
+      setMessages([
+        ...history,
+        { id: newId(), role: "user", content, createdAt: now },
+        {
+          id: newId(),
+          role: "assistant",
+          content: parts.join("\n\n"),
+          createdAt: now,
+          model: "本地建议",
+        },
+      ]);
+      setError("");
+      setUsage(null);
+      setLatency(null);
       return;
     }
 
@@ -832,6 +858,35 @@ export default function ChatPage({
                             </section>
                           );
                         })}
+                      {(!streaming ||
+                        message.id !== messages[messages.length - 1]?.id) &&
+                        (() => {
+                          const proposed = parseReply(
+                            message.content,
+                          ).memories.filter((item) => !memories.includes(item));
+                          if (!proposed.length) return null;
+                          return (
+                            <section
+                              className="wr-memory-proposal"
+                              aria-label="记忆建议"
+                            >
+                              <small>想记住这些 · 等你确认</small>
+                              <ul>
+                                {proposed.map((item) => (
+                                  <li key={item}>{item}</li>
+                                ))}
+                              </ul>
+                              <button
+                                className="wr-ai-primary"
+                                onClick={() =>
+                                  onMemoriesChange([...proposed, ...memories])
+                                }
+                              >
+                                记住这些
+                              </button>
+                            </section>
+                          );
+                        })()}
                       <small>{formatTime(message.createdAt)}</small>
                     </div>
                   ),

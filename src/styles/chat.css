@@ -125,18 +125,106 @@
   height: 100%;
 }
 
-.wr-bot-avatar.replying .wr-bot-eyes {
-  transform-origin: 256px 270px;
-  animation: wm-bot-blink 2.2s ease-in-out infinite;
+/* ── 头像动效 ────────────────────────────────────────────────
+   呼吸 + 眨眼 + 眼球微移，全部纯 CSS，跟随 prefers-reduced-motion。 */
+.wr-bot-avatar {
+  display: block;
+  overflow: visible;
+}
+
+.wr-bot-body {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: wm-bot-breathe 5.5s ease-in-out infinite;
+}
+
+.wr-bot-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: wm-bot-look 7s ease-in-out infinite;
+}
+
+.wr-bot-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: wm-bot-blink 6.5s ease-in-out infinite;
+}
+
+.wr-bot-mouth {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* 说话时：眨眼更频繁、身体轻微律动 */
+.wr-bot-avatar.replying .wr-bot-body {
+  animation-duration: 2.4s;
+}
+
+.wr-bot-avatar.replying .wr-bot-eye {
+  animation-duration: 1.5s;
+}
+
+.wr-bot-avatar.replying .wr-bot-mouth {
+  animation: wm-bot-talk 0.9s ease-in-out infinite;
+}
+
+@keyframes wm-bot-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.025);
+  }
 }
 
 @keyframes wm-bot-blink {
-  0%, 42%, 48%, 100% { transform: scaleY(1); }
-  45% { transform: scaleY(0.08); }
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.06);
+  }
+}
+
+@keyframes wm-bot-look {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  55% {
+    transform: translateX(4px);
+  }
+  80% {
+    transform: translateX(-2px);
+  }
+}
+
+@keyframes wm-bot-talk {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(0.55);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .wr-bot-avatar.replying .wr-bot-eyes { animation: none; }
+  .wr-bot-body,
+  .wr-bot-eyes,
+  .wr-bot-eye,
+  .wr-bot-mouth,
+  .wr-bot-avatar.replying .wr-bot-body,
+  .wr-bot-avatar.replying .wr-bot-eye,
+  .wr-bot-avatar.replying .wr-bot-mouth {
+    animation: none;
+  }
 }
 
 .wr-chat-date {
@@ -858,4 +946,26 @@
   display: block;
   color: var(--primary);
   font-size: 12px;
+}
+.wr-memory-proposal {
+  width: 100%;
+  margin-top: 12px;
+  padding: 16px;
+  border: 1px solid var(--glass-line);
+  border-radius: 24px;
+  background: var(--glass-strong);
+}
+.wr-memory-proposal > small {
+  color: var(--primary);
+  font-size: 12px;
+}
+.wr-memory-proposal ul {
+  margin: 8px 0 12px;
+  padding-left: 18px;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.7;
+}
+.wr-memory-proposal > button {
+  width: 100%;
 }

@@ -250,6 +250,7 @@ export default function WayMuseReference() {
               tasks={tasks}
               onSettings={() => setOverlay("设置")}
               onTasksChange={setTasks}
+              onMemoriesChange={setMemories}
               onViewPlans={() => nav("任务")}
             />
           )}
