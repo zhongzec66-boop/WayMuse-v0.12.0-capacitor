@@ -1,4 +1,5 @@
 import { BRAND } from "./brand";
+import { storage } from "./storage";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import {
@@ -45,9 +46,11 @@ export default function Onboarding({
   onFinish: (profile: UserProfile) => void;
 }) {
   const [step, setStep] = useState(0);
+  const [apiKey, setApiKey] = useState(() => storage.getDeepSeekKey());
+  const [breezeKey, setBreezeKey] = useState(() => storage.getBreezeKey());
   const [profile, setProfile] = useState<UserProfile>({ ...DEFAULT_PROFILE });
   const [entering, setEntering] = useState(false);
-  const steps = 6;
+  const steps = 7;
 
   const update = <K extends keyof UserProfile>(key: K, value: UserProfile[K]) =>
     setProfile((current) => ({ ...current, [key]: value }));
@@ -63,6 +66,13 @@ export default function Onboarding({
 
   const next = () => {
     if (step === steps - 1) {
+      // 先把 Key 存下来，再进入主界面
+      if (apiKey.trim()) {
+        storage.setDeepSeekKey(apiKey.trim(), true);
+      }
+      if (breezeKey.trim()) {
+        storage.setBreezeKey(breezeKey.trim());
+      }
       setEntering(true);
       const finalProfile: UserProfile = {
         ...profile,
@@ -106,19 +116,15 @@ export default function Onboarding({
         {step === 0 && (
           <>
             <BotAvatar className="wr-onboard-emblem" />
-            <h1>先建立你的本地档案。</h1>
-            <p>
-              不用注册账号。先告诉我你的学业背景，再设置 {BRAND}{" "}
-              该怎么称呼你、以什么方式陪你。
-            </p>
-            <div className="wr-onboard-note">资料只保存在当前设备。</div>
+            <h1>你的基本情况</h1>
+            <p>不用注册。资料只存在这台手机上。</p>
           </>
         )}
 
         {step === 1 && (
           <>
             <div className="wr-onboard-kicker">你的学业</div>
-            <h1>先认识你的学习生活。</h1>
+            <h1>学业情况</h1>
             <div className="wr-onboard-form">
               <label className="wr-field-block">
                 <span>学校</span>
@@ -197,19 +203,16 @@ export default function Onboarding({
                   placeholder="例如：高等数学、数据结构、宏观经济学"
                   maxLength={600}
                 />
-                <small>用顿号或逗号分开，之后排复习计划会用到。</small>
+                <small>用顿号或逗号分开</small>
               </label>
             </div>
-            <p className="wr-onboard-hint">
-              都可以先跳过，之后在设置 → 个人档案里补充。
-            </p>
           </>
         )}
 
         {step === 2 && (
           <>
             <div className="wr-onboard-kicker">你的方向</div>
-            <h1>你最近在想什么？</h1>
+            <h1>最近在忙什么</h1>
             <div className="wr-onboard-form">
               <label className="wr-field-block">
                 <span>目标方向</span>
@@ -240,19 +243,16 @@ export default function Onboarding({
                   placeholder="例如：无锡"
                   maxLength={40}
                 />
-                <small>只用来考虑本地作息和通勤，不会上传。</small>
+                <small>只存在本机</small>
               </label>
             </div>
-            <p className="wr-onboard-hint">
-              不知道写什么就跳过，后面聊到了再补。
-            </p>
           </>
         )}
 
         {step === 3 && (
           <>
             <div className="wr-onboard-kicker">称呼与 WayMuse 头像</div>
-            <h1>{BRAND} 该怎么称呼你？</h1>
+            <h1>怎么称呼你</h1>
             <input
               className="wr-onboard-input"
               autoFocus
@@ -275,7 +275,7 @@ export default function Onboarding({
         {step === 4 && (
           <>
             <div className="wr-onboard-kicker">陪伴方式</div>
-            <h1>你希望 {BRAND} 以什么方式陪伴你？</h1>
+            <h1>陪伴方式</h1>
             <div className="wr-companion-grid">
               {COMPANION_TYPES.map((type) => (
                 <button
@@ -345,14 +345,45 @@ export default function Onboarding({
               </div>
             )}
 
-            {profile.companionType !== "自定义" && (
-              <p className="wr-onboard-hint">
-                当前风格：{profile.tone} · {profile.responseLength}
-                回复。之后可以在设置里调整。
-              </p>
-            )}
             <p className="wr-onboard-hint">
               {BRAND} 是 AI，不是真人；亲密表达会保持克制。
+            </p>
+          </>
+        )}
+
+        {step === 6 && (
+          <>
+            <BotAvatar className="wr-onboard-emblem small" />
+            <h1>填写 API Key</h1>
+            <p>
+              这一步只做一次。Key 只存在这台手机上，也会直接发给 DeepSeek，
+              不经过任何中间服务器。
+            </p>
+            <label className="wr-onboard-field">
+              <span>DeepSeek Key</span>
+              <input
+                type="password"
+                value={apiKey}
+                placeholder="sk-..."
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(event) => setApiKey(event.target.value)}
+              />
+            </label>
+            <label className="wr-onboard-field">
+              <span>Breeze Key（可选，用来朗读）</span>
+              <input
+                type="password"
+                value={breezeKey}
+                placeholder="brz_..."
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(event) => setBreezeKey(event.target.value)}
+              />
+            </label>
+            <p className="wr-onboard-hint">
+              DeepSeek Key 在 platform.deepseek.com 免费申请。
+              暂时不填也能进，之后随时可以在设置里补。
             </p>
           </>
         )}
@@ -360,7 +391,7 @@ export default function Onboarding({
         {step === 5 && (
           <>
             <BotAvatar className="wr-onboard-emblem small" />
-            <h1>你的资料，由你决定。</h1>
+            <h1>数据说明</h1>
             <p>
               学业档案、头像、称呼和陪伴方式都只保存在本机。没有账户，也没有云端副本。
             </p>
@@ -368,7 +399,7 @@ export default function Onboarding({
               <Cloud />
               <span>
                 <b>DeepSeek 接入</b>
-                <small>可在设置 → AI 连接中填写自己的 Key</small>
+                <small>在设置里填写自己的 Key</small>
               </span>
               <span>可选</span>
             </div>
@@ -385,7 +416,7 @@ export default function Onboarding({
       {entering && (
         <div className="wr-entry">
           <BotAvatar className="wr-entry-mark" />
-          <div>{profile.callName || "同学"}，陪你走下一步。</div>
+          <div>正在进入</div>
         </div>
       )}
     </div>

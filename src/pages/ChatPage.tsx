@@ -834,7 +834,7 @@ export default function ChatPage({
             {/* 头像和名字已经在空态 hero 里了，这里只留引导 */}
             <p>
               {apiKey
-                ? "想聊聊近况，还是一起学点什么？"
+                ? "直接说事，或者从下面挑一个"
                 : "连接 DeepSeek 后开始聊天。"}
             </p>
             {!apiKey && (

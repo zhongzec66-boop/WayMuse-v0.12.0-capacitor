@@ -87,7 +87,7 @@ export default function WayMuseReference() {
   }, [profile.avatar]);
 
   useEffect(() => {
-    document.title = `${BRAND} · 你的大学生活 AI 助理`;
+    document.title = `${BRAND} · 学业助理`;
   }, []);
   useEffect(() => {
     if (!hasEntered) return;

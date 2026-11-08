@@ -55,13 +55,13 @@ export default function Dock({
   // 同一个 agent，五个工作面：占位符跟着当前页走，提示它此刻能帮什么。
   const placeholder =
     page === "Today"
-      ? "帮我梳理今天的安排…"
+      ? "今天要做什么"
       : page === "任务"
-        ? "让我帮你研究、规划或拆解…"
+        ? "说说要做什么"
         : page === "记忆"
-          ? "让我更了解你…"
+          ? "记点什么"
           : page === "角色"
-            ? "和助理说点什么…"
+            ? "说点什么"
             : "点击输入或录制语音…";
   const fileRef = useRef<HTMLInputElement | null>(null);
   const imageRef = useRef<HTMLInputElement | null>(null);
@@ -141,10 +141,14 @@ export default function Dock({
         </div>
       )}
       {speech.listening && (
-        <div className="wr-listening" role="status">
+        <button
+          className="wr-listening"
+          type="button"
+          onClick={() => speech.toggle()}
+        >
           <span className="wr-listening-dot" />
-          正在听…再点一下麦克风结束
-        </div>
+          正在听，点这里结束
+        </button>
       )}
       {speech.error && !speech.listening && (
         <div className="wr-listening error" role="alert">

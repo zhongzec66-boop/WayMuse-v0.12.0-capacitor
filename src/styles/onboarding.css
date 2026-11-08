@@ -555,3 +555,34 @@
     animation: none;
   }
 }
+
+/* ── 首次填写 Key ─────────────────────────────── */
+
+.wr-onboard-field {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  margin-bottom: var(--space-12);
+}
+
+.wr-onboard-field > span {
+  color: var(--ink-2);
+  font-size: var(--text-13);
+}
+
+.wr-onboard-field > input {
+  width: 100%;
+  min-height: var(--control-44);
+  padding: 0 var(--space-16);
+  border: var(--border-1) solid var(--divider);
+  border-radius: var(--radius-16);
+  background: var(--card-bg);
+  /* 16px 起：iOS 在更小字号上会放大整个页面 */
+  font-size: 16px;
+}
+
+.wr-onboard-hint {
+  color: var(--ink-3);
+  font-size: var(--text-12);
+  line-height: var(--leading-body);
+}

@@ -36,6 +36,7 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     private var recognizing = false
+    private var tapInstalled = false
     private let eventStore = EKEventStore()
     private var player: AVAudioPlayer?
     private var pendingPlay: CAPPluginCall?
@@ -159,6 +160,7 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
             let input = engine.inputNode
             let format = input.inputFormat(forBus: 0)
             input.removeTap(onBus: 0)
+            self.tapInstalled = true
             input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
                 request.append(buffer)
             }
@@ -356,7 +358,10 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
         if engine.isRunning {
             engine.stop()
         }
-        engine.inputNode.removeTap(onBus: 0)
+        if tapInstalled {
+            engine.inputNode.removeTap(onBus: 0)
+            tapInstalled = false
+        }
         request?.endAudio()
         request = nil
         task?.cancel()

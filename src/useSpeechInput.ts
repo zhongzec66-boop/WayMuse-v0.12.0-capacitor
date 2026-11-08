@@ -46,6 +46,9 @@ export function useSpeechInput(
         if (!alive) return;
         onTextRef.current(text);
         setListening(false);
+        // 识别到一句就主动收麦：不等系统自己结束，
+        // 否则会出现「已经读完了但一直开着、点也关不掉」的状态
+        void stopSpeech();
         void haptic("light");
         if (text.trim() && onFinalRef.current) onFinalRef.current(text.trim());
       });
@@ -75,6 +78,11 @@ export function useSpeechInput(
       await startSpeech("zh-CN");
       setListening(true);
       void haptic("medium");
+      // 兜底：60 秒还没识别出句子就自动收麦，避免一直占着麦克风
+      window.setTimeout(() => {
+        setListening(false);
+        void stopSpeech();
+      }, 60_000);
     } catch {
       setListening(false);
       setError("语音识别不可用，检查麦克风和语音识别权限");
