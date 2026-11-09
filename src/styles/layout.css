@@ -536,3 +536,20 @@
     animation: none;
   }
 }
+
+/* ── Android / 澎湃专用适配 ────────────────────────────────
+   不单独做一套页面，用 html[data-platform="android"] 做针对性覆盖：
+   系统栏占位、底部安全区、WebView 与输入法的差异都在这里收口。 */
+html[data-platform="android"] .wr-content {
+  padding-bottom: calc(var(--content-bottom) + var(--space-8));
+}
+
+html[data-platform="android"] .wr-chat-scroll {
+  /* 安卓底部没有 iOS 那种 34px 安全区，但导航栏会吃掉一块，
+     多留 24px 保证最后一条消息和拓展问题完整可见 */
+  padding-bottom: calc(var(--content-bottom) + var(--space-24));
+}
+
+html[data-platform="android"] .wr-dock {
+  bottom: calc(var(--space-12) + var(--native-tabbar, 0px));
+}
