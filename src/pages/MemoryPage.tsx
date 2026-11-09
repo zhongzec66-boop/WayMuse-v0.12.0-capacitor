@@ -1,5 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, ChevronRight, RotateCcw, Trash2, X } from "lucide-react";
+import {
+  Activity,
+  BookOpen,
+  FileText,
+  Footprints,
+  Heart,
+  Moon,
+  RotateCcw,
+  Timer,
+  Trash2,
+  X,
+} from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import {
   DOCS,
@@ -12,6 +23,7 @@ import {
 } from "../docs";
 import type { DocId } from "../docs";
 import type { Memory, Overlay, Page } from "../types";
+import { formatFocus, formatSleep, useHealthSnapshot } from "../health";
 import { useHideNativeChrome } from "../chrome";
 import { useBubbleField } from "../useBubbleField";
 
@@ -45,6 +57,7 @@ export default function MemoryPage({
   const [editing, setEditing] = useState<DocId | null>(null);
   const [draft, setDraft] = useState("");
   const [picked, setPicked] = useState<Bubble | null>(null);
+  const health = useHealthSnapshot();
 
   const fieldRef = useRef<HTMLDivElement>(null);
   const tapRef = useRef<(id: string) => void>(() => undefined);
@@ -147,36 +160,71 @@ export default function MemoryPage({
         </div>
       )}
 
-      {/* ── 三份文件 ─────────────────────────────── */}
-      <section className="wr-doclist" aria-label="人格与记忆文件">
+      {/* ── 健康 ─────────────────────────────────── */}
+      <section className="wr-health" aria-label="健康">
+        <header className="wr-health-head">
+          <span className="wr-health-mark">
+            <Heart size={16} />
+          </span>
+          <span className="wr-health-title">
+            <b>健康</b>
+            <small>更新于 {health.updatedAt}</small>
+          </span>
+        </header>
+        <div className="wr-health-grid">
+          <div className="wr-health-tile">
+            <Moon size={15} />
+            <b>{formatSleep(health.sleepMinutes)}</b>
+            <small>睡眠</small>
+          </div>
+          <div className="wr-health-tile">
+            <Footprints size={15} />
+            <b>{health.steps.toLocaleString("zh-CN")}</b>
+            <small>步数</small>
+          </div>
+          <div className="wr-health-tile">
+            <Activity size={15} />
+            <b>{health.restingHeartRate}</b>
+            <small>静息心率</small>
+          </div>
+          <div className="wr-health-tile">
+            <Timer size={15} />
+            <b>{formatFocus(health.focusMinutes)}</b>
+            <small>专注</small>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 文件 ─────────────────────────────────── */}
+      <h2 className="wr-section-title">文件</h2>
+      <section className="wr-filegrid" aria-label="人格与记忆文件">
         {DOCS.map((doc) => {
           const text = docs[doc.id];
           const count = docBullets(text).length;
           return (
             <button
               key={doc.id}
-              className="wr-docrow"
+              className="wr-filecard"
               onClick={() => openDoc(doc.id)}
             >
-              <span className="wr-docrow-main">
-                <b>{doc.filename}</b>
-                <small>{docSummary(text)}</small>
+              <span className="wr-filecard-mark">
+                <FileText size={16} />
               </span>
-              <span className="wr-docrow-meta">
-                {count > 0 ? `${count} 条` : doc.hint}
-                <ChevronRight size={14} />
-              </span>
+              <b>{doc.filename}</b>
+              <small>{docSummary(text)}</small>
+              <em>{count > 0 ? `${count} 条` : doc.hint}</em>
             </button>
           );
         })}
       </section>
 
       {/* ── 记忆气泡场 ───────────────────────────── */}
+      <h2 className="wr-section-title">记忆</h2>
       <section className="wr-bubblewrap" aria-label="记忆">
         <header className="wr-bubblewrap-head">
-          <span>记忆气泡</span>
+          <span>全部</span>
           <em>
-            {bubbles.length} 条{bubbles.length > 0 && " · 拖动看看"}
+            {bubbles.length} 条{bubbles.length > 0 && " · 可以拖"}
           </em>
         </header>
 

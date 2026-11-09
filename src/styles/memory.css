@@ -632,3 +632,140 @@
   color: var(--ink-3);
   font-size: var(--text-14);
 }
+
+/* ── 记忆页：健康卡 + 文件卡（iOS 分组卡片的语气，
+      但全部用 CSS 自绘玻璃，不依赖原生玻璃插件）────────── */
+
+.wr-section-title {
+  margin: var(--space-20) 2px var(--space-8);
+  color: var(--ink-3);
+  font-size: var(--text-12);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.02em;
+}
+
+.wr-health {
+  margin-top: var(--space-16);
+  padding: var(--space-16);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+.wr-health-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  margin-bottom: var(--space-12);
+}
+
+.wr-health-mark {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #fdeceb;
+  color: #d4453f;
+}
+
+.wr-health-title {
+  display: grid;
+  gap: 1px;
+}
+
+.wr-health-title b {
+  color: var(--ink);
+  font-size: var(--text-16);
+  font-weight: var(--weight-semibold);
+}
+
+.wr-health-title small {
+  color: var(--card-caption);
+  font-size: var(--text-11);
+}
+
+.wr-health-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-8);
+}
+
+.wr-health-tile {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-12);
+  border-radius: var(--radius-16);
+  /* 模拟玻璃：底色 + 内描边 + 极轻的高光，不依赖 backdrop-filter */
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.92) 0%,
+      rgba(255, 255, 255, 0.7) 100%
+    ),
+    var(--surface-muted);
+  box-shadow:
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.9),
+    0 1px 2px rgba(16, 36, 56, 0.05);
+}
+
+.wr-health-tile svg {
+  color: var(--ink-3);
+}
+
+.wr-health-tile b {
+  color: var(--ink);
+  font-size: var(--text-15);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.wr-health-tile small {
+  color: var(--card-caption);
+  font-size: var(--text-11);
+}
+
+.wr-filegrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-8);
+}
+
+.wr-filecard {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-12);
+  min-height: 96px;
+  border-radius: var(--radius-20);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+  text-align: left;
+}
+
+.wr-filecard-mark {
+  color: var(--primary);
+}
+
+.wr-filecard b {
+  margin-top: var(--space-4);
+  color: var(--ink);
+  font-size: var(--text-13);
+  font-weight: var(--weight-semibold);
+}
+
+.wr-filecard small {
+  overflow: hidden;
+  color: var(--ink-3);
+  font-size: var(--text-11);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.wr-filecard em {
+  margin-top: auto;
+  color: var(--card-caption);
+  font-size: var(--text-11);
+  font-style: normal;
+}

@@ -23,19 +23,10 @@ const placeholders: Record<Page, string> = {
  * 发送/语音/附件都通过 Capacitor 事件从原生回传。
  */
 export default function NativeDock(props: DockProps) {
-  const {
-    draft,
-    setDraft,
-    submit,
-    overlay,
-    dockHidden,
-    onAttach,
-    page,
-  } = props;
+  const { draft, setDraft, submit, overlay, dockHidden, onAttach, page } =
+    props;
 
   const fileRef = useRef<HTMLInputElement | null>(null);
-
-
 
   useNativeCompose({
     enabled: true,
@@ -45,7 +36,6 @@ export default function NativeDock(props: DockProps) {
     onTextChange: setDraft,
     onSubmit: submit,
     onAttach: () => fileRef.current?.click(),
-
   });
 
   const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {

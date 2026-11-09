@@ -4,7 +4,6 @@ import {
   FilePlus2,
   ListTodo,
   MessageCircle,
-
   Plus,
   Send,
   Sparkles,
@@ -63,7 +62,6 @@ export default function WebDock({
   const fileRef = useRef<HTMLInputElement | null>(null);
   const imageRef = useRef<HTMLInputElement | null>(null);
 
-
   // 文本类文件直接把内容带进对话；其它类型只带文件名，不假装能解析。
   const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -113,7 +111,6 @@ export default function WebDock({
     onTextChange: setDraft,
     onSubmit: submit,
     onAttach: () => setAttachmentMenu(!attachmentMenu),
-
   });
 
   return (

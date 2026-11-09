@@ -55,7 +55,6 @@ export default function SettingsPage({
   >("idle");
   const [deepSeekMessage, setDeepSeekMessage] = useState("");
 
-
   /* ── 联网搜索 ── */
   const [searchProvider, setSearchProvider] = useState(() =>
     storage.getSearchProvider(),
@@ -70,7 +69,6 @@ export default function SettingsPage({
     const value = Number.parseFloat(raw);
     return Number.isFinite(value) ? Math.round(value) : 0;
   })();
-
 
   const updateProfile = <K extends keyof UserProfile>(
     key: K,
@@ -545,7 +543,6 @@ export default function SettingsPage({
             不需要注册。想要更完整的网页结果再填上面的 key。
           </p>
         </div>
-
 
         <div className="wr-settings-label" id="setting-触感">
           触感

@@ -172,7 +172,6 @@ function pickWeeks(text: string): { weeks?: number[]; rest: string } {
   return { rest: text };
 }
 
-
 /* ── 表格模式 ────────────────────────────────────────
    教务系统复制出来的另一种形态：一行是一个节次，列是周一到周日，
    中间用空格分隔。例如：
@@ -184,7 +183,9 @@ const TABLE_WEEKDAYS = [1, 2, 3, 4, 5, 6, 0];
 
 const EMPTY_CELL = /^(无|无课|—+|-+|\/|·|\.)$/;
 
-function periodToTime(startPeriod: number): { start: string; end: string } | null {
+function periodToTime(
+  startPeriod: number,
+): { start: string; end: string } | null {
   const index = Math.floor((startPeriod - 1) / 2);
   const slot = PERIODS[index];
   if (!slot) return null;
