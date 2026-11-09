@@ -2,6 +2,18 @@ name: Build Android APK
 
 on:
   workflow_dispatch:
+  # 该 workflow 只存在于 feat/native-compose 分支时，workflow_dispatch API
+  # 会返回 404（GitHub 只认默认分支上的 workflow）。挂一个 push 触发兜底。
+  push:
+    branches:
+      - feat/native-compose
+    paths:
+      - "android/**"
+      - "src/**"
+      - "public/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/android-build.yml"
 
 permissions:
   contents: read
