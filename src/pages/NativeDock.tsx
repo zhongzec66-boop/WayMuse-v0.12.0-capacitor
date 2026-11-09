@@ -3,7 +3,7 @@ import type { ChangeEvent, ComponentProps } from "react";
 
 import WebDock from "./WebDock";
 import { COMPOSE_SLOT_ID, useNativeCompose } from "../nativeCompose";
-import { buildFileBlock, extractFileText } from "../fileText";
+import { buildFileBlock, describeFailure, extractFileText } from "../fileText";
 import { recognizeImageText } from "../ocr";
 import type { Page } from "../types";
 
@@ -50,7 +50,9 @@ export default function NativeDock(props: DockProps) {
       extracted.source === "image"
         ? await recognizeImageText(file)
         : extracted.text;
-    onAttach(buildFileBlock(file.name, file.size, content));
+    onAttach(
+      buildFileBlock(file.name, file.size, content, describeFailure(extracted)),
+    );
   };
 
   // 键盘收起时也要保证最后一条消息可见：布局由 --kb-inset + 内容区 padding 负责

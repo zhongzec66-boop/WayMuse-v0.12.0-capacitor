@@ -10,9 +10,29 @@ import { Capacitor, registerPlugin } from "@capacitor/core";
 
 interface NativeExtrasBridge {
   recognizeText(options: { base64: string }): Promise<{ text: string }>;
+  extractPdfText(options: {
+    base64: string;
+  }): Promise<{ text: string; scanned?: boolean }>;
 }
 
 const NativeExtras = registerPlugin<NativeExtrasBridge>("NativeExtras");
+
+/** PDF 也走原生：PDFKit 比 pdf.js 稳，扫描件还能自动 OCR */
+export async function extractPdfTextNative(
+  file: File,
+): Promise<{ text: string; scanned: boolean } | null> {
+  if (!isOcrSupported()) return null;
+  try {
+    const base64 = await fileToBase64(file);
+    const result = await NativeExtras.extractPdfText({ base64 });
+    return {
+      text: (result.text ?? "").trim(),
+      scanned: Boolean(result.scanned),
+    };
+  } catch {
+    return null;
+  }
+}
 
 export function isOcrSupported(): boolean {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";

@@ -5,6 +5,7 @@ import AVFoundation
 import Speech
 import EventKit
 import Vision
+import PDFKit
 
 /// 原生「震动 + 本地语音识别」桥。
 ///
@@ -35,6 +36,7 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "endCallAudio", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "audioRoute", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "recognizeText", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "extractPdfText", returnType: CAPPluginReturnPromise),
     ]
 
     private let engine = AVAudioEngine()
@@ -380,6 +382,77 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
 
+
+    // MARK: - PDF 抽取文字（PDFKit）
+
+    /// 从 PDF 里抽正文。
+    ///
+    /// 用系统自带的 PDFKit 而不是 pdf.js：
+    /// pdf.js 需要 worker，在 WKWebView 里容易加载失败，而且它的新版本
+    /// 依赖较新的 JS 特性。PDFKit 是系统框架，没有这些问题。
+    ///
+    /// 抽不到文字（扫描件、图片型 PDF）时退化成「渲染成图再 OCR」，
+    /// 学生拍的讲义、扫描的课件正好是这种。
+    @objc func extractPdfText(_ call: CAPPluginCall) {
+        guard let base64 = call.getString("base64"),
+              let data = Data(base64Encoded: base64),
+              let document = PDFDocument(data: data) else {
+            call.reject("pdf-required")
+            return
+        }
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            // 1) 先读文字层，最多 30 页
+            var pages: [String] = []
+            let textPages = min(document.pageCount, 30)
+            for index in 0..<textPages {
+                if let text = document.page(at: index)?.string?
+                    .trimmingCharacters(in: .whitespacesAndNewlines),
+                   !text.isEmpty {
+                    pages.append(text)
+                }
+            }
+            let plain = pages.joined(separator: "\n")
+
+            if plain.count >= 40 {
+                call.resolve(["text": plain, "scanned": false])
+                return
+            }
+
+            // 2) 没有文字层：当成扫描件，渲染前 3 页再 OCR
+            var recognized: [String] = []
+            let scanPages = min(document.pageCount, 3)
+            for index in 0..<scanPages {
+                guard let page = document.page(at: index) else { continue }
+                let bounds = page.bounds(for: .mediaBox)
+                guard bounds.width > 1, bounds.height > 1 else { continue }
+                let scale: CGFloat = 2
+                let size = CGSize(
+                    width: bounds.width * scale,
+                    height: bounds.height * scale
+                )
+                let renderer = UIGraphicsImageRenderer(size: size)
+                let image = renderer.image { context in
+                    UIColor.white.setFill()
+                    context.fill(CGRect(origin: .zero, size: size))
+                    let cg = context.cgContext
+                    cg.translateBy(x: 0, y: size.height)
+                    cg.scaleBy(x: scale, y: -scale)
+                    page.draw(with: .mediaBox, to: cg)
+                }
+                if let cgImage = image.cgImage,
+                   let text = Self.recognizeSync(cgImage: cgImage),
+                   !text.isEmpty {
+                    recognized.append(text)
+                }
+            }
+
+            call.resolve([
+                "text": recognized.joined(separator: "\n"),
+                "scanned": true,
+            ])
+        }
+    }
     // MARK: - 图片文字识别（Vision，设备本地）
 
     /// 从图片里认字。
@@ -395,27 +468,31 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
 
-        let request = VNRecognizeTextRequest { request, error in
-            if let error {
-                call.reject("ocr-failed: \(error.localizedDescription)")
-                return
+        DispatchQueue.global(qos: .userInitiated).async {
+            if let text = Self.recognizeSync(cgImage: cgImage) {
+                call.resolve(["text": text])
+            } else {
+                call.reject("ocr-failed")
             }
-            let lines = (request.results as? [VNRecognizedTextObservation] ?? [])
-                .compactMap { $0.topCandidates(1).first?.string }
-            call.resolve(["text": lines.joined(separator: "\n")])
         }
+    }
+
+    /// 同步识别一张图里的文字。PDF 扫描件那条路径也复用这里。
+    private static func recognizeSync(cgImage: CGImage) -> String? {
+        let request = VNRecognizeTextRequest()
         request.recognitionLevel = .accurate
         request.usesLanguageCorrection = true
-        // 中文优先，其次英文；不支持的语言组合会在运行时被忽略
+        // 中文优先，其次英文；不支持的语言会在运行时被忽略
         request.recognitionLanguages = ["zh-Hans", "en-US"]
 
         let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-        DispatchQueue.global(qos: .userInitiated).async {
-            do {
-                try handler.perform([request])
-            } catch {
-                call.reject("ocr-failed: \(error.localizedDescription)")
-            }
+        do {
+            try handler.perform([request])
+            let lines = (request.results ?? [])
+                .compactMap { $0.topCandidates(1).first?.string }
+            return lines.joined(separator: "\n")
+        } catch {
+            return nil
         }
     }
     // MARK: - 音频播放（锁扬声器）

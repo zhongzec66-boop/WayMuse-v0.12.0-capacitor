@@ -15,7 +15,7 @@ import { haptic } from "../nativeExtras";
 
 import type { Overlay, Page } from "../types";
 import { COMPOSE_SLOT_ID, useNativeCompose } from "../nativeCompose";
-import { buildFileBlock, extractFileText } from "../fileText";
+import { buildFileBlock, describeFailure, extractFileText } from "../fileText";
 import { recognizeImageText } from "../ocr";
 
 export default function WebDock({
@@ -77,7 +77,9 @@ export default function WebDock({
       extracted.source === "image"
         ? await recognizeImageText(file)
         : extracted.text;
-    onAttach(buildFileBlock(file.name, file.size, content));
+    onAttach(
+      buildFileBlock(file.name, file.size, content, describeFailure(extracted)),
+    );
   };
 
   // iOS 上用原生输入框；其它环境（Web / 插件缺失）自动回退到下面的 <input>。

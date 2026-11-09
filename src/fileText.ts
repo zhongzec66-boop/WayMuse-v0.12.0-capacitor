@@ -1,4 +1,5 @@
 import type { ChangeEvent } from "react";
+import { extractPdfTextNative } from "./ocr";
 
 /**
  * 把用户拖进来的文件变成纯文本。
@@ -111,7 +112,10 @@ export async function extractFileText(file: File): Promise<ExtractedText> {
     }
   } else if (/\.pdf$/i.test(file.name) || file.type === "application/pdf") {
     source = "pdf";
-    raw = await readPdf(file);
+    // iOS 上优先用系统 PDFKit：比 pdf.js 稳，扫描件还能自动转 OCR。
+    // 拿不到（Android / Web / 插件缺失）再退回 pdf.js。
+    const native = await extractPdfTextNative(file);
+    raw = native ? native.text : await readPdf(file);
   } else if (
     /\.docx$/i.test(file.name) ||
     file.type ===
@@ -143,11 +147,17 @@ export async function extractFileText(file: File): Promise<ExtractedText> {
   return { text, source };
 }
 
-/** 生成给模型看的附件块；content 为空时明确说明看不到内容 */
+/**
+ * 生成给模型看的附件块。
+ *
+ * content 为空时必须说清楚**为什么**：直接说「看不到内容」，模型只能回
+ * 一句「我读不了」，用户也判断不出是扫描件、加密还是格式不支持。
+ */
 export function buildFileBlock(
   name: string,
   size: number,
   content: string,
+  failedHint?: string,
 ): string {
   const header = JSON.stringify({
     n: name.slice(0, 80),
@@ -155,13 +165,27 @@ export function buildFileBlock(
     b: !content,
   });
   if (!content) {
-    return (
-      `[[FILE:${header}]]` +
-      "\n（这是二进制文件，你只能看到文件名和大小，看不到里面的内容）" +
-      "\n[[/FILE]]"
-    );
+    const reason = failedHint
+      ? `（${failedHint}。你只能看到文件名和大小）`
+      : "（这是二进制文件，你只能看到文件名和大小，看不到里面的内容）";
+    return `[[FILE:${header}]]\n${reason}\n[[/FILE]]`;
   }
   return `[[FILE:${header}]]\n${content}\n[[/FILE]]`;
+}
+
+/** 解析失败时给模型和用户的一句话原因 */
+export function describeFailure(extracted: ExtractedText): string | undefined {
+  if (extracted.text) return undefined;
+  switch (extracted.source) {
+    case "pdf":
+      return "这份 PDF 没有提取到文字，可能是扫描件、加密或纯图片";
+    case "docx":
+      return "这份 Word 没有提取到文字";
+    case "sheet":
+      return "这张表格没有提取到内容";
+    default:
+      return undefined;
+  }
 }
 
 export type { ChangeEvent };
