@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 与 Web 端 tokens.css 对齐：主色/深色/强调色 -->
+    <color name="colorPrimary">#1F4D3A</color>
+    <color name="colorPrimaryDark">#17201B</color>
+    <color name="colorAccent">#D98A1F</color>
+    <!-- 系统栏背景：跟随浅色渐变中段，避免与页面割裂 -->
+    <color name="waymuseBackground">#EEF0EA</color>
+</resources>

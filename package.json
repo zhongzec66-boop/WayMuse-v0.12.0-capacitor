@@ -19,6 +19,8 @@
   },
   "dependencies": {
     "@ajuarezso/capacitor-liquid-glass": "^0.8.0",
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.6.0",
     "@capacitor/ios": "^8.6.0",
     "lucide-react": "^0.577.0",

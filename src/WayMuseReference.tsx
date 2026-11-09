@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { App } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
 import { BRAND } from "./brand";
 import { newId } from "./id";
 import Onboarding from "./Onboarding";
@@ -167,6 +169,36 @@ export default function WayMuseReference() {
     setOverlay("");
     setAttachmentMenu(false);
   };
+
+  // Android（含小米澎湃 HyperOS）：系统返回键/返回手势不能直接把 App 杀掉。
+  // 语义：关浮层 → 回聊天页 → 再按一次才退出。
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "android") {
+      return;
+    }
+    let listener: { remove: () => Promise<void> } | undefined;
+    let disposed = false;
+    void App.addListener("backButton", () => {
+      if (overlay) {
+        setOverlay("");
+        return;
+      }
+      if (page !== "聊天") {
+        setPage("聊天");
+        return;
+      }
+      void App.minimizeApp();
+    })
+      .then((handle) => {
+        if (disposed) void handle.remove();
+        else listener = handle;
+      })
+      .catch(() => undefined);
+    return () => {
+      disposed = true;
+      void listener?.remove();
+    };
+  }, [overlay, page]);
   // 原生 Liquid Glass Tab 栏：iOS 上由 LiquidGlassPlugin 接管，
   // 其它环境自动回落到 Web Tab 栏（hook 内部判断平台）。
   const nativeTabsActive = useNativeTabs(
