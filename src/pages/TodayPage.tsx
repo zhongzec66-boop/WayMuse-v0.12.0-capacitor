@@ -79,6 +79,7 @@ export default function TodayPage({
   setCourses,
   setOverlay,
   nav,
+  onImportCourses,
 }: {
   profileName: string;
   date: string;
@@ -89,6 +90,7 @@ export default function TodayPage({
   setCourses: Dispatch<SetStateAction<Course[]>>;
   setOverlay: Dispatch<SetStateAction<Overlay>>;
   nav: (page: Page) => void;
+  onImportCourses: () => void;
 }) {
   const { ymd: todayKey, minutes: now, clock } = shanghaiParts();
 
@@ -248,9 +250,13 @@ export default function TodayPage({
           </ol>
         )}
         {todayCourses.length === 0 && (
-          <p className="wr-dayline-note">
-            还没有课表。课表导入正在做（粘贴文本或截图），做好后这里会自动排一天的节奏。
-          </p>
+          <button
+            type="button"
+            className="wr-dayline-import"
+            onClick={onImportCourses}
+          >
+            粘贴课表文字，一键导入
+          </button>
         )}
       </section>
 

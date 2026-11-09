@@ -17,6 +17,7 @@ import PersonaPage from "./pages/PersonaPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import SettingsPage from "./pages/SettingsPage";
 import TaskPage from "./pages/TaskPage";
+import CourseImportSheet from "./pages/CourseImportSheet";
 import TodayPage from "./pages/TodayPage";
 import { DEFAULT_PROFILE } from "./profile";
 import type { UserProfile } from "./profile";
@@ -52,6 +53,7 @@ export default function WayMuseReference() {
   const [page, setPage] = useState<Page>("聊天");
   const [overlay, setOverlay] = useState<Overlay>("");
   const [attachmentMenu, setAttachmentMenu] = useState(false);
+  const [courseImportOpen, setCourseImportOpen] = useState(false);
   const [taskMode, setTaskMode] = useState<"任务" | "课表">("任务");
   const [tasks, setTasks] = useState<Task[]>(() =>
     storage.getTasks(seedTasks).filter((task) => !task.id.startsWith("seed-")),
@@ -282,6 +284,7 @@ export default function WayMuseReference() {
               courses={courses}
               setCourses={setCourses}
               setOverlay={setOverlay}
+              onImportCourses={() => setCourseImportOpen(true)}
               nav={nav}
             />
           )}
@@ -374,6 +377,13 @@ export default function WayMuseReference() {
         )}
         {overlay === "隐私与数据" && (
           <PrivacyPage onClose={() => setOverlay("设置")} />
+        )}
+        {courseImportOpen && (
+          <CourseImportSheet
+            existing={courses}
+            onClose={() => setCourseImportOpen(false)}
+            onSave={(list) => setCourses((current) => [...current, ...list])}
+          />
         )}
         {overlay &&
           overlay !== "设置" &&
