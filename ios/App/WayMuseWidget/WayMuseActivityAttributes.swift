@@ -14,10 +14,13 @@ public struct WayMuseActivityAttributes: ActivityAttributes {
         public var title: String
         /// 副标题，例如「今天还有 3 件事」
         public var detail: String
+        /// 到期时间（ISO8601）。为空表示这条活动没有倒计时。
+        public var dueAt: String
 
-        public init(title: String, detail: String) {
+        public init(title: String, detail: String, dueAt: String = "") {
             self.title = title
             self.detail = detail
+            self.dueAt = dueAt
         }
     }
 

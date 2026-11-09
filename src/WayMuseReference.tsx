@@ -8,6 +8,12 @@ import { haptic, readCalendarEvents } from "./nativeExtras";
 import type { CalendarEvent } from "./nativeExtras";
 import { subscribeChrome, useHideNativeChrome } from "./chrome";
 import { installGlobalHaptics } from "./haptics";
+import {
+  endLiveActivity,
+  startLiveActivity,
+  updateLiveActivity,
+} from "./liveActivity";
+import { dueLabel, nextDueTask } from "./upnext";
 import { useKeyboardInset } from "./useKeyboardInset";
 import ChatPage from "./pages/ChatPage";
 import Dock from "./pages/Dock";
@@ -137,6 +143,43 @@ export default function WayMuseReference() {
     installGlobalHaptics();
   }, []);
 
+  // ── 计划上岛 ─────────────────────────────────────
+  // 只把「最近的一件、有时间点、还没做完」的任务放上灵动岛；
+  // 岛上一个时间只能显示一个活动，所以这里自己也保证只维护一个。
+  useEffect(() => {
+    let activeKey = "";
+
+    const sync = () => {
+      const next = nextDueTask(tasks);
+      if (!next) {
+        if (activeKey) {
+          activeKey = "";
+          void endLiveActivity("task");
+        }
+        return;
+      }
+      const key = `${next.task.id}@${next.dueAt.toISOString()}`;
+      const detail = dueLabel(next);
+      const iso = next.dueAt.toISOString();
+      if (key === activeKey) {
+        void updateLiveActivity("task", next.task.text, detail, iso);
+        return;
+      }
+      activeKey = key;
+      void startLiveActivity("task", next.task.text, detail, iso);
+    };
+
+    sync();
+    const timer = window.setInterval(sync, 60_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") sync();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [tasks]);
 
   const todayWeekday = getShanghaiWeekday();
   // 单双周 / 1-16 周这类课，只有「本周要上」的才出现在今天
@@ -180,7 +223,10 @@ export default function WayMuseReference() {
   // Android（含小米澎湃 HyperOS）：系统返回键/返回手势不能直接把 App 杀掉。
   // 语义：关浮层 → 回聊天页 → 再按一次才退出。
   useEffect(() => {
-    if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "android") {
+    if (
+      !Capacitor.isNativePlatform() ||
+      Capacitor.getPlatform() !== "android"
+    ) {
       return;
     }
     let listener: { remove: () => Promise<void> } | undefined;
@@ -330,8 +376,8 @@ export default function WayMuseReference() {
               onSettings={() => setOverlay("设置")}
               onTasksChange={setTasks}
               onMemoriesChange={setMemories}
-                onCoursesChange={setCourses}
-              onViewPlans={() => nav("任务")}
+              onCoursesChange={setCourses}
+              onViewPlans={() => nav("任务")}
             />
           )}
           {page === "角色" && (
@@ -395,18 +441,16 @@ export default function WayMuseReference() {
             }}
           />
         )}
-        {overlay &&
-          overlay !== "设置" &&
-          overlay !== "隐私与数据" && (
-            <OverlaySheet
-              overlay={overlay}
-              setOverlay={setOverlay}
-              draft={draft}
-              setDraft={setDraft}
-              submit={submit}
-              onClearData={clearDemoData}
-            />
-          )}
+        {overlay && overlay !== "设置" && overlay !== "隐私与数据" && (
+          <OverlaySheet
+            overlay={overlay}
+            setOverlay={setOverlay}
+            draft={draft}
+            setDraft={setDraft}
+            submit={submit}
+            onClearData={clearDemoData}
+          />
+        )}
       </div>
     </div>
   );

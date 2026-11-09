@@ -37,6 +37,7 @@ public class LiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         }
         let title = call.getString("title") ?? "WayMuse"
         let detail = call.getString("detail") ?? ""
+        let dueAt = call.getString("dueAt") ?? ""
 
         Task {
             do {
@@ -47,7 +48,8 @@ public class LiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
                 let attributes = WayMuseActivityAttributes(sessionName: "waymuse")
                 let state = WayMuseActivityAttributes.ContentState(
                     title: title,
-                    detail: detail
+                    detail: detail,
+                    dueAt: dueAt
                 )
                 let content = ActivityContent(state: state, staleDate: nil)
                 let activity = try Activity.request(
@@ -69,10 +71,12 @@ public class LiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         }
         let title = call.getString("title") ?? "WayMuse"
         let detail = call.getString("detail") ?? ""
+        let dueAt = call.getString("dueAt") ?? ""
         Task {
             let state = WayMuseActivityAttributes.ContentState(
                 title: title,
-                detail: detail
+                detail: detail,
+                dueAt: dueAt
             )
             let content = ActivityContent(state: state, staleDate: nil)
             for activity in Activity<WayMuseActivityAttributes>.activities {
