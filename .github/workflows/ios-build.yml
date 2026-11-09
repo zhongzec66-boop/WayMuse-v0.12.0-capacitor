@@ -12,10 +12,10 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Check out WayMuse
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Node.js 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: npm
@@ -43,7 +43,7 @@ jobs:
       # GitHub 的 release CDN 偶发 504，会让 SPM 拉 Capacitor.xcframework 失败，
       # 这一步单独做、并且重试，避免整条流水线因为一次网络抖动白跑。
       - name: Cache Swift packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: build/DerivedData/SourcePackages
           key: spm-${{ runner.os }}-${{ hashFiles('ios/App/CapApp-SPM/Package.swift') }}
@@ -76,7 +76,7 @@ jobs:
       # 避免每轮都重新下载 xcframework。
       - name: Save Swift package cache
         if: success()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: build/DerivedData/SourcePackages
           key: spm-${{ runner.os }}-${{ hashFiles('ios/App/CapApp-SPM/Package.swift') }}-${{ github.run_id }}
@@ -106,7 +106,7 @@ jobs:
           unzip -l ../WayMuse-unsigned.ipa | grep -q 'Payload/App.app/Info.plist'
 
       - name: Upload unsigned IPA
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: WayMuse-unsigned-IPA
           path: build/WayMuse-unsigned.ipa
