@@ -6,24 +6,31 @@ import type { Task } from "./types";
  * 计划到期提醒。
  *
  * 为什么要有这一层：灵动岛只在 App 活着的时候管用，App 被杀掉就什么都
- * 不会发生。所以真正的提醒是「本地通知」打底，「上岛」做增强：
+ * 不会发生。所以真正的提醒是「本地通知」打底，「上岛」做增强。
  *
- *   本地通知 —— App 完全不运行也会响（系统级调度）
- *   灵动岛   —— App 在后台/前台时，抬眼就能看见还剩多久
- *
- * 这里只负责通知这一半。两条通道都指向同一份任务数据，不会打架。
+ * 结构上刻意把「算」和「发」分开：
+ * - planReminders() 是纯函数，给定任务和时间就返回要排的通知，好测；
+ * - syncTaskReminders() 负责和系统打交道，失败了静默降级。
  */
 
 /** 最多提前排多少条：iOS 单 App 有 64 条上限，留点余量 */
-const MAX_SCHEDULED = 24;
+export const MAX_SCHEDULED = 24;
 /** 提前多久提醒 */
-const LEAD_MINUTES = 10;
+export const LEAD_MINUTES = 10;
+
+export type PlannedReminder = {
+  id: number;
+  title: string;
+  body: string;
+  at: Date;
+};
 
 export function isReminderSupported(): boolean {
   return Capacitor.isNativePlatform();
 }
 
-function dueDate(task: Task): Date | null {
+/** 任务的到期时刻；没写钟点就按 20:00 算 */
+export function dueAt(task: Task): Date | null {
   if (!task.deadline) return null;
   const time = task.time?.trim() || "20:00";
   const parsed = new Date(`${task.deadline}T${time}:00`);
@@ -31,7 +38,7 @@ function dueDate(task: Task): Date | null {
 }
 
 /** 把任务 id 换成稳定的整数通知 id（同一个任务每次都算同一个值） */
-function notificationId(taskId: string): number {
+export function notificationId(taskId: string): number {
   let hash = 0;
   for (let i = 0; i < taskId.length; i += 1) {
     hash = (hash * 31 + taskId.charCodeAt(i)) % 1_000_000;
@@ -39,22 +46,43 @@ function notificationId(taskId: string): number {
   return hash + 1000;
 }
 
-export async function ensureReminderPermission(): Promise<boolean> {
-  if (!isReminderSupported()) return false;
-  try {
-    const current = await LocalNotifications.checkPermissions();
-    if (current.display === "granted") return true;
-    const asked = await LocalNotifications.requestPermissions();
-    return asked.display === "granted";
-  } catch {
-    return false;
+/**
+ * 纯函数：算出应该排哪些提醒。
+ *
+ * 规则：
+ * - 跳过已完成的、没有截止日期的、以及已经过期的（过期的叫不醒人，
+ *   逾期由灵动岛那条负责显摆）
+ * - 按到期时间升序，最多 MAX_SCHEDULED 条
+ * - 通知时间取「到期前 LEAD_MINUTES 分钟」，如果那个点已经过了就取到期时刻
+ */
+export function planReminders(
+  tasks: Task[],
+  now: Date = new Date(),
+): PlannedReminder[] {
+  const nowMs = now.getTime();
+  const planned: PlannedReminder[] = [];
+
+  for (const task of tasks) {
+    if (task.done) continue;
+    const due = dueAt(task);
+    if (!due) continue;
+    if (due.getTime() <= nowMs) continue;
+
+    const lead = new Date(due.getTime() - LEAD_MINUTES * 60_000);
+    planned.push({
+      id: notificationId(task.id),
+      title: task.text.slice(0, 60),
+      body: `${LEAD_MINUTES} 分钟后到期`,
+      at: lead.getTime() > nowMs ? lead : due,
+    });
   }
+
+  planned.sort((a, b) => a.at.getTime() - b.at.getTime());
+  return planned.slice(0, MAX_SCHEDULED);
 }
 
-/**
- * 按当前任务重新安排所有提醒。
- * 每次任务变化都整体重排：先全撤再排，避免残留旧通知。
- */
+
+/** 和系统打交道：先全撤再按最新计划重排 */
 export async function syncTaskReminders(tasks: Task[]): Promise<void> {
   if (!isReminderSupported()) return;
 
@@ -66,37 +94,35 @@ export async function syncTaskReminders(tasks: Task[]): Promise<void> {
       });
     }
 
-    const now = Date.now();
-    const upcoming = tasks
-      .filter((task) => !task.done)
-      .map((task) => ({ task, due: dueDate(task) }))
-      .filter((item): item is { task: Task; due: Date } => item.due !== null)
-      .filter((item) => item.due.getTime() > now)
-      .sort((a, b) => a.due.getTime() - b.due.getTime())
-      .slice(0, MAX_SCHEDULED);
+    const planned = planReminders(tasks);
+    // 没有要提醒的就不申请权限：一进 App 就弹系统框很打扰
+    if (planned.length === 0) return;
 
-    if (upcoming.length === 0) return;
-
-    // 只有确实有要提醒的任务时才申请权限：没任务时弹系统框很打扰
     const granted = await ensureReminderPermission();
     if (!granted) return;
 
     await LocalNotifications.schedule({
-      notifications: upcoming.map(({ task, due }) => {
-        const at = new Date(due.getTime() - LEAD_MINUTES * 60_000);
-        return {
-          id: notificationId(task.id),
-          title: task.text.slice(0, 60),
-          body: `${LEAD_MINUTES} 分钟后到期`,
-          schedule: {
-            at: at.getTime() > now ? at : due,
-            allowWhileIdle: true,
-          },
-        };
-      }),
+      notifications: planned.map((item) => ({
+        id: item.id,
+        title: item.title,
+        body: item.body,
+        schedule: { at: item.at, allowWhileIdle: true },
+      })),
     });
   } catch {
     // 通知不是主流程，失败也不该让聊天崩掉
+  }
+}
+
+export async function ensureReminderPermission(): Promise<boolean> {
+  if (!isReminderSupported()) return false;
+  try {
+    const current = await LocalNotifications.checkPermissions();
+    if (current.display === "granted") return true;
+    const asked = await LocalNotifications.requestPermissions();
+    return asked.display === "granted";
+  } catch {
+    return false;
   }
 }
 

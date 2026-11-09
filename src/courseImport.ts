@@ -93,8 +93,11 @@ function pickTimeRange(
   if (periods) {
     const first = Number(periods[1]);
     const last = Number(periods[2] ?? periods[1]);
-    const slot = PERIODS[Math.min(first, last) - 1];
-    const slotEnd = PERIODS[Math.max(first, last) - 1];
+    // PERIODS 每项是一个「两节一组」的时段（1-2、3-4…），
+    // 所以要按 /2 折算，不能直接拿节次当数组下标 ——
+    // 否则「第3-4节」会被算成第3项到第4项，跨了两个时段。
+    const slot = PERIODS[Math.floor((Math.min(first, last) - 1) / 2)];
+    const slotEnd = PERIODS[Math.floor((Math.max(first, last) - 1) / 2)];
     if (slot && slotEnd) {
       const index = periods.index ?? 0;
       return {

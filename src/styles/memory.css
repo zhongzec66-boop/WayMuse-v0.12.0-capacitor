@@ -436,54 +436,11 @@
 
 /* ── 三份可编辑文件 ───────────────────────────────── */
 
-.wr-doclist {
-  display: grid;
-  gap: var(--space-8);
-  margin-top: var(--space-16);
-}
 
-.wr-docrow {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: var(--space-12);
-  padding: var(--space-12) var(--space-16);
-  border-radius: var(--radius-20);
-  background: var(--card-bg);
-  box-shadow: var(--card-shadow);
-  text-align: left;
-}
 
-.wr-docrow-main {
-  min-width: 0;
-  flex: 1;
-  display: grid;
-  gap: 2px;
-}
 
-.wr-docrow-main b {
-  color: var(--ink);
-  font-size: var(--text-14);
-  font-weight: var(--weight-semibold);
-  letter-spacing: 0.01em;
-}
 
-.wr-docrow-main small {
-  overflow: hidden;
-  color: var(--ink-3);
-  font-size: var(--text-12);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
-.wr-docrow-meta {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  color: var(--card-caption);
-  font-size: var(--text-11);
-}
 
 /* ── 文件编辑器 ───────────────────────────────────── */
 
