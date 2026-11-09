@@ -66,22 +66,40 @@ jobs:
       - name: Copy web app into Android project
         run: npx cap sync android
 
-      - name: Build debug APK
+      # 正式签名证书放在 GitHub Secrets 里，构建时还原到临时目录。
+      # 固定证书的好处：后续版本可以直接覆盖安装，不会因为签名变化要求卸载。
+      - name: Restore release keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 未配置"
+            exit 1
+          fi
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/waymuse-release.jks"
+          ls -l "$RUNNER_TEMP/waymuse-release.jks"
+
+      - name: Build release APK
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/waymuse-release.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Collect APK
         run: |
           mkdir -p build/apk
-          cp android/app/build/outputs/apk/debug/app-debug.apk build/apk/WayMuse-android-debug.apk
+          cp android/app/build/outputs/apk/release/app-release.apk build/apk/WayMuse-android.apk
           ls -la build/apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: WayMuse-android-apk
-          path: build/apk/WayMuse-android-debug.apk
+          path: build/apk/WayMuse-android.apk
           if-no-files-found: error
           retention-days: 7

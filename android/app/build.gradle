@@ -1,5 +1,10 @@
 apply plugin: 'com.android.application'
 
+// release 签名从环境变量读取（CI 里由 GitHub Secrets 注入），
+// 本地没有这些变量时自动跳过，仍然可以 assembleDebug。
+def releaseStorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+def hasReleaseSigning = releaseStorePath != null && file(releaseStorePath).exists()
+
 android {
     namespace = "app.waymuse.student"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,10 +21,23 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile file(releaseStorePath)
+                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword System.getenv("ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
