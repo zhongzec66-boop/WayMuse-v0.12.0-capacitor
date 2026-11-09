@@ -9,7 +9,6 @@ import type { CalendarEvent } from "./nativeExtras";
 import { subscribeChrome } from "./chrome";
 import { installGlobalHaptics } from "./haptics";
 import { useKeyboardInset } from "./useKeyboardInset";
-import WayMuseIntake from "./WayMuseIntake";
 import ChatPage from "./pages/ChatPage";
 import Dock from "./pages/Dock";
 import MemoryPage from "./pages/MemoryPage";
@@ -22,7 +21,7 @@ import TodayPage from "./pages/TodayPage";
 import { DEFAULT_PROFILE } from "./profile";
 import type { UserProfile } from "./profile";
 import { storage, createMemory } from "./storage";
-import type { Course, Kind, Memory, Overlay, Page, Task } from "./types";
+import type { Course, Memory, Overlay, Page, Task } from "./types";
 import { useNativeTabs } from "./useNativeTabs";
 
 const seedTasks: Task[] = [];
@@ -53,7 +52,6 @@ export default function WayMuseReference() {
   const [page, setPage] = useState<Page>("聊天");
   const [overlay, setOverlay] = useState<Overlay>("");
   const [attachmentMenu, setAttachmentMenu] = useState(false);
-  const [intakeKind, setIntakeKind] = useState<Kind>("课表");
   const [taskMode, setTaskMode] = useState<"任务" | "课表">("任务");
   const [tasks, setTasks] = useState<Task[]>(() =>
     storage.getTasks(seedTasks).filter((task) => !task.id.startsWith("seed-")),
@@ -207,11 +205,6 @@ export default function WayMuseReference() {
     callOpen || chromeHidden ? "通话" : overlay,
     nav,
   );
-  const openIntake = (kind: Kind) => {
-    setIntakeKind(kind);
-    setAttachmentMenu(false);
-    setOverlay("资料导入");
-  };
   const exportDemoData = () => {
     try {
       const payload = JSON.stringify(storage.exportData(), null, 2);
@@ -240,7 +233,6 @@ export default function WayMuseReference() {
     setShowTip(true);
     setPage("Today");
     setAttachmentMenu(false);
-    setIntakeKind("课表");
     setOverlay("");
     setHasEntered(false);
   };
@@ -290,7 +282,6 @@ export default function WayMuseReference() {
               courses={courses}
               setCourses={setCourses}
               setOverlay={setOverlay}
-              openIntake={openIntake}
               nav={nav}
             />
           )}
@@ -352,7 +343,6 @@ export default function WayMuseReference() {
           setDraft={setDraft}
           overlay={callOpen || chromeHidden ? "通话" : overlay}
           submit={submit}
-          openIntake={openIntake}
           onAttach={(payload) => {
             setPendingChat({ id: Date.now(), text: payload });
             setPage("聊天");
@@ -362,17 +352,6 @@ export default function WayMuseReference() {
           agentName={agentName}
           agentAvatar={agentAvatar}
         />
-        {overlay === "资料导入" && (
-          <WayMuseIntake
-            key={intakeKind}
-            initialKind={intakeKind}
-            onClose={() => setOverlay("")}
-            onSaveCourse={(course) => setCourses([...courses, course])}
-            onSaveNote={(note) =>
-              setMemories([createMemory(note), ...memories])
-            }
-          />
-        )}
         {overlay === "设置" && (
           <SettingsPage
             profile={profile}
@@ -398,7 +377,6 @@ export default function WayMuseReference() {
         )}
         {overlay &&
           overlay !== "设置" &&
-          overlay !== "资料导入" &&
           overlay !== "隐私与数据" && (
             <OverlaySheet
               overlay={overlay}

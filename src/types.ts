@@ -2,7 +2,6 @@ export type Page = "聊天" | "Today" | "任务" | "记忆" | "角色";
 
 export type Overlay =
   | ""
-  | "资料导入"
   | "设置"
   | "隐私与数据"
   | "清除数据"
@@ -29,7 +28,6 @@ export type Course = {
   place: string;
 };
 
-export type Kind = "课表" | "文档" | "图片" | "语音";
 
 /** 记忆的分量：1 = 小事，2 = 一般，3 = 重要（星空里会发光） */
 export type MemoryWeight = 1 | 2 | 3;

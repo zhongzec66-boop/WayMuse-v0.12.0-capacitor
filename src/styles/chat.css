@@ -19,6 +19,9 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-8);
+  /* 左右各留一个页面内边距：齿轮之前贴在屏幕边缘，像要被裁掉 */
+  padding-left: var(--page-pad);
+  padding-right: var(--page-pad);
   /* 标题改成绝对居中后不再撑高容器，这里要显式给一个，
      否则头像会被顶出去、和名字叠在一起 */
   min-height: calc(var(--safe-top) + 150px);

@@ -259,3 +259,14 @@
     transition: none;
   }
 }
+
+/* 课表为空时的说明（原先是跳转到「添加资料」页的按钮，那个页面已移除） */
+.wr-dayline-note {
+  margin: var(--space-8) 0 0;
+  padding: var(--space-12);
+  border: var(--border-1) dashed var(--glass-line);
+  border-radius: var(--radius-16);
+  color: var(--ink-2);
+  font-size: var(--text-14);
+  line-height: var(--leading-body);
+}

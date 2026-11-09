@@ -9,12 +9,12 @@ import {
   Send,
   Sparkles,
 } from "lucide-react";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, Dispatch, SetStateAction } from "react";
 import BotAvatar from "../BotAvatar";
 import { haptic } from "../nativeExtras";
 import { useSpeechInput } from "../useSpeechInput";
-import type { Kind, Overlay, Page } from "../types";
+import type { Overlay, Page } from "../types";
 import {
   COMPOSE_SLOT_ID,
   isNativeComposeSupported,
@@ -29,7 +29,6 @@ export default function Dock({
   setDraft,
   overlay,
   submit,
-  openIntake,
   onAttach,
   page,
   nav,
@@ -43,7 +42,6 @@ export default function Dock({
   setDraft: Dispatch<SetStateAction<string>>;
   overlay: Overlay | "通话";
   submit: () => void;
-  openIntake: (kind: Kind) => void;
   onAttach: (payload: string) => void;
   page: Page;
   nav: (page: Page) => void;
@@ -66,6 +64,13 @@ export default function Dock({
 
   const fileRef = useRef<HTMLInputElement | null>(null);
   const imageRef = useRef<HTMLInputElement | null>(null);
+  /** 不支持按住说话的平台，点麦克风时给一次性提示，而不是跳页 */
+  const [voiceHint, setVoiceHint] = useState("");
+  useEffect(() => {
+    if (!voiceHint) return;
+    const timer = window.setTimeout(() => setVoiceHint(""), 2600);
+    return () => window.clearTimeout(timer);
+  }, [voiceHint]);
   /**
    * 这一段手势是不是「按住说话」。
    * 松手后浏览器还会补一个 click，而那时识别结果已经写进 draft，
@@ -117,11 +122,13 @@ export default function Dock({
 
   // iOS 上用原生输入框；其它环境（Web / 插件缺失）自动回退到下面的 <input>。
   // 状态直接体现在输入框里，不再弹浮条
-  const placeholder = speech.listening
-    ? "正在听，松手结束"
-    : speech.error
-      ? speech.error
-      : basePlaceholder;
+  const placeholder = voiceHint
+    ? voiceHint
+    : speech.listening
+      ? "正在听，松手结束"
+      : speech.error
+        ? speech.error
+        : basePlaceholder;
 
   const nativeComposeActive = useNativeCompose({
     enabled: isNativeComposeSupported(),
@@ -136,7 +143,7 @@ export default function Dock({
         speech.toggle();
         return;
       }
-      openIntake("语音");
+      setVoiceHint("当前系统不支持按住说话，可直接打字");
     },
     onVoiceStart: () => {
       if (speech.supported) speech.start();
@@ -157,10 +164,6 @@ export default function Dock({
           <button onClick={() => fileRef.current?.click()}>
             <FilePlus2 size={20} />
             选一个文件
-          </button>
-          <button onClick={() => openIntake("课表")}>
-            <CalendarDays size={20} />
-            添加课程
           </button>
         </div>
       )}
@@ -219,7 +222,7 @@ export default function Dock({
               return;
             }
             // 不支持按住说话的平台：点一下进语音录入页
-            if (!speech.supported) openIntake("语音");
+            if (!speech.supported) setVoiceHint("当前系统不支持按住说话，可直接打字");
           }}
           onPointerDown={() => {
             if (!speech.supported) return;

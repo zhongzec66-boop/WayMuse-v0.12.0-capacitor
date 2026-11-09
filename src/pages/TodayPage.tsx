@@ -2,7 +2,7 @@ import { CalendarPlus, Plus, SlidersHorizontal } from "lucide-react";
 import { addEventToCalendar, haptic } from "../nativeExtras";
 import type { CalendarEvent } from "../nativeExtras";
 import type { Dispatch, SetStateAction } from "react";
-import type { Course, Kind, Overlay, Page, Task } from "../types";
+import type { Course, Overlay, Page, Task } from "../types";
 
 /** 全站统一 Asia/Shanghai。 */
 function shanghaiParts() {
@@ -77,8 +77,7 @@ export default function TodayPage({
   calendarEvents,
   courses,
   setCourses,
-  setOverlay,
-  openIntake,
+  setOverlay,
   nav,
 }: {
   profileName: string;
@@ -88,8 +87,7 @@ export default function TodayPage({
   calendarEvents: CalendarEvent[];
   courses: Course[];
   setCourses: Dispatch<SetStateAction<Course[]>>;
-  setOverlay: Dispatch<SetStateAction<Overlay>>;
-  openIntake: (kind: Kind) => void;
+  setOverlay: Dispatch<SetStateAction<Overlay>>;
   nav: (page: Page) => void;
 }) {
   const { ymd: todayKey, minutes: now, clock } = shanghaiParts();
@@ -249,11 +247,10 @@ export default function TodayPage({
             ))}
           </ol>
         )}
-
         {todayCourses.length === 0 && (
-          <button className="wr-dayline-cta" onClick={() => openIntake("课表")}>
-            还没有课表，加一份我就能把一天的节奏排出来
-          </button>
+          <p className="wr-dayline-note">
+            还没有课表。课表导入正在做（粘贴文本或截图），做好后这里会自动排一天的节奏。
+          </p>
         )}
       </section>
 
