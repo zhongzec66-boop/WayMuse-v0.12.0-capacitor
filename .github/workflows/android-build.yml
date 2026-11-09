@@ -39,8 +39,20 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # 不要用 android-actions/setup-android@v3：它在当前 runner 镜像上会执行
+      # `sdkmanager tools`，而 tools 包已从 SDK 仓库移除，直接以 exit 1 失败。
+      # ubuntu-latest 自带 Android SDK，直接用 sdkmanager 装缺的平台即可。
+      - name: Install Android SDK packages
+        run: |
+          if command -v sdkmanager >/dev/null 2>&1; then
+            SDKM=sdkmanager
+          else
+            SDKM="$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -n1)"
+          fi
+          echo "sdkmanager = $SDKM"
+          echo "ANDROID_HOME = $ANDROID_HOME"
+          yes | "$SDKM" --licenses > /dev/null 2>&1 || true
+          "$SDKM" --install "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
       - name: Install dependencies
         run: npm ci
