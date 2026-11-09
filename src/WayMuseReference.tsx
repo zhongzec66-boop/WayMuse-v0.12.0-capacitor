@@ -7,7 +7,6 @@ import Onboarding from "./Onboarding";
 import { haptic, readCalendarEvents } from "./nativeExtras";
 import type { CalendarEvent } from "./nativeExtras";
 import { subscribeChrome, useHideNativeChrome } from "./chrome";
-import { useScrollMinimize } from "./useScrollMinimize";
 import { installGlobalHaptics } from "./haptics";
 import { useKeyboardInset } from "./useKeyboardInset";
 import ChatPage from "./pages/ChatPage";
@@ -137,12 +136,6 @@ export default function WayMuseReference() {
   useEffect(() => {
     installGlobalHaptics();
   }, []);
-  // 滚到底部时收起 dock：输入框没内容、没有弹层时才允许收
-  const { minimized: scrollingDown } = useScrollMinimize({
-    enabled: !overlay,
-  });
-  // 输入框有内容时不收起：避免打着字界面跑掉
-  const dockHidden = scrollingDown && !draft.trim();
 
 
   const todayWeekday = getShanghaiWeekday();
@@ -280,7 +273,7 @@ export default function WayMuseReference() {
 
   return (
     <div className="wr-page">
-      <div className="wr-phone" data-dock={dockHidden ? "hidden" : "shown"}>
+      <div className="wr-phone" data-dock="shown">
         {/* 聊天页有自己的导航条；其它页用这条渐隐带，让上滚内容在状态栏处淡出，
             而不是硬切一刀。 */}
         {page !== "聊天" && <div className="wr-topfade" aria-hidden="true" />}
@@ -352,7 +345,6 @@ export default function WayMuseReference() {
           )}
         </main>
         <Dock
-          dockHidden={dockHidden}
           nativeTabsActive={nativeTabsActive}
           attachmentMenu={attachmentMenu}
           setAttachmentMenu={setAttachmentMenu}

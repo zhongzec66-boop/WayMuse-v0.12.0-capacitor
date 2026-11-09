@@ -1,11 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ArrowLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
 import ConnectionsPanel from "./ConnectionsPanel";
 import BotAvatar from "../BotAvatar";
 import AvatarPicker from "../AvatarPicker";
-import { speak } from "../breeze";
-import { getAudioRoute, haptic } from "../nativeExtras";
-import { VOICES } from "../voices";
+import { haptic } from "../nativeExtras";
 import { storage } from "../storage";
 import { APP_VERSION } from "../version";
 import { DeepSeekError, listDeepSeekModels } from "../deepseek/client";
@@ -57,19 +55,6 @@ export default function SettingsPage({
   >("idle");
   const [deepSeekMessage, setDeepSeekMessage] = useState("");
 
-  /* ── 语音（Breeze TTS）── */
-  const [breezeKey, setBreezeKey] = useState(() => storage.getBreezeKey());
-  const [breezeVoice, setBreezeVoice] = useState(() =>
-    storage.getBreezeVoice(),
-  );
-  const [breezeState, setBreezeState] = useState<
-    "idle" | "testing" | "ok" | "error"
-  >("idle");
-  const [breezeMsg, setBreezeMsg] = useState("");
-
-  useEffect(() => {
-    void getAudioRoute().then(setAudioRoute);
-  }, []);
 
   /* ── 联网搜索 ── */
   const [searchProvider, setSearchProvider] = useState(() =>
@@ -77,8 +62,6 @@ export default function SettingsPage({
   );
   const [searchKey, setSearchKey] = useState(() => storage.getSearchKey());
   const [searchOn, setSearchOn] = useState(() => storage.getSearchEnabled());
-  const [audioRoute, setAudioRoute] = useState("");
-  const currentVoice = VOICES.find((voice) => voice.id === breezeVoice);
   const safeTop = (() => {
     if (typeof window === "undefined") return 0;
     const raw = getComputedStyle(document.documentElement)
@@ -88,20 +71,6 @@ export default function SettingsPage({
     return Number.isFinite(value) ? Math.round(value) : 0;
   })();
 
-  const testVoice = async () => {
-    setBreezeState("testing");
-    setBreezeMsg("");
-    try {
-      await speak("你好，我是 WayMuse。准备好就可以开始聊了。", {
-        apiKey: breezeKey,
-        voiceId: breezeVoice,
-      });
-      setBreezeState("ok");
-    } catch (error) {
-      setBreezeState("error");
-      setBreezeMsg(error instanceof Error ? error.message : "试听失败");
-    }
-  };
 
   const updateProfile = <K extends keyof UserProfile>(
     key: K,
@@ -577,62 +546,11 @@ export default function SettingsPage({
           </p>
         </div>
 
-        <div className="wr-settings-label" id="setting-语音">
-          语音 · Breeze TTS
+
+        <div className="wr-settings-label" id="setting-触感">
+          触感
         </div>
         <div className="wr-settings-group">
-          <label className="wr-settings-field">
-            <span>
-              Breeze API Key
-              <small>只存本机，不会随聊天发出去</small>
-            </span>
-            <input
-              type="password"
-              value={breezeKey}
-              placeholder="brz_…"
-              autoComplete="off"
-              spellCheck={false}
-              onChange={(event) => {
-                setBreezeKey(event.target.value);
-                storage.setBreezeKey(event.target.value);
-              }}
-            />
-          </label>
-          <label className="wr-settings-field">
-            <span>
-              声音
-              <small>{currentVoice?.desc ?? "选一个读给你听的音色"}</small>
-            </span>
-            <select
-              value={breezeVoice}
-              onChange={(event) => {
-                setBreezeVoice(event.target.value);
-                storage.setBreezeVoice(event.target.value);
-              }}
-            >
-              {VOICES.map((voice) => (
-                <option key={voice.id} value={voice.id}>
-                  {voice.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="button"
-            className="wr-settings-test"
-            onClick={testVoice}
-            disabled={breezeState === "testing"}
-          >
-            {breezeState === "testing" ? "正在合成…" : "试听一句"}
-          </button>
-          {breezeState === "error" && (
-            <p className="wr-settings-note error">{breezeMsg}</p>
-          )}
-          {breezeState === "ok" && (
-            <p className="wr-settings-note ok">
-              合成成功。这个音色之后会用在语音通话里。
-            </p>
-          )}
           <button
             type="button"
             className="wr-settings-test"
@@ -641,12 +559,9 @@ export default function SettingsPage({
             试一下震动
           </button>
           <p className="wr-settings-note">
-            顶部安全区：{safeTop}px · 出声口：
-            {audioRoute || "未知"}
-          </p>
-          <p className="wr-settings-note">
-            没有 key 也能用文字聊天；语音只是额外的朗读通道。
-            震动没反应的话，先检查系统是否开了「低电量模式」。
+            没反应的话，先检查系统是否开了「低电量模式」。
+            <br />
+            顶部安全区：{safeTop}px
           </p>
         </div>
 

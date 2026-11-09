@@ -17,31 +17,6 @@
   backdrop-filter: var(--glass-blur);
 }
 
-/* 只在聊天页给输入区上方加一层「溶解带」，让上滚的消息淡出，
-   不再被输入框一刀切出半截字。
-   其它页面（今天/计划/记忆）没有这种贴着输入框滚动的长内容，
-   加上去只会变成一块可见的米色色块，所以用 :has 限定在聊天页。 */
-.wr-phone:has(.wr-content-chat) .wr-dock::before {
-  content: "";
-  position: absolute;
-  right: calc(var(--dock-inset) * -1);
-  bottom: 100%;
-  left: calc(var(--dock-inset) * -1);
-  height: 48px;
-  /* 只做模糊过渡、不铺任何颜色：
-     原来是 --bg-bottom（暖米色），在冷色页面上会显出一条发黄的带子。 */
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-  -webkit-mask-image: linear-gradient(
-    to top,
-    #000 0%,
-    #000 38%,
-    transparent 100%
-  );
-  mask-image: linear-gradient(to top, #000 0%, #000 38%, transparent 100%);
-  pointer-events: none;
-}
-
 .wr-compose {
   height: 50px;
   display: flex;

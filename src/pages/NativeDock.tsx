@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { ChangeEvent, ComponentProps } from "react";
-import { useSpeechInput } from "../useSpeechInput";
+
 import WebDock from "./WebDock";
 import { COMPOSE_SLOT_ID, useNativeCompose } from "../nativeCompose";
 import type { Page } from "../types";
@@ -8,7 +8,7 @@ import type { Page } from "../types";
 type DockProps = ComponentProps<typeof WebDock>;
 
 const placeholders: Record<Page, string> = {
-  聊天: "点击输入或按住说话",
+  聊天: "点击输入",
   Today: "今天要做什么",
   任务: "说说要做什么",
   记忆: "记点什么",
@@ -35,8 +35,7 @@ export default function NativeDock(props: DockProps) {
 
   const fileRef = useRef<HTMLInputElement | null>(null);
 
-  // 原生麦克风按钮触发：按住说话 → 结果回填 draft
-  const speech = useSpeechInput(setDraft, undefined, () => draft);
+
 
   useNativeCompose({
     enabled: true,
@@ -46,9 +45,7 @@ export default function NativeDock(props: DockProps) {
     onTextChange: setDraft,
     onSubmit: submit,
     onAttach: () => fileRef.current?.click(),
-    onVoice: () => speech.toggle(),
-    onVoiceStart: () => speech.start(),
-    onVoiceEnd: () => speech.stop(),
+
   });
 
   const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {

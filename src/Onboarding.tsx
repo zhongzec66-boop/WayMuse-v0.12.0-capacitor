@@ -47,7 +47,6 @@ export default function Onboarding({
 }) {
   const [step, setStep] = useState(0);
   const [apiKey, setApiKey] = useState(() => storage.getDeepSeekKey());
-  const [breezeKey, setBreezeKey] = useState(() => storage.getBreezeKey());
   const [profile, setProfile] = useState<UserProfile>({ ...DEFAULT_PROFILE });
   const [entering, setEntering] = useState(false);
   const steps = 7;
@@ -69,9 +68,6 @@ export default function Onboarding({
       // 先把 Key 存下来，再进入主界面
       if (apiKey.trim()) {
         storage.setDeepSeekKey(apiKey.trim(), true);
-      }
-      if (breezeKey.trim()) {
-        storage.setBreezeKey(breezeKey.trim());
       }
       setEntering(true);
       const finalProfile: UserProfile = {
@@ -370,19 +366,8 @@ export default function Onboarding({
                 onChange={(event) => setApiKey(event.target.value)}
               />
             </label>
-            <label className="wr-onboard-field">
-              <span>Breeze Key（可选，用来朗读）</span>
-              <input
-                type="password"
-                value={breezeKey}
-                placeholder="brz_..."
-                autoComplete="off"
-                spellCheck={false}
-                onChange={(event) => setBreezeKey(event.target.value)}
-              />
-            </label>
             <p className="wr-onboard-hint">
-              DeepSeek Key 在 platform.deepseek.com 免费申请。
+              DeepSeek Key 在 platform.deepseek.com 申请。
               暂时不填也能进，之后随时可以在设置里补。
             </p>
           </>

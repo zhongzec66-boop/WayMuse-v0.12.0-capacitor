@@ -80,9 +80,6 @@ export function useNativeCompose(options: {
   onTextChange: (text: string) => void;
   onSubmit: () => void;
   onAttach: () => void;
-  onVoice: () => void;
-  onVoiceStart?: () => void;
-  onVoiceEnd?: () => void;
 }): boolean {
   const { enabled, hidden, text, placeholder } = options;
   const [active, setActive] = useState(false);
@@ -126,22 +123,6 @@ export function useNativeCompose(options: {
     track(
       NativeCompose.addListener("composeAttach", () => {
         handlers.current.onAttach();
-      }),
-    );
-    track(
-      NativeCompose.addListener("composeVoice", () => {
-        handlers.current.onVoice();
-      }),
-    );
-    // 长按说话：按下开始识别，松手结束
-    track(
-      NativeCompose.addListener("composeVoiceStart", () => {
-        handlers.current.onVoiceStart?.();
-      }),
-    );
-    track(
-      NativeCompose.addListener("composeVoiceEnd", () => {
-        handlers.current.onVoiceEnd?.();
       }),
     );
 

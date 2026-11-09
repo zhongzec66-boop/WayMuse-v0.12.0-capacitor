@@ -4,16 +4,16 @@ import {
   FilePlus2,
   ListTodo,
   MessageCircle,
-  AudioLines,
+
   Plus,
   Send,
   Sparkles,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import type { ChangeEvent, Dispatch, SetStateAction } from "react";
 import BotAvatar from "../BotAvatar";
 import { haptic } from "../nativeExtras";
-import { useSpeechInput } from "../useSpeechInput";
+
 import type { Overlay, Page } from "../types";
 import { COMPOSE_SLOT_ID, useNativeCompose } from "../nativeCompose";
 
@@ -58,29 +58,11 @@ export default function WebDock({
           ? "记点什么"
           : page === "角色"
             ? "说点什么"
-            : "点击输入或按住说话";
+            : "点击输入";
 
   const fileRef = useRef<HTMLInputElement | null>(null);
   const imageRef = useRef<HTMLInputElement | null>(null);
-  /** 不支持按住说话的平台，点麦克风时给一次性提示，而不是跳页 */
-  const [voiceHint, setVoiceHint] = useState("");
-  useEffect(() => {
-    if (!voiceHint) return;
-    const timer = window.setTimeout(() => setVoiceHint(""), 2600);
-    return () => window.clearTimeout(timer);
-  }, [voiceHint]);
-  /**
-   * 这一段手势是不是「按住说话」。
-   * 松手后浏览器还会补一个 click，而那时识别结果已经写进 draft，
-   * 点击分支会把它当「发送」直接发出去 —— 于是用户以为没发，再点一次就重复了。
-   */
-  const voiceGestureRef = useRef(false);
-  // 右侧麦克风：原生本地识别，逐字回填到输入框，不跳页
-  const speech = useSpeechInput(
-    setDraft,
-    undefined,
-    () => composeText,
-  );
+
 
   // 文本类文件直接把内容带进对话；其它类型只带文件名，不假装能解析。
   const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -120,13 +102,7 @@ export default function WebDock({
 
   // iOS 上用原生输入框；其它环境（Web / 插件缺失）自动回退到下面的 <input>。
   // 状态直接体现在输入框里，不再弹浮条
-  const placeholder = voiceHint
-    ? voiceHint
-    : speech.listening
-      ? "正在听，松手结束"
-      : speech.error
-        ? speech.error
-        : basePlaceholder;
+  const placeholder = basePlaceholder;
 
   const nativeComposeActive = useNativeCompose({
     // WebDock 只在浏览器 / 调试模式使用，不接管原生输入框
@@ -137,19 +113,7 @@ export default function WebDock({
     onTextChange: setDraft,
     onSubmit: submit,
     onAttach: () => setAttachmentMenu(!attachmentMenu),
-    onVoice: () => {
-      if (speech.supported) {
-        speech.toggle();
-        return;
-      }
-      setVoiceHint("当前系统不支持按住说话，可直接打字");
-    },
-    onVoiceStart: () => {
-      if (speech.supported) speech.start();
-    },
-    onVoiceEnd: () => {
-      if (speech.supported) speech.stop();
-    },
+
   });
 
   return (
@@ -203,51 +167,6 @@ export default function WebDock({
           }}
           placeholder={placeholder}
         />
-        <button
-          className={speech.listening ? "wr-compose-mic listening" : "wr-compose-mic"}
-          data-no-haptic="true"
-          aria-label={
-            speech.supported
-              ? speech.listening
-                ? "结束语音输入"
-                : "按住说话"
-              : "录制语音"
-          }
-          title={speech.supported ? "按住说话" : "录制语音"}
-          onClick={() => {
-            // 「按住说话」松手后补发的 click：忽略，绝不当成别的操作
-            if (voiceGestureRef.current) {
-              voiceGestureRef.current = false;
-              return;
-            }
-            // 不支持按住说话的平台：点一下进语音录入页
-            if (!speech.supported) setVoiceHint("当前系统不支持按住说话，可直接打字");
-          }}
-          onPointerDown={() => {
-            if (!speech.supported) return;
-            voiceGestureRef.current = true;
-            void haptic("medium");
-            speech.start();
-          }}
-          onPointerUp={() => {
-            if (!speech.supported) return;
-            void haptic("light");
-            speech.stop();
-          }}
-          onPointerCancel={() => {
-            if (!speech.supported) return;
-            // 手指划走 / 系统中断：还原成开口前的文字，不留半截识别结果
-            speech.cancel();
-          }}
-          onPointerLeave={() => {
-            if (!speech.supported || !speech.listening) return;
-            speech.cancel();
-          }}
-        >
-          <span className="wr-voice-ring">
-            <AudioLines size={20} />
-          </span>
-        </button>
         <button
           className="wr-compose-send"
           disabled={!draft.trim()}

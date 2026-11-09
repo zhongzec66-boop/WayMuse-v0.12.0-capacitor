@@ -172,6 +172,68 @@ function pickWeeks(text: string): { weeks?: number[]; rest: string } {
   return { rest: text };
 }
 
+
+/* ── 表格模式 ────────────────────────────────────────
+   教务系统复制出来的另一种形态：一行是一个节次，列是周一到周日，
+   中间用空格分隔。例如：
+     5-6节 (14:00-15:40) 概率论与数理 数据结构实验 毛概 体育（网球） 大学英语 算法竞赛培训 无
+   这种文本没有任何「周几」字样，逐行解析永远匹配不上，必须按列切。 */
+
+/** 列下标 → 周几（0 = 周日，和一行的映射保持一致） */
+const TABLE_WEEKDAYS = [1, 2, 3, 4, 5, 6, 0];
+
+const EMPTY_CELL = /^(无|无课|—+|-+|\/|·|\.)$/;
+
+function periodToTime(startPeriod: number): { start: string; end: string } | null {
+  const index = Math.floor((startPeriod - 1) / 2);
+  const slot = PERIODS[index];
+  if (!slot) return null;
+  return { start: slot[0], end: slot[1] };
+}
+
+export function parseCourseTableLine(line: string): ParsedCourse[] {
+  const match = line
+    .trim()
+    .match(
+      /^(?:第)?\s*(\d{1,2})\s*[-–—~～]\s*(\d{1,2})\s*节\s*(?:[（(]\s*(\d{1,2})[:：](\d{1,2})\s*[-–—~～]\s*(\d{1,2})[:：](\d{1,2})\s*[）)])?\s+(.+)$/,
+    );
+  if (!match) return [];
+
+  const startPeriod = Number(match[1]);
+  let start = "";
+  let end = "";
+  if (match[3]) {
+    start = normalizeTime(`${match[3]}:${match[4]}`) ?? "";
+    end = normalizeTime(`${match[5]}:${match[6]}`) ?? "";
+  } else {
+    const converted = periodToTime(startPeriod);
+    if (!converted) return [];
+    start = converted.start;
+    end = converted.end;
+  }
+  if (!start || !end) return [];
+
+  const cells = match[7].split(/\s+/).filter(Boolean);
+  // 少于 7 列说明空格分隔不可靠，交给 AI 兜底，不硬猜
+  if (cells.length < 7) return [];
+
+  const courses: ParsedCourse[] = [];
+  cells.slice(0, 7).forEach((cell, index) => {
+    if (EMPTY_CELL.test(cell)) return;
+    const weeks = pickWeeks(cell).weeks;
+    const name = cleanupName(cell);
+    if (!name || name.length < 2) return;
+    courses.push({
+      name: name.slice(0, 40),
+      weekday: TABLE_WEEKDAYS[index],
+      start,
+      end,
+      place: "",
+      weeks,
+    });
+  });
+  return courses;
+}
 /** 解析单行；认不出来返回 null */
 export function parseCourseLine(line: string): ParsedCourse | null {
   const text = line.trim();
@@ -227,6 +289,13 @@ export function parseCourseText(text: string): {
   const failedLines: string[] = [];
 
   for (const line of lines) {
+    // 表格模式（一行一个节次、列是周一到周日）优先：它没有任何「周几」字样，
+    // 逐行解析必定失败，所以要先按列切开。
+    const table = parseCourseTableLine(line);
+    if (table.length > 0) {
+      courses.push(...table);
+      continue;
+    }
     const parsed = parseCourseLine(line);
     if (parsed) courses.push(parsed);
     else if (line.length >= 6) failedLines.push(line);

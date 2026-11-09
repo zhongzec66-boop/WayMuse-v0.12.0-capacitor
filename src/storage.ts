@@ -1,6 +1,5 @@
 import { BRAND } from "./brand";
 import { normalizeConfig } from "./deepseek/config";
-import { DEFAULT_VOICE_ID } from "./voices";
 import type { DeepSeekConfig, DeepSeekMessage } from "./deepseek/types";
 import { normalizeProfile } from "./profile";
 import type { UserProfile } from "./profile";
@@ -338,6 +337,10 @@ export const storage = {
     readSessionText(DEEPSEEK_KEY_NAME) || readText(DEEPSEEK_KEY_NAME, ""),
   getDeepSeekRemember: () => readText(DEEPSEEK_REMEMBER_NAME, "") === "1",
   setDeepSeekKey: writeKey,
+  /* ── 三份可编辑的人格/记忆文件 ── */
+  getDoc: (id: string) => readText(`doc-${id}`, ""),
+  setDoc: (id: string, text: string) => writeText(`doc-${id}`, text),
+
   /* ── 联网搜索（用户自带 key）── */
   getSearchProvider: () => readText("search-provider", "serper"),
   setSearchProvider: (provider: string) =>
@@ -346,18 +349,6 @@ export const storage = {
   setSearchKey: (key: string) => writeText("search-key", key.trim()),
   getSearchEnabled: () => readText("search-enabled", "1") !== "0",
   setSearchEnabled: (on: boolean) => writeText("search-enabled", on ? "1" : ""),
-
-  /* ── 语音（Breeze TTS）── 只存本机，和 DeepSeek key 一样不设默认值 */
-  /* ── 三份可编辑的人格/记忆文件 ── */
-  getDoc: (id: string) => readText(`doc-${id}`, ""),
-  setDoc: (id: string, text: string) => writeText(`doc-${id}`, text),
-
-  getBreezeKey: () => readText("breeze-key", ""),
-  setBreezeKey: (key: string) => writeText("breeze-key", key.trim()),
-  getBreezeVoice: () =>
-    readText("breeze-voice", DEFAULT_VOICE_ID) || DEFAULT_VOICE_ID,
-  setBreezeVoice: (voice: string) =>
-    writeText("breeze-voice", voice.trim() || DEFAULT_VOICE_ID),
   getDeepSeekMessages: readDeepSeekMessages,
   setDeepSeekMessages: (messages: DeepSeekMessage[]) =>
     writeJson("deepseek-messages", messages.slice(-120)),
