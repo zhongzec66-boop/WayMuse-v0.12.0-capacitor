@@ -106,7 +106,7 @@ jobs:
           unzip -l ../WayMuse-unsigned.ipa | grep -q 'Payload/App.app/Info.plist'
 
       - name: Upload unsigned IPA
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: WayMuse-unsigned-IPA
           path: build/WayMuse-unsigned.ipa
