@@ -75,8 +75,6 @@ export default function WayMuseReference() {
   );
   const profileName = profile.callName.trim() || "同学";
   const [showTip, setShowTip] = useState(true);
-  // 通话是覆盖全屏的原生+Web 混合界面，必须把原生 Tab 栏和原生输入框一起藏掉
-  const [callOpen, setCallOpen] = useState(false);
   const [chromeHidden, setChromeHidden] = useState(false);
   const [courses, setCourses] = useState<Course[]>(storage.getCourses);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
@@ -141,7 +139,7 @@ export default function WayMuseReference() {
   }, []);
   // 滚到底部时收起 dock：输入框没内容、没有弹层时才允许收
   const { minimized: scrollingDown } = useScrollMinimize({
-    enabled: !overlay && !callOpen,
+    enabled: !overlay,
   });
   // 输入框有内容时不收起：避免打着字界面跑掉
   const dockHidden = scrollingDown && !draft.trim();
@@ -220,7 +218,7 @@ export default function WayMuseReference() {
   const nativeTabsActive = useNativeTabs(
     page,
     hasEntered,
-    callOpen || chromeHidden ? "通话" : overlay,
+    chromeHidden ? "通话" : overlay,
     nav,
   );
   const exportDemoData = () => {
@@ -340,9 +338,7 @@ export default function WayMuseReference() {
               onTasksChange={setTasks}
               onMemoriesChange={setMemories}
                 onCoursesChange={setCourses}
-              onViewPlans={() => nav("任务")}
-              callOpen={callOpen}
-              onCallOpenChange={setCallOpen}
+              onViewPlans={() => nav("任务")}
             />
           )}
           {page === "角色" && (
@@ -362,7 +358,7 @@ export default function WayMuseReference() {
           setAttachmentMenu={setAttachmentMenu}
           draft={draft}
           setDraft={setDraft}
-          overlay={callOpen || chromeHidden ? "通话" : overlay}
+          overlay={chromeHidden ? "通话" : overlay}
           submit={submit}
           onAttach={(payload) => {
             setPendingChat({ id: Date.now(), text: payload });

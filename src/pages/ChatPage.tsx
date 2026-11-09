@@ -23,7 +23,7 @@ import { parseCourseText, toCourses } from "../courseImport";
 import type { ParsedCourse } from "../courseImport";
 import { BRAND } from "../brand";
 import BotAvatar from "../BotAvatar";
-import VoiceCall from "../VoiceCall";
+import { speak, toSpeechText } from "../tts";
 import { useHideNativeChrome } from "../chrome";
 import { haptic } from "../nativeExtras";
 import { formatSearchContext, webSearch } from "../search";
@@ -139,8 +139,6 @@ export default function ChatPage({
   onMemoriesChange,
   onCoursesChange,
   onViewPlans,
-  callOpen,
-  onCallOpenChange,
 }: {
   agentName: string;
   agentAvatar: string;
@@ -155,8 +153,6 @@ export default function ChatPage({
   onMemoriesChange: (memories: Memory[]) => void;
   onCoursesChange: (courses: Course[]) => void;
   onViewPlans: () => void;
-  callOpen: boolean;
-  onCallOpenChange: (open: boolean) => void;
 }) {
   const [config, setConfig] = useState<DeepSeekConfig>(() =>
     storage.getDeepSeekConfig(),
@@ -185,10 +181,7 @@ export default function ChatPage({
   });
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [streaming, setStreaming] = useState(false);
-
-  const [breezeKey] = useState(() => storage.getBreezeKey());
-  const [breezeVoice] = useState(() => storage.getBreezeVoice());
+  const [streaming, setStreaming] = useState(false);
   const [searchOn, setSearchOn] = useState(() => storage.getSearchEnabled());
   const [titleMenu, setTitleMenu] = useState(false);
   const [searchKey] = useState(() => storage.getSearchKey());
@@ -554,6 +547,12 @@ export default function ChatPage({
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
+  const suggestions = [
+    "明天考试，我有点慌，陪我安排一下复习",
+    "我想准备第一份实习，有什么方案？",
+    "今天有点累，想聊一会儿",
+  ];
+
   const statusLabel =
     connectState === "ok"
       ? "已连接"
@@ -565,21 +564,58 @@ export default function ChatPage({
             ? "待测试"
             : "未连接";
 
-  // 通话模式下要念的最新一条回复（剥掉 <plans>/<memories> 契约块）
+  // 标题菜单打开时要隐藏原生 chrome，否则会被原生输入框盖住
   useHideNativeChrome(Boolean(titleMenu));
 
   const lastAssistant = [...messages]
     .reverse()
     .find((m) => m.role === "assistant" && m.content.trim());
-  const lastReply = lastAssistant ? parseReply(lastAssistant.content).text : "";
-  const suggestions = [
-    "明天考试，我有点慌，陪我安排一下复习",
-    "我想准备第一份实习，有什么方案？",
-    "今天有点累，想聊一会儿",
-  ];
 
   return (
     <>
+      {titleMenu && (
+        <div
+          className="wr-overlay wr-overlay-fixed"
+          onClick={() => setTitleMenu(false)}
+        >
+          <div
+            className="wr-sheet wr-titlemenu"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              onClick={() => {
+                setTitleMenu(false);
+                if (lastAssistant) {
+                  void speak(toSpeechText(lastAssistant.content));
+                }
+              }}
+            >
+              <PhoneCall size={19} /> 朗读最后一条
+            </button>
+            <button
+              onClick={() => {
+                const next = !searchOn;
+                setSearchOn(next);
+                storage.setSearchEnabled(next);
+                void haptic("light");
+              }}
+            >
+              <Globe size={19} /> 联网搜索
+              <em>{searchOn ? "已开" : "已关"}</em>
+            </button>
+            <button
+              onClick={() => {
+                setTitleMenu(false);
+                setSearchOpen(true);
+              }}
+            >
+              <Search size={19} /> 搜索聊天记录
+            </button>
+            <button onClick={() => setTitleMenu(false)}>取消</button>
+          </div>
+        </div>
+      )}
+
       <div
         className={
           messages.length === 0 ? "wr-chat-head is-empty" : "wr-chat-head"
@@ -607,57 +643,6 @@ export default function ChatPage({
         {/* 右侧留白，保证标题严格居中 */}
         <span className="wr-chat-head-spacer" aria-hidden="true" />
       </div>
-
-      {titleMenu && (
-        <div
-          className="wr-overlay wr-overlay-fixed"
-          onClick={() => setTitleMenu(false)}
-        >
-          <div
-            className="wr-sheet wr-titlemenu"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <button
-              onClick={() => {
-                setTitleMenu(false);
-                onCallOpenChange(true);
-              }}
-            >
-              <PhoneCall size={19} /> 语音通话
-            </button>
-            <button
-              onClick={() => {
-                const next = !searchOn;
-                setSearchOn(next);
-                storage.setSearchEnabled(next);
-                void haptic("light");
-              }}
-            >
-              <Globe size={19} /> 联网搜索
-              <em>{searchOn ? "已开" : "已关"}</em>
-            </button>
-            <button
-              onClick={() => {
-                setTitleMenu(false);
-                setSearchOpen(true);
-              }}
-            >
-              <Search size={19} /> 搜索聊天记录
-            </button>
-            <button onClick={() => setTitleMenu(false)}>取消</button>
-          </div>
-        </div>
-      )}
-
-      <VoiceCall
-        open={callOpen}
-        busy={streaming}
-        reply={lastReply}
-        breezeKey={breezeKey}
-        breezeVoice={breezeVoice}
-        onFinal={(text) => void sendMessage(text, messages)}
-        onClose={() => onCallOpenChange(false)}
-      />
 
       {/* 空态固定在可视区里，不参与滚动：
           以前它在滚动容器内，用户往下翻头像就没了，整页像一张长截图。 */}
