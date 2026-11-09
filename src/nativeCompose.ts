@@ -1,4 +1,4 @@
-﻿import { Capacitor, registerPlugin } from "@capacitor/core";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import type { PluginListenerHandle } from "@capacitor/core";
 import { useEffect, useRef, useState } from "react";
 

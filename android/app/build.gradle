@@ -1,7 +1,8 @@
-﻿apply plugin: 'com.android.application'
+apply plugin: 'com.android.application'
 
-// release 绛惧悕浠庣幆澧冨彉閲忚鍙栵紙CI 閲岀敱 GitHub Secrets 娉ㄥ叆锛夛紝
-// 鏈湴娌℃湁杩欎簺鍙橀噺鏃惰嚜鍔ㄨ烦杩囷紝浠嶇劧鍙互 assembleDebug銆?
+// Release signing is read from env vars injected by CI (GitHub Secrets).
+// When they are absent locally, release signing is skipped and
+// assembleDebug still works.
 def releaseStorePath = System.getenv("ANDROID_KEYSTORE_PATH")
 def hasReleaseSigning = releaseStorePath != null && file(releaseStorePath).exists()
 
@@ -70,4 +71,3 @@ try {
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }
-
