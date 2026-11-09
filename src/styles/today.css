@@ -419,3 +419,29 @@
   color: var(--primary);
   font-size: var(--text-14);
 }
+
+/* AI 解析：次级操作，放在「解析」下面 */
+.wr-course-import-ai {
+  width: 100%;
+  min-height: var(--control-44);
+  margin-bottom: var(--space-16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  border: var(--border-1) solid var(--primary-line);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--primary);
+  font-size: var(--text-14);
+}
+
+.wr-course-import-ai:disabled {
+  opacity: 0.5;
+}
+
+.wr-course-import-ai-error {
+  margin: 0 0 var(--space-12);
+  color: var(--danger);
+  font-size: var(--text-12);
+}

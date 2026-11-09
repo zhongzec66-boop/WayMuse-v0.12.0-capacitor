@@ -383,6 +383,10 @@ export default function WayMuseReference() {
             existing={courses}
             onClose={() => setCourseImportOpen(false)}
             onSave={(list) => setCourses((current) => [...current, ...list])}
+            onOpenSettings={() => {
+              setCourseImportOpen(false);
+              setOverlay("设置");
+            }}
           />
         )}
         {overlay &&
