@@ -188,14 +188,15 @@ export function useNativeCompose(options: {
       window.visualViewport?.addEventListener("scroll", sync);
     };
 
-    const bounds = measure(COMPOSE_SLOT_ID);
-    if (!bounds) {
-      setActive(false);
-      return;
-    }
-
-    const show = () =>
-      NativeCompose.showComposeBar({
+    // 每次显示前都重新测一次：dock 可能刚做过滚动收起/展开的位移动画，
+    // 用旧的矩形会让原生输入框「停在以前的位置」——看起来就像旧的聊天框又冒出来了。
+    const show = () => {
+      const bounds = measure(COMPOSE_SLOT_ID);
+      if (!bounds) {
+        setActive(false);
+        return Promise.resolve();
+      }
+      return NativeCompose.showComposeBar({
         bounds,
         placeholder,
         text,
@@ -209,6 +210,8 @@ export function useNativeCompose(options: {
           }
           setActive(true);
           attachObservers();
+          // 显示后立刻对齐一次，覆盖动画中途的位移
+          sync();
         })
         .catch(() => {
           if (cancelled) return;
@@ -219,6 +222,7 @@ export function useNativeCompose(options: {
             if (!cancelled) void show();
           }, 600);
         });
+    };
 
     void show();
 

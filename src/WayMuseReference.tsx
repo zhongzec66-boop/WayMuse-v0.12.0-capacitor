@@ -7,7 +7,7 @@ import Onboarding from "./Onboarding";
 import { haptic, readCalendarEvents } from "./nativeExtras";
 import type { CalendarEvent } from "./nativeExtras";
 import { subscribeChrome, useHideNativeChrome } from "./chrome";
-import { useDockAutoHide } from "./useDockAutoHide";
+import { useScrollMinimize } from "./useScrollMinimize";
 import { installGlobalHaptics } from "./haptics";
 import { useKeyboardInset } from "./useKeyboardInset";
 import ChatPage from "./pages/ChatPage";
@@ -140,8 +140,11 @@ export default function WayMuseReference() {
     installGlobalHaptics();
   }, []);
   // 滚到底部时收起 dock：输入框没内容、没有弹层时才允许收
-  const autoHidden = useDockAutoHide();
-  const dockHidden = autoHidden && !draft.trim() && !overlay && !callOpen;
+  const { minimized: scrollingDown } = useScrollMinimize({
+    enabled: !overlay && !callOpen,
+  });
+  // 输入框有内容时不收起：避免打着字界面跑掉
+  const dockHidden = scrollingDown && !draft.trim();
 
 
   const todayWeekday = getShanghaiWeekday();
