@@ -140,7 +140,8 @@
    注意：原生栏是**贴底自由排布**的（不再被 DOM 槽位框住），所以这里
    1) 把整个 Dock 抬到原生栏上方，2) 直接隐藏网页 Tab 行。 */
 .wr-dock-native {
-  bottom: calc(var(--native-tabbar, 0px) + var(--space-8));
+  /* 原生栏高度已含安全区，用 max 避免重复叠加 */
+  bottom: calc(var(--space-8) + max(var(--safe-bottom), var(--native-tabbar, 0px)));
   padding-bottom: 0;
   border-color: transparent;
   background: transparent;
@@ -609,7 +610,9 @@ html[data-platform="android"] .wr-dock {
 .wr-dock-anchor {
   position: absolute;
   right: var(--dock-inset);
-  bottom: calc(var(--space-8) + var(--safe-bottom) + var(--native-tabbar, 0px));
+  /* --native-tabbar 是原生栏整体高度（贴屏幕底，已含安全区）。
+     取 max 而不是相加：插件没上报高度时退回 safe-bottom，不会顶穿。 */
+  bottom: calc(var(--space-8) + max(var(--safe-bottom), var(--native-tabbar, 0px)));
   left: var(--dock-inset);
   z-index: var(--z-dock);
   pointer-events: none;

@@ -187,6 +187,12 @@ export default function TodayPage({
         tasks={tasks}
         nowMinutes={now}
         todayKey={todayKey}
+        onOpenTasks={() => nav("任务")}
+        onOpenTimeline={() =>
+          document
+            .querySelector(".wr-dayline")
+            ?.scrollIntoView({ behavior: "smooth", block: "start" })
+        }
       />
 
       {/* ── 今天的时间轴 ───────────────────────────── */}

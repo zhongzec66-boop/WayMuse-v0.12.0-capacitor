@@ -525,3 +525,86 @@
   color: var(--ink);
   font-weight: var(--weight-medium);
 }
+
+/* ── 今日简报卡（状态卡写法）──────────────────────────────
+   分类 chip → 结论 → 步骤 → 一个主动作。 */
+.wr-brief-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin-bottom: var(--space-12);
+  color: var(--primary);
+  font-size: var(--text-12);
+  font-weight: var(--weight-medium);
+}
+
+.wr-brief-title {
+  margin: 0 0 var(--space-8);
+  color: var(--ink);
+  font-size: var(--text-20);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+}
+
+.wr-brief-lead {
+  margin: 0 0 var(--space-12);
+  color: var(--ink-2);
+  font-size: var(--text-14);
+  line-height: var(--leading-body);
+}
+
+.wr-brief-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0 0 var(--space-16);
+  padding: 0;
+  list-style: none;
+}
+
+.wr-brief-steps li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  color: var(--ink-2);
+  font-size: var(--text-14);
+}
+
+.wr-brief-steps li svg {
+  flex: 0 0 auto;
+  color: var(--ink-3);
+}
+
+.wr-brief-steps li[data-state="live"] svg {
+  color: var(--primary);
+}
+
+.wr-brief-steps li[data-state="done"] svg {
+  color: var(--success);
+}
+
+.wr-brief-step-text {
+  flex: 1;
+  min-width: 0;
+  color: var(--ink);
+}
+
+.wr-brief-steps li em {
+  color: var(--ink-3);
+  font-size: var(--text-12);
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.wr-brief-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: var(--control-44);
+  padding: 0 var(--space-20);
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: var(--text-14);
+  font-weight: var(--weight-medium);
+}
