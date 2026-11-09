@@ -1,4 +1,4 @@
-import { Capacitor, registerPlugin } from "@capacitor/core";
+﻿import { Capacitor, registerPlugin } from "@capacitor/core";
 import type { PluginListenerHandle } from "@capacitor/core";
 import { useEffect, useRef, useState } from "react";
 
@@ -91,10 +91,12 @@ export function useNativeCompose(options: {
   const handlers = useRef(options);
   handlers.current = options;
 
-  // 原生回传的文本，用来打断「原生 → JS → 原生」的回写循环
-  const lastFromNative = useRef<string | null>(null);
+  // 原生最近一次回传的文本。用来打断「原生 → JS → 原生」的写回循环：
+  // 之前是消费式（比对一次就清空），打字快的时候会把旧值写回原生，
+  // 表现为光标跳到末尾、后面的字被吞掉 —— 改成持久记录，只跳过真正的回声。
+  const lastNativeText = useRef<string | null>(null);
 
-  // 事件监听
+  // 浜嬩欢鐩戝惉
   useEffect(() => {
     if (!enabled) return;
     let disposed = false;
@@ -110,13 +112,13 @@ export function useNativeCompose(options: {
 
     track(
       NativeCompose.addListener("composeTextChanged", ({ text: next }) => {
-        lastFromNative.current = next;
+        lastNativeText.current = next;
         handlers.current.onTextChange(next);
       }),
     );
     track(
       NativeCompose.addListener("composeSubmit", ({ text: next }) => {
-        lastFromNative.current = next;
+        lastNativeText.current = next;
         handlers.current.onTextChange(next);
         handlers.current.onSubmit();
       }),
@@ -236,15 +238,15 @@ export function useNativeCompose(options: {
     // text / placeholder 变化不重建浮层，交给下面的同步 effect
   }, [enabled, hidden]);
 
-  // 文本同步到原生
+  // 文本同步到原生：只在「JS 主动改了文本」时回写。
+  // 打字时原生已经把内容推上来了，再写回去会重置光标、吞掉后面的字。
   useEffect(() => {
     if (!active) return;
-    if (lastFromNative.current === text) {
-      lastFromNative.current = null;
-      return;
-    }
+    if (lastNativeText.current === text) return;
     void NativeCompose.setComposeText({ text }).catch(() => undefined);
+    lastNativeText.current = text;
   }, [active, text]);
 
   return active;
 }
+

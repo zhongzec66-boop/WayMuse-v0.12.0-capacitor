@@ -66,8 +66,18 @@ export default function Dock({
 
   const fileRef = useRef<HTMLInputElement | null>(null);
   const imageRef = useRef<HTMLInputElement | null>(null);
+  /**
+   * 这一段手势是不是「按住说话」。
+   * 松手后浏览器还会补一个 click，而那时识别结果已经写进 draft，
+   * 点击分支会把它当「发送」直接发出去 —— 于是用户以为没发，再点一次就重复了。
+   */
+  const voiceGestureRef = useRef(false);
   // 右侧麦克风：原生本地识别，逐字回填到输入框，不跳页
-  const speech = useSpeechInput(setDraft);
+  const speech = useSpeechInput(
+    setDraft,
+    undefined,
+    () => composeText,
+  );
 
   // 文本类文件直接把内容带进对话；其它类型只带文件名，不假装能解析。
   const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -204,7 +214,11 @@ export default function Dock({
                 : "录制语音"
           }
           onClick={() => {
-            // 有文字时这个按钮就是「发送」；长按说话由下面的 pointer 事件处理
+            // 「按住说话」松手后补发的 click：忽略，绝不当作发送
+            if (voiceGestureRef.current) {
+              voiceGestureRef.current = false;
+              return;
+            }
             if (draft) {
               void haptic("light");
               submit();
@@ -214,6 +228,7 @@ export default function Dock({
           }}
           onPointerDown={() => {
             if (draft || !speech.supported) return;
+            voiceGestureRef.current = true;
             void haptic("medium");
             speech.start();
           }}
@@ -224,11 +239,12 @@ export default function Dock({
           }}
           onPointerCancel={() => {
             if (draft || !speech.supported) return;
-            speech.stop();
+            // 手指划走 / 系统中断：还原成开口前的文字，不留半截识别结果
+            speech.cancel();
           }}
           onPointerLeave={() => {
             if (draft || !speech.supported || !speech.listening) return;
-            speech.stop();
+            speech.cancel();
           }}
         >
           {draft ? (

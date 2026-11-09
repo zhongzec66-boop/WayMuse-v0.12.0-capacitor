@@ -19,6 +19,7 @@ import {
 export function useSpeechInput(
   onText: (text: string) => void,
   onFinal?: (text: string) => void,
+  getBaseText?: () => string,
 ): {
   supported: boolean;
   listening: boolean;
@@ -26,6 +27,7 @@ export function useSpeechInput(
   toggle: () => void;
   start: () => void;
   stop: () => void;
+  cancel: () => void;
 } {
   const [listening, setListening] = useState(false);
   const [error, setError] = useState("");
@@ -33,12 +35,19 @@ export function useSpeechInput(
   onTextRef.current = onText;
   const onFinalRef = useRef(onFinal);
   onFinalRef.current = onFinal;
+  const getBaseRef = useRef(getBaseText);
+  getBaseRef.current = getBaseText;
+  /** 开始识别前输入框里已有的内容；取消时要还原回去 */
+  const baseTextRef = useRef("");
 
   // ── 断句与去重 ────────────────────────────────
   // 同一句话可能同时由「静音断句」和系统的 final 各触发一次，
   // 用这个引用挡掉重复提交。
   const committedRef = useRef({ text: "", at: 0 });
   const silenceRef = useRef<number | null>(null);
+
+  /** 把识别结果接到已有文字后面，避免覆盖用户已经打的内容 */
+  const withBase = (text: string) => `${baseTextRef.current}${text}`;
 
   const commit = (raw: string) => {
     const text = raw.trim();
@@ -55,11 +64,26 @@ export function useSpeechInput(
       window.clearTimeout(silenceRef.current);
       silenceRef.current = null;
     }
-    onTextRef.current(text);
+    const combined = withBase(text);
+    // 记住已并入的结果：下一句继续往后接，而不是把它当成新的整句
+    baseTextRef.current = combined;
+    onTextRef.current(combined);
     setListening(false);
     void stopSpeech();
     void haptic("light");
-    onFinalRef.current?.(text);
+    onFinalRef.current?.(combined);
+  };
+
+  /** 取消识别：把输入框还原成开口前的样子，不留下半截识别结果 */
+  const cancel = () => {
+    if (silenceRef.current) {
+      window.clearTimeout(silenceRef.current);
+      silenceRef.current = null;
+    }
+    committedRef.current = { text: "", at: 0 };
+    setListening(false);
+    onTextRef.current(baseTextRef.current);
+    void stopSpeech();
   };
 
   const armSilence = (text: string) => {
@@ -78,7 +102,7 @@ export function useSpeechInput(
     const bind = async () => {
       const partial = await speechEvents.partial(({ text }) => {
         if (!alive) return;
-        onTextRef.current(text);
+        onTextRef.current(withBase(text));
         // 只有通话模式才做静音断句：中文离线识别经常不给 isFinal。
         // 长按说话由松手结束，不做静音判定，免得停顿一下就被截断。
         if (onFinalRef.current) armSilence(text);
@@ -115,11 +139,14 @@ export function useSpeechInput(
   const begin = async () => {
     setError("");
     committedRef.current = { text: "", at: 0 };
+    // 记下开口前输入框里已有的内容：取消时还原，识别结果则接在它后面
+    baseTextRef.current = getBaseRef.current?.() ?? "";
     try {
       await startSpeech("zh-CN");
       setListening(true);
       void haptic("medium");
-      // 兜底：60 秒还没识别出句子就自动收麦，避免一直占着麦克风
+      // 兜底：60 秒还没识别出句子就自动收麦，避免一直占着麦克风。
+      // 注意这里只是停止收音，不动输入框内容。
       window.setTimeout(() => {
         setListening(false);
         void stopSpeech();
@@ -146,6 +173,7 @@ export function useSpeechInput(
     listening,
     error,
     toggle,
+    cancel,
     start: () => {
       if (!isNativeExtrasSupported()) return;
       void begin();
