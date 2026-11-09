@@ -41,3 +41,16 @@ iOS 健康、系统日历、提醒事项、快捷指令及外部学习 App 尚�
 
 源码版本：117f33e8e128e37b5571e46eafb9ab56907e1c46
 本压缩包不含 node_modules、Git 历史、平台托管配置或运行密钥。安装依赖后即可构建。
+
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
+本项目不包含 OpenMinis、nanoMuse 或其他 GPL 项目的代码。历史上的 GPL 声明来自项目模板，
+已于 2026-11 核实并替换，第三方组件见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+### 关于未来换许可证
+
+作者保留在后续版本改用其他许可证（例如商业化时改为 Apache-2.0）的权利。
+已经发布的 MIT 版本不可撤回；贡献者条款见 [CONTRIBUTING.md](CONTRIBUTING.md)。

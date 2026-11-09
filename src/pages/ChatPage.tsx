@@ -18,6 +18,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { localSuggestions, parseReply, planTasks } from "../agent";
+import { matchSkills } from "../skills";
 import { parseCourseText, toCourses } from "../courseImport";
 import type { ParsedCourse } from "../courseImport";
 import { BRAND } from "../brand";
@@ -172,6 +173,8 @@ export default function ChatPage({
   );
   /** 收到图片时给一句实话：当前模型看不了图 */
   const [imageCourseHint, setImageCourseHint] = useState(false);
+  /** 这一轮命中了哪些技能，给用户一个可见的信号 */
+  const [activeSkills, setActiveSkills] = useState<string[]>([]);
   const [messages, setMessages] = useState<DeepSeekMessage[]>(() => {
     const saved = storage.getDeepSeekMessages();
     return saved.filter(
@@ -283,6 +286,9 @@ export default function ChatPage({
     const content = text.trim();
     if (!content || streaming) return;
 
+    // 技能命中：决定这一轮要不要加载专门的做事方法
+    setActiveSkills(matchSkills(content).map((skill) => skill.name));
+
     // 附件或直接粘贴的课表：先本地认一遍。
     // 认出来就问一句「要不要加进课表」，而不是替用户决定，也不是当普通消息忽略。
     const fileMatch = content.match(/\[\[FILE:([^\]]*)\]\]([\s\S]*?)\[\[\/FILE\]\]/);
@@ -372,6 +378,7 @@ export default function ChatPage({
           profile,
           { memories, courses, tasks },
           webContext,
+          content,
         ),
       },
       ...history
@@ -1194,6 +1201,12 @@ export default function ChatPage({
               </button>
             </div>
           </section>
+        )}
+
+        {!showConfig && activeSkills.length > 0 && (
+          <div className="wr-skill-chip" role="status">
+            已启用：{activeSkills.join(" · ")}
+          </div>
         )}
 
         {!showConfig && imageCourseHint && (

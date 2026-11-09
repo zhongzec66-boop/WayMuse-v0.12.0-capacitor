@@ -1686,3 +1686,14 @@
   color: var(--ink-3);
   font-size: var(--text-12);
 }
+
+/* 技能命中提示：让用户知道「这一轮我按专门的方法在答」 */
+.wr-skill-chip {
+  align-self: flex-start;
+  margin: 0 var(--page-pad) var(--space-8);
+  padding: var(--space-4) var(--space-12);
+  border-radius: var(--radius-pill);
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: var(--text-12);
+}
