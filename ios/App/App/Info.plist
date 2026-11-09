@@ -26,6 +26,10 @@
 	<true/>
 	<key>NSCalendarsUsageDescription</key>
 	<string>读取你的课程与日程，用来排今天和本周的安排。数据只在本机处理。</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>读取你的完整日程（含课程与考试），用来排今天和本周的安排。数据只在本机处理。</string>
+	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
+	<string>把你确认过的计划写进日历，方便随时查看。</string>
 	<key>NSRemindersUsageDescription</key>
 	<string>把你确认过的计划写成提醒事项，方便随时查看。</string>
 	<key>NSMicrophoneUsageDescription</key>

@@ -64,12 +64,16 @@ function parsePlan(value: unknown): Plan | null {
     .slice(0, 4)
     .map((step) => step.trim().slice(0, 80));
   if (!steps.length) return null;
+  const deadlineRaw = parseDeadline(record.deadline);
+  // 早于今天的 deadline 一律丢弃：模型偶尔会沿用训练数据里的旧日期
+  const today = localDateKey();
+  const deadline = deadlineRaw && deadlineRaw >= today ? deadlineRaw : undefined;
   return {
     title: record.title.trim().slice(0, 24),
     summary:
       typeof record.summary === "string" ? record.summary.slice(0, 60) : "",
     steps,
-    deadline: parseDeadline(record.deadline),
+    deadline,
     priority: parsePriority(record.priority),
   };
 }
@@ -148,21 +152,33 @@ export function planTasks(
   }));
 }
 
+/** 本地时区的 YYYY-MM-DD。用 toISOString 会按 UTC 算，北京时间 0–8 点会差一天。 */
+export function localDateKey(date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function isoDate(offsetDays = 0): string {
   const date = new Date();
   date.setDate(date.getDate() + offsetDays);
-  return date.toISOString().slice(0, 10);
+  return localDateKey(date);
 }
 
 /**
  * 没有 API Key 时的本地兜底：按关键词给出一套能落地的建议，
  * 让用户在配置模型之前也能走完「确认 → 写入」的闭环。
+ *
+ * 两条自我约束：
+ * 1. 不写任何「推断性记忆」——用户没说的事，不能替他记住（那比答错更伤信任）
+ * 2. 关键词要具体：「累」「烦」这类单字会误命中「积累」「麻烦」
  */
 export function localSuggestions(input: string): Reply {
   const text = input.toLowerCase();
   const has = (...words: string[]) => words.some((word) => text.includes(word));
 
-  if (has("考试", "复习", "期末", "测验", "挂科")) {
+  if (has("考试", "复习", "期末", "测验", "挂科", "补考")) {
     return {
       text: "考试前慌是正常的。先别想着全复习完，把范围缩小到今天能动手的三件事。",
       plans: [
@@ -178,7 +194,7 @@ export function localSuggestions(input: string): Reply {
           priority: "high",
         },
       ],
-      memories: ["近期有考试，容易焦虑"],
+      memories: [],
     };
   }
 
@@ -197,11 +213,27 @@ export function localSuggestions(input: string): Reply {
           priority: "high",
         },
       ],
-      memories: ["目标是一份暑期实习"],
+      memories: [],
     };
   }
 
-  if (has("累", "烦", "焦虑", "难受", "压力", "emo", "摆烂")) {
+  if (
+    has(
+      "好累",
+      "很累",
+      "太累",
+      "累死",
+      "好烦",
+      "烦死",
+      "焦虑",
+      "难受",
+      "压力",
+      "emo",
+      "摆烂",
+      "不想动",
+      "撑不住",
+    )
+  ) {
     return {
       text: "听起来今天状态不好，这很正常。现在不适合加任务，先把门槛降到最低。",
       plans: [

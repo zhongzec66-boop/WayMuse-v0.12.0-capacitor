@@ -357,7 +357,13 @@ export default function ChatPage({
     const requestConfig: DeepSeekConfig = {
       ...config,
       temperature: profile.temperature,
-      maxTokens: Math.max(1400, responseTokenBudget(profile.responseLength)),
+      // 设置页里的 maxTokens 之前被写死的 1400 覆盖了；这里让设置生效。
+      // 开思考模式时思考内容也吃额度，给不足就只剩「思考过程」没有正文。
+      maxTokens: Math.max(
+        config.maxTokens,
+        responseTokenBudget(profile.responseLength),
+        config.thinking ? 4096 : 0,
+      ),
     };
 
     try {
