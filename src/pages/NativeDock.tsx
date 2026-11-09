@@ -3,6 +3,7 @@ import type { ChangeEvent, ComponentProps } from "react";
 
 import WebDock from "./WebDock";
 import { COMPOSE_SLOT_ID, useNativeCompose } from "../nativeCompose";
+import { buildFileBlock, extractFileText } from "../fileText";
 import { recognizeImageText } from "../ocr";
 import type { Page } from "../types";
 
@@ -44,25 +45,12 @@ export default function NativeDock(props: DockProps) {
     event.target.value = "";
     if (!file) return;
 
-    const isText =
-      file.type.startsWith("text/") || /\.(txt|csv|md|json)$/i.test(file.name);
-    const header = `name=${encodeURIComponent(file.name)};type=${encodeURIComponent(file.type || "application/octet-stream")};size=${file.size}`;
-
-    if (!isText) {
-      // 图片先试本地 OCR；认不出再退回「只记文件名」
-      const recognized = file.type.startsWith("image/")
+    const extracted = await extractFileText(file);
+    const content =
+      extracted.source === "image"
         ? await recognizeImageText(file)
-        : "";
-      onAttach(
-        recognized
-          ? `[[FILE:${header}]]\n（以下是这张图片里认出的文字）\n${recognized.slice(0, 16000)}\n[[/FILE]]`
-          : `[[FILE:${header}]]\n（你只能看到文件名和大小，看不到里面的内容）\n[[/FILE]]`,
-      );
-      return;
-    }
-
-    const text = (await file.text()).slice(0, 16000);
-    onAttach(`[[FILE:${header}]]\n${text}\n[[/FILE]]`);
+        : extracted.text;
+    onAttach(buildFileBlock(file.name, file.size, content));
   };
 
   // 键盘收起时也要保证最后一条消息可见：布局由 --kb-inset + 内容区 padding 负责

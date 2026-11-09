@@ -15,6 +15,7 @@ import { haptic } from "../nativeExtras";
 
 import type { Overlay, Page } from "../types";
 import { COMPOSE_SLOT_ID, useNativeCompose } from "../nativeCompose";
+import { buildFileBlock, extractFileText } from "../fileText";
 import { recognizeImageText } from "../ocr";
 
 export default function WebDock({
@@ -63,47 +64,20 @@ export default function WebDock({
   const fileRef = useRef<HTMLInputElement | null>(null);
   const imageRef = useRef<HTMLInputElement | null>(null);
 
-  // 文本类文件直接把内容带进对话；其它类型只带文件名，不假装能解析。
+  // 统一走 extractFileText：文本 / PDF / Word / Excel 都抽正文，
+  // 图片走原生 OCR；都提取不到才退回「只记文件名」。
   const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
     setAttachmentMenu(false);
-    const isText =
-      file.type.startsWith("text/") ||
-      /\.(txt|md|markdown|mdx|csv|tsv|json|jsonl|log|ya?ml|html?|xml|svg|css|scss|jsx?|tsx?|py|java|c|cc|cpp|h|hpp|go|rs|rb|php|sh|sql|tex|ini|conf|toml)$/i.test(
-        file.name,
-      );
-    const header = JSON.stringify({
-      n: file.name.slice(0, 80),
-      s: file.size,
-      b: !isText,
-    });
-    let payload = `[[FILE:${header}]]` + "\n[[/FILE]]";
-    if (isText && file.size <= 4 * 1024 * 1024) {
-      const text = await file.text();
-      const LIMIT = 16000;
-      // 截断要说清楚，否则模型以为自己看到了全文
-      const body =
-        text.length > LIMIT
-          ? `${text.slice(0, LIMIT)}\n（文件较长，以上是前 ${LIMIT} 字）`
-          : text;
-      payload = `[[FILE:${header}]]` + "\n" + body + "\n[[/FILE]]";
-    } else if (!isText) {
-      // 图片先试本地 OCR（Vision，不上传）；PDF/Word 之类仍然读不到
-      const recognized = file.type.startsWith("image/")
+
+    const extracted = await extractFileText(file);
+    const content =
+      extracted.source === "image"
         ? await recognizeImageText(file)
-        : "";
-      payload = recognized
-        ? `[[FILE:${header}]]` +
-          "\n（以下是这张图片里认出的文字）\n" +
-          recognized.slice(0, 16000) +
-          "\n[[/FILE]]"
-        : `[[FILE:${header}]]` +
-          "\n（这是二进制文件，你只能看到文件名和大小，看不到里面的内容）" +
-          "\n[[/FILE]]";
-    }
-    onAttach(payload);
+        : extracted.text;
+    onAttach(buildFileBlock(file.name, file.size, content));
   };
 
   // iOS 上用原生输入框；其它环境（Web / 插件缺失）自动回退到下面的 <input>。

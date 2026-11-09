@@ -1757,3 +1757,89 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+
+/* ── markdown-it 生成的结构（原来手写渲染器没有这些标签）──── */
+
+.wr-ai-md ul,
+.wr-ai-md ol {
+  margin: 0 0 var(--space-8);
+  padding-left: 1.2em;
+}
+
+.wr-ai-md li {
+  margin: 2px 0;
+}
+
+.wr-ai-md li > p {
+  margin: 0;
+}
+
+.wr-ai-md a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.wr-ai-md strong {
+  font-weight: var(--weight-semibold);
+}
+
+.wr-ai-md code {
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: var(--surface-muted);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.92em;
+}
+
+.wr-ai-md pre {
+  margin: 0 0 var(--space-8);
+  padding: var(--space-12);
+  overflow-x: auto;
+  border-radius: var(--radius-16);
+  background: var(--surface-muted);
+}
+
+.wr-ai-md pre code {
+  padding: 0;
+  background: none;
+  font-size: var(--text-13);
+  line-height: 1.6;
+}
+
+.wr-ai-md table {
+  width: 100%;
+  margin: 0 0 var(--space-8);
+  border-collapse: collapse;
+  font-size: var(--text-14);
+}
+
+.wr-ai-md th,
+.wr-ai-md td {
+  padding: 6px 8px;
+  border-bottom: var(--border-1) solid var(--divider);
+  text-align: left;
+}
+
+.wr-ai-md th {
+  color: var(--ink-2);
+  font-weight: var(--weight-medium);
+}
+
+.wr-ai-md blockquote {
+  margin: 0 0 var(--space-8);
+  padding-left: var(--space-12);
+  border-left: 2px solid var(--divider);
+  color: var(--ink-2);
+}
+
+/* 公式：行内的不要撑行高，块级的居中 */
+.wr-ai-md .katex {
+  font-size: 1.02em;
+}
+
+.wr-ai-md .katex-display {
+  margin: var(--space-8) 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
