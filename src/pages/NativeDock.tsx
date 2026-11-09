@@ -93,8 +93,10 @@ export default function NativeDock(props: DockProps) {
 
   return (
     <div className="wr-dock-anchor" aria-hidden="true">
+      {/* 这里只放输入框锚点。锚点的 bottom 已经让出了标签栏高度，
+         再叠一个 Tab 栏高度的占位块会把标签栏算两次，
+         玻璃输入框就会浮到半空（和标签栏之间空出一大块）。 */}
       <div id={COMPOSE_SLOT_ID} className="wr-compose-slot" />
-      <div className="wr-tab-spacer" />
       <input
         ref={fileRef}
         type="file"
