@@ -22,6 +22,7 @@ import TodayPage from "./pages/TodayPage";
 import { DEFAULT_PROFILE } from "./profile";
 import type { UserProfile } from "./profile";
 import { storage, createMemory } from "./storage";
+import { academicWeek, isCourseInWeek, readTermStart } from "./term";
 import type { Course, Memory, Overlay, Page, Task } from "./types";
 import { useNativeTabs } from "./useNativeTabs";
 
@@ -137,8 +138,13 @@ export default function WayMuseReference() {
   }, []);
 
   const todayWeekday = getShanghaiWeekday();
+  // 单双周 / 1-16 周这类课，只有「本周要上」的才出现在今天
+  const termWeek = academicWeek(readTermStart());
   const todayCourses = courses
-    .filter((course) => course.weekday === todayWeekday)
+    .filter(
+      (course) =>
+        course.weekday === todayWeekday && isCourseInWeek(course, termWeek),
+    )
     .sort((a, b) => a.start.localeCompare(b.start));
   const date = new Intl.DateTimeFormat("zh-CN", {
     month: "long",
@@ -323,6 +329,7 @@ export default function WayMuseReference() {
               onSettings={() => setOverlay("设置")}
               onTasksChange={setTasks}
               onMemoriesChange={setMemories}
+                onCoursesChange={setCourses}
               onViewPlans={() => nav("任务")}
               callOpen={callOpen}
               onCallOpenChange={setCallOpen}

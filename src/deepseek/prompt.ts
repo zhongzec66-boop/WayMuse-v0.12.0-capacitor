@@ -3,6 +3,7 @@ import { BRAND } from "../brand";
 import type { UserProfile } from "../profile";
 import type { Course, Memory, Task } from "../types";
 import { docDefault, readDoc } from "../docs";
+import { academicWeek, isCourseInWeek, readTermStart } from "../term";
 
 export const DEFAULT_SYSTEM_PROMPT = `你是 ${BRAND}，一个陪伴大学生、辅助学习的 AI Agent。以自然的聊天陪伴用户，先理解用户当下的感受和问题，再决定是否需要建议；闲聊不强行转成任务。学习时通过解释、例子和适量追问帮助用户理解，必要时一起拆解下一步。用简体中文回答。不要编造用户没有提供的经历；不确定时直接说明。回答保持具体、简短，必要时用列表。`;
 
@@ -49,7 +50,12 @@ function todayLine(): string {
 
 function courseLine(course: Course): string {
   const place = course.place ? ` @${course.place}` : "";
-  return `${weekdays[course.weekday] ?? "未知"} ${course.start}-${course.end} ${course.name}${place}`;
+  // 带上周次，模型才不会把「单双周」的课当成每周都有
+  const weeks =
+    course.weeks && course.weeks.length
+      ? `（第 ${course.weeks.join(",")} 周）`
+      : "";
+  return `${weekdays[course.weekday] ?? "未知"} ${course.start}-${course.end} ${course.name}${place}${weeks}`;
 }
 
 function companionInstruction(profile: UserProfile): string {
@@ -134,9 +140,13 @@ export function buildSystemPrompt(
     .slice()
     .sort((a, b) => b.weight - a.weight || b.createdAt - a.createdAt)
     .slice(0, 12);
-  const courses = context.courses.slice(0, 24);
+  const termWeek = academicWeek(readTermStart());
+  // 只把「这一周真的要上」的课给模型：单双周 / 前八周的课不该被当成今天有课
+  const courses = context.courses
+    .filter((course) => isCourseInWeek(course, termWeek))
+    .slice(0, 24);
   const tasks = context.tasks.slice(0, 20);
-  const lines = ["", profileSection(profile)];
+  const lines = ["", profileSection(profile), `【教学周】第 ${termWeek} 周（开学 ${readTermStart()}）`];
 
   if (memories.length) {
     // 重要的记忆排前面并标出来，让模型知道哪些是「这个人的底色」。

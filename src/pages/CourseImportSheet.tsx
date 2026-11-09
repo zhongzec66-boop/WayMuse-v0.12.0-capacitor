@@ -5,6 +5,7 @@ import type { ParsedCourse } from "../courseImport";
 import { streamDeepSeekChat } from "../deepseek/client";
 import { newId } from "../id";
 import { storage } from "../storage";
+import { readTermStart, writeTermStart } from "../term";
 import type { Course } from "../types";
 
 const WEEKDAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
@@ -114,6 +115,7 @@ export default function CourseImportSheet({
   const [source, setSource] = useState<"local" | "ai">("local");
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState("");
+  const [termStart, setTermStart] = useState(() => readTermStart());
 
   const hasKey = Boolean(storage.getDeepSeekKey().trim());
 
@@ -208,8 +210,21 @@ export default function CourseImportSheet({
 
         <p className="wr-sheet-description">
           把教务系统的课表文字复制进来，每行一门课。支持「周一
-          08:00-09:40 高等数学 教三-302」这种写法，也认「第 1-2 节」。
+          08:00-09:40 高等数学 教三-302」这种写法，也认「第 1-2 节」和
+          「1-16 周」「单周」「双周」。
         </p>
+
+        <label className="wr-course-import-term">
+          <span>开学日期（用来算教学周）</span>
+          <input
+            type="date"
+            value={termStart}
+            onChange={(event) => {
+              setTermStart(event.target.value);
+              if (event.target.value) writeTermStart(event.target.value);
+            }}
+          />
+        </label>
 
         <textarea
           className="wr-course-import-input"

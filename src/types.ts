@@ -26,6 +26,8 @@ export type Course = {
   start: string;
   end: string;
   place: string;
+  /** 这门课在第几周上。空/缺省 = 每周都上（兼容旧数据） */
+  weeks?: number[];
 };
 
 

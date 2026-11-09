@@ -96,6 +96,20 @@ function sanitizeCourse(value: unknown): Course | null {
       : 1;
   const start = isTime(value.start) ? value.start : "08:00";
   const end = isTime(value.end) ? value.end : "09:40";
+  // 周次：旧数据没有这个字段（= 每周都上），新数据是 1-30 的整数数组
+  const weeks = Array.isArray(value.weeks)
+    ? Array.from(
+        new Set(
+          value.weeks.filter(
+            (week): week is number =>
+              typeof week === "number" &&
+              Number.isInteger(week) &&
+              week >= 1 &&
+              week <= 30,
+          ),
+        ),
+      ).sort((a, b) => a - b)
+    : [];
   return {
     id: typeof value.id === "string" && value.id ? value.id : newId(),
     name,
@@ -103,6 +117,7 @@ function sanitizeCourse(value: unknown): Course | null {
     start,
     end,
     place: typeof value.place === "string" ? value.place : "",
+    ...(weeks.length ? { weeks } : {}),
   };
 }
 

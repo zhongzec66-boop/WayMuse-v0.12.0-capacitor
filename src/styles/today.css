@@ -445,3 +445,24 @@
   color: var(--danger);
   font-size: var(--text-12);
 }
+
+/* 开学日期：教学周的基准 */
+.wr-course-import-term {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  margin-bottom: var(--space-12);
+  color: var(--ink-2);
+  font-size: var(--text-14);
+}
+
+.wr-course-import-term input {
+  min-height: var(--control-44);
+  padding: 0 var(--space-12);
+  border: var(--border-1) solid var(--divider);
+  border-radius: var(--radius-12);
+  background: var(--field-bg);
+  color: var(--ink);
+  font-size: var(--text-14);
+}

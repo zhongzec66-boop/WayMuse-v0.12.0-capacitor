@@ -1,4 +1,5 @@
 import type { Course } from "./types";
+import { expandWeeks } from "./term";
 
 /**
  * 课表文本解析。
@@ -14,6 +15,8 @@ export type ParsedCourse = {
   start: string;
   end: string;
   place: string;
+  /** 第几周上；缺省表示每周 */
+  weeks?: number[];
 };
 
 const WEEKDAY_CHARS: Record<string, number> = {
@@ -144,6 +147,31 @@ function cleanupName(raw: string): string {
     .trim();
 }
 
+/**
+ * 抽出「第几周」并把它从行里摘掉。
+ * 认得的写法：1-16周 / 第1-16周 / 单周 / 双周 / 1-8,10-16周 / 3周
+ */
+function pickWeeks(text: string): { weeks?: number[]; rest: string } {
+  const match = text.match(
+    /(第)?\s*((?:\d{1,2}\s*[-–—~]\s*\d{1,2}|\d{1,2})(?:\s*[,，、]\s*(?:\d{1,2}\s*[-–—~]\s*\d{1,2}|\d{1,2}))*)\s*周/,
+  );
+  if (match && match.index !== undefined) {
+    const weeks = expandWeeks(match[2]);
+    return {
+      weeks: weeks ?? undefined,
+      rest: `${text.slice(0, match.index)} ${text.slice(match.index + match[0].length)}`,
+    };
+  }
+  const parity = text.match(/(单|双)\s*周/);
+  if (parity && parity.index !== undefined) {
+    return {
+      weeks: expandWeeks(parity[1] === "单" ? "单周" : "双周") ?? undefined,
+      rest: `${text.slice(0, parity.index)} ${text.slice(parity.index + parity[0].length)}`,
+    };
+  }
+  return { rest: text };
+}
+
 /** 解析单行；认不出来返回 null */
 export function parseCourseLine(line: string): ParsedCourse | null {
   const text = line.trim();
@@ -159,7 +187,8 @@ export function parseCourseLine(line: string): ParsedCourse | null {
   if (!timePart) return null;
 
   const placePart = pickPlace(timePart.rest);
-  const name = cleanupName(placePart.rest);
+  const weekPart = pickWeeks(placePart.rest);
+  const name = cleanupName(weekPart.rest);
 
   if (!name) return null;
   return {
@@ -168,6 +197,7 @@ export function parseCourseLine(line: string): ParsedCourse | null {
     start: timePart.start,
     end: timePart.end,
     place: placePart.place.slice(0, 40),
+    weeks: weekPart.weeks,
   };
 }
 
@@ -176,10 +206,22 @@ export function parseCourseText(text: string): {
   courses: ParsedCourse[];
   failedLines: string[];
 } {
-  const lines = text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+  const rawLines = text.split(/\r?\n/);
+  const lines: string[] = [];
+  for (const raw of rawLines) {
+    const line = raw.trim();
+    if (!line) continue;
+    // 输入框是单行的：用户可能把好几门课塞进一行，用「周一…周二…」切开
+    const pieces = line.split(/(?=(?:周|星期)[一二三四五六日天1-7])/);
+    if (pieces.length > 1) {
+      for (const piece of pieces) {
+        const trimmed = piece.trim();
+        if (trimmed) lines.push(trimmed);
+      }
+    } else {
+      lines.push(line);
+    }
+  }
 
   const courses: ParsedCourse[] = [];
   const failedLines: string[] = [];
@@ -231,5 +273,6 @@ export function toCourses(
       start: course.start,
       end: course.end,
       place: course.place,
+      weeks: course.weeks,
     }));
 }

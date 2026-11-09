@@ -3,6 +3,7 @@ import { addEventToCalendar, haptic } from "../nativeExtras";
 import type { CalendarEvent } from "../nativeExtras";
 import type { Dispatch, SetStateAction } from "react";
 import type { Course, Overlay, Page, Task } from "../types";
+import { academicWeek, readTermStart } from "../term";
 
 /** 全站统一 Asia/Shanghai。 */
 function shanghaiParts() {
@@ -37,15 +38,7 @@ function greeting(minutes: number): string {
   return "晚上好";
 }
 
-/** 一年中的第几周，用来给「第 N 周」一个真实的数字。 */
-function weekOfYear(): number {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 1);
-  const days = Math.floor(
-    (now.getTime() - start.getTime()) / (24 * 60 * 60 * 1000),
-  );
-  return Math.ceil((days + start.getDay() + 1) / 7);
-}
+/** 教学周由 term.ts 统一计算（需要开学日期），这里不再用自然周。 */
 
 type EntryState = "done" | "live" | "next" | "due" | "overdue";
 
@@ -77,7 +70,7 @@ export default function TodayPage({
   calendarEvents,
   courses,
   setCourses,
-  setOverlay,
+  setOverlay,
   nav,
   onImportCourses,
 }: {
@@ -88,7 +81,7 @@ export default function TodayPage({
   calendarEvents: CalendarEvent[];
   courses: Course[];
   setCourses: Dispatch<SetStateAction<Course[]>>;
-  setOverlay: Dispatch<SetStateAction<Overlay>>;
+  setOverlay: Dispatch<SetStateAction<Overlay>>;
   nav: (page: Page) => void;
   onImportCourses: () => void;
 }) {
@@ -184,7 +177,8 @@ export default function TodayPage({
       </div>
 
       <p className="wr-today-sub">
-        {greeting(now)}，{profileName} · {date} · 第 {weekOfYear()} 周
+        {greeting(now)}，{profileName} · {date} · 第{" "}
+        {academicWeek(readTermStart())} 周
       </p>
 
       {/* ── 今天的时间轴 ───────────────────────────── */}

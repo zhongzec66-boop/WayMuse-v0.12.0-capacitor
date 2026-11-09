@@ -18,6 +18,8 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { localSuggestions, parseReply, planTasks } from "../agent";
+import { parseCourseText, toCourses } from "../courseImport";
+import type { ParsedCourse } from "../courseImport";
 import { BRAND } from "../brand";
 import BotAvatar from "../BotAvatar";
 import VoiceCall from "../VoiceCall";
@@ -113,6 +115,8 @@ function describeError(error: unknown): string {
   return "请求失败，请稍后重试。";
 }
 
+const WEEKDAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+
 function formatTime(timestamp: number): string {
   return new Intl.DateTimeFormat("zh-CN", {
     hour: "2-digit",
@@ -132,6 +136,7 @@ export default function ChatPage({
   onSettings,
   onTasksChange,
   onMemoriesChange,
+  onCoursesChange,
   onViewPlans,
   callOpen,
   onCallOpenChange,
@@ -147,6 +152,7 @@ export default function ChatPage({
   onSettings: () => void;
   onTasksChange: (tasks: Task[]) => void;
   onMemoriesChange: (memories: Memory[]) => void;
+  onCoursesChange: (courses: Course[]) => void;
   onViewPlans: () => void;
   callOpen: boolean;
   onCallOpenChange: (open: boolean) => void;
@@ -160,6 +166,12 @@ export default function ChatPage({
   );
   const [showKey, setShowKey] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
+  /** 用户发来的课表：等确认后再写进课表 */
+  const [courseProposal, setCourseProposal] = useState<ParsedCourse[] | null>(
+    null,
+  );
+  /** 收到图片时给一句实话：当前模型看不了图 */
+  const [imageCourseHint, setImageCourseHint] = useState(false);
   const [messages, setMessages] = useState<DeepSeekMessage[]>(() => {
     const saved = storage.getDeepSeekMessages();
     return saved.filter(
@@ -270,6 +282,23 @@ export default function ChatPage({
   const sendMessage = async (text: string, history: DeepSeekMessage[]) => {
     const content = text.trim();
     if (!content || streaming) return;
+
+    // 附件或直接粘贴的课表：先本地认一遍。
+    // 认出来就问一句「要不要加进课表」，而不是替用户决定，也不是当普通消息忽略。
+    const fileMatch = content.match(/\[\[FILE:([^\]]*)\]\]([\s\S]*?)\[\[\/FILE\]\]/);
+    const attachMeta = fileMatch?.[1] ?? "";
+    const attachBody = fileMatch ? fileMatch[2] : content;
+    const isImage =
+      /image\//i.test(attachMeta) ||
+      /\.(png|jpe?g|webp|heic|gif|bmp)$/i.test(attachMeta);
+    if (isImage) {
+      setImageCourseHint(true);
+      setCourseProposal(null);
+    } else {
+      setImageCourseHint(false);
+      const parsed = parseCourseText(attachBody);
+      if (parsed.courses.length >= 2) setCourseProposal(parsed.courses);
+    }
 
     // 联网搜索：只在开关打开且有 key 时查一次，结果拼进 system prompt
     let webContext = "";
@@ -1122,6 +1151,59 @@ export default function ChatPage({
               <button type="button" onClick={retry} disabled={streaming}>
                 <RotateCcw size={15} /> 重试上一条
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* 用户发来课表（粘贴的文字或文件）后，先问一句要不要加进课表，
+            而不是替他做决定，也不是把课表内容当成普通聊天忽略掉。 */}
+        {!showConfig && courseProposal && (
+          <section className="wr-course-proposal" aria-label="课表导入确认">
+            <small>看起来是课表 · 等你确认</small>
+            <h3>把你发来的 {courseProposal.length} 门课加进课表？</h3>
+            <ul>
+              {courseProposal.slice(0, 6).map((course, index) => (
+                <li key={`${course.name}-${index}`}>
+                  <span>{WEEKDAYS[course.weekday]}</span>
+                  <span>
+                    {course.start}–{course.end}
+                  </span>
+                  <b>{course.name}</b>
+                  {course.place && <em>{course.place}</em>}
+                </li>
+              ))}
+            </ul>
+            {courseProposal.length > 6 && (
+              <p className="wr-course-proposal-more">
+                还有 {courseProposal.length - 6} 门课
+              </p>
+            )}
+            <div className="wr-plan-actions">
+              <button
+                type="button"
+                onClick={() => {
+                  const added = toCourses(courseProposal, courses, newId);
+                  if (added.length) onCoursesChange([...courses, ...added]);
+                  setCourseProposal(null);
+                }}
+              >
+                加入课表
+              </button>
+              <button type="button" onClick={() => setCourseProposal(null)}>
+                先不用
+              </button>
+            </div>
+          </section>
+        )}
+
+        {!showConfig && imageCourseHint && (
+          <div className="wr-ai-error" role="status">
+            <TriangleAlert size={18} />
+            <div>
+              <b>图片我先看不了</b>
+              <p>
+                当前模型不支持看图。把课表上的文字复制粘贴过来，我就能解析并排进课表。
+              </p>
             </div>
           </div>
         )}
