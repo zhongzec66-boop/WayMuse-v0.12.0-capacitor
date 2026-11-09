@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowLeft, Check, Sparkles, TriangleAlert, X } from "lucide-react";
-import { parseCourseText, toCourses } from "../courseImport";
+import { parseCourseRecord, parseCourseText, toCourses } from "../courseImport";
 import type { ParsedCourse } from "../courseImport";
 import { streamDeepSeekChat } from "../deepseek/client";
 import { newId } from "../id";
@@ -27,13 +27,6 @@ const AI_PROMPT = `你是课表解析器。把用户粘贴的课表文字转成 
 
 如果整段文字里没有可识别的课程，输出 []。`;
 
-const PERIODS: Array<[string, string]> = [
-  ["08:00", "09:40"],
-  ["10:00", "11:40"],
-  ["14:00", "15:40"],
-  ["16:00", "17:40"],
-  ["19:00", "20:40"],
-];
 
 /** 从模型输出里抠出 JSON 数组，容忍 ```json 包裹和前后废话 */
 function extractJsonArray(raw: string): unknown[] {
@@ -47,45 +40,6 @@ function extractJsonArray(raw: string): unknown[] {
   } catch {
     return [];
   }
-}
-
-function normalizeRecord(input: unknown): ParsedCourse | null {
-  if (!input || typeof input !== "object") return null;
-  const record = input as Record<string, unknown>;
-  const name = typeof record.name === "string" ? record.name.trim() : "";
-  if (!name) return null;
-
-  const rawWeekday = Number(record.weekday);
-  if (!Number.isFinite(rawWeekday)) return null;
-  // 模型可能给 1-7（周一=1），也可能给 0-6（周日=0）
-  const weekday = rawWeekday >= 1 && rawWeekday <= 7 ? rawWeekday % 7 : 0;
-
-  const time = (value: unknown): string | null => {
-    if (typeof value !== "string") return null;
-    const match = value.match(/(\d{1,2})[:：](\d{1,2})/);
-    if (!match) return null;
-    return `${match[1].padStart(2, "0")}:${match[2].padStart(2, "0")}`;
-  };
-
-  let start = time(record.start);
-  let end = time(record.end);
-  if (!start || !end) {
-    const period = Number(record.period);
-    if (Number.isFinite(period) && period >= 1 && period <= PERIODS.length) {
-      start = start ?? PERIODS[period - 1][0];
-      end = end ?? PERIODS[period - 1][1];
-    }
-  }
-  if (!start || !end) return null;
-
-  return {
-    name: name.slice(0, 40),
-    weekday,
-    start,
-    end,
-    place:
-      typeof record.place === "string" ? record.place.trim().slice(0, 40) : "",
-  };
 }
 
 /**
@@ -155,7 +109,7 @@ export default function CourseImportSheet({
         ],
       });
       const records = extractJsonArray(result.content)
-        .map(normalizeRecord)
+        .map(parseCourseRecord)
         .filter((item): item is ParsedCourse => item !== null);
 
       if (records.length === 0) {

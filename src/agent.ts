@@ -1,4 +1,6 @@
 import type { Task } from "./types";
+import { parseCourseRecord } from "./courseImport";
+import type { ParsedCourse } from "./courseImport";
 
 export type Priority = "high" | "medium" | "low";
 
@@ -17,6 +19,8 @@ export type Reply = {
   plans: Plan[];
   /** 值得写入“记忆”的事实，最多 3 条 */
   memories: string[];
+  /** 从课表文本里整理出的课程，等用户确认后写入 */
+  courses: ParsedCourse[];
 };
 
 /**
@@ -40,7 +44,17 @@ export const PLAN_INSTRUCTION = `【回复协议】
 
 <memories>["明年暑假想找第一份实习","周三下午在图书馆"]</memories>
 
-只建议，不声称已执行。用户点确认后才会写入计划或记忆。`;
+只建议，不声称已执行。用户点确认后才会写入计划或记忆。
+
+如果用户发来的是课表文字，并且希望存进课表，就在回复末尾附上课表块
+（前端会渲染成「要不要加入课表」的确认卡，你不需要说自己没有工具）：
+
+<courses>[{"name":"高等数学","weekday":1,"start":"08:00","end":"09:40","place":"教三-302","weeks":[1,3,5,7]}]</courses>
+
+- weekday：1-7 表示周一到周日。
+- start / end 用 HH:mm；只有节次时按常见作息换算（1-2 节 08:00-09:40，3-4 节 10:00-11:40，5-6 节 14:00-15:40，7-8 节 16:00-17:40，9-10 节 19:00-20:40）。
+- weeks 是可选的周次数组；用户没说就不要猜。
+- 正文里只说明你整理出了几门课、哪几处不确定，不要列出全部课程。`;
 
 function parsePriority(value: unknown): Priority | undefined {
   return value === "high" || value === "medium" || value === "low"
@@ -101,7 +115,8 @@ function extractBlock(
 export function parseReply(content: string): Reply {
   const plansBlock = extractBlock(content, "plans");
   const memoriesBlock = extractBlock(plansBlock.rest, "memories");
-  const text = memoriesBlock.rest.trim();
+  const coursesBlock = extractBlock(memoriesBlock.rest, "courses");
+  const text = coursesBlock.rest.trim();
 
   let plans: Plan[] = [];
   if (plansBlock.body) {
@@ -134,7 +149,22 @@ export function parseReply(content: string): Reply {
     }
   }
 
-  return { text, plans, memories };
+  let courses: ParsedCourse[] = [];
+  if (coursesBlock.body) {
+    try {
+      const raw: unknown = JSON.parse(coursesBlock.body);
+      if (Array.isArray(raw)) {
+        courses = raw
+          .slice(0, 40)
+          .map(parseCourseRecord)
+          .filter((item): item is ParsedCourse => item !== null);
+      }
+    } catch {
+      courses = [];
+    }
+  }
+
+  return { text, plans, memories, courses };
 }
 
 export function planTasks(
@@ -195,6 +225,7 @@ export function localSuggestions(input: string): Reply {
         },
       ],
       memories: [],
+      courses: [],
     };
   }
 
@@ -214,6 +245,7 @@ export function localSuggestions(input: string): Reply {
         },
       ],
       memories: [],
+      courses: [],
     };
   }
 
@@ -245,6 +277,7 @@ export function localSuggestions(input: string): Reply {
         },
       ],
       memories: [],
+      courses: [],
     };
   }
 
@@ -264,6 +297,7 @@ export function localSuggestions(input: string): Reply {
         },
       ],
       memories: [],
+      courses: [],
     };
   }
 
@@ -282,5 +316,6 @@ export function localSuggestions(input: string): Reply {
       },
     ],
     memories: [],
+    courses: [],
   };
 }

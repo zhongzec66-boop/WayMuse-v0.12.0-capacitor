@@ -456,6 +456,9 @@ export default function ChatPage({
         );
         setUsage(result.usage);
         setLatency(Math.round(performance.now() - startedAt));
+        // 模型用 <courses> 块整理了课表 → 直接弹确认卡，不让它说「我没有工具」
+        const parsedCourses = parseReply(result.content || "").courses;
+        if (parsedCourses.length) setCourseProposal(parsedCourses);
         if (firstTokenAt) {
           setConnectState("ok");
           setConnectText(

@@ -276,3 +276,60 @@ export function toCourses(
       weeks: course.weeks,
     }));
 }
+
+/**
+ * 把模型/JSON 里的一条课程记录规范化。
+ * 聊天里的 <courses> 块和导入页的 AI 结果都走这里，避免两套规则。
+ */
+export function parseCourseRecord(input: unknown): ParsedCourse | null {
+  if (!input || typeof input !== "object") return null;
+  const record = input as Record<string, unknown>;
+  const name = typeof record.name === "string" ? record.name.trim() : "";
+  if (!name) return null;
+
+  const rawWeekday = Number(record.weekday);
+  if (!Number.isFinite(rawWeekday)) return null;
+  // 模型可能给 1-7（周一=1），也可能给 0-6（周日=0）
+  const weekday = rawWeekday >= 1 && rawWeekday <= 7 ? rawWeekday % 7 : 0;
+
+  const time = (value: unknown): string | null => {
+    if (typeof value !== "string") return null;
+    const match = value.match(/(\d{1,2})[:：](\d{1,2})/);
+    if (!match) return null;
+    return `${match[1].padStart(2, "0")}:${match[2].padStart(2, "0")}`;
+  };
+
+  let start = time(record.start);
+  let end = time(record.end);
+  if (!start || !end) {
+    const period = Number(record.period);
+    if (Number.isFinite(period) && period >= 1 && period <= 20) {
+      // 常见作息：1-2 节 08:00-09:40，往后每两节 +2h
+      const slot = Math.floor((period - 1) / 2);
+      const base = 8 + slot * 2;
+      start = start ?? `${String(base).padStart(2, "0")}:00`;
+      end = end ?? `${String(base + 1).padStart(2, "0")}:40`;
+    }
+  }
+  if (!start || !end) return null;
+
+  let weeks: number[] | undefined;
+  if (Array.isArray(record.weeks)) {
+    const list = record.weeks
+      .map((week) => Number(week))
+      .filter((week) => Number.isInteger(week) && week >= 1 && week <= 30);
+    weeks = list.length ? [...new Set(list)].sort((a, b) => a - b) : undefined;
+  } else if (typeof record.weeks === "string") {
+    weeks = expandWeeks(record.weeks) ?? undefined;
+  }
+
+  return {
+    name: name.slice(0, 40),
+    weekday,
+    start,
+    end,
+    place:
+      typeof record.place === "string" ? record.place.trim().slice(0, 40) : "",
+    ...(weeks ? { weeks } : {}),
+  };
+}

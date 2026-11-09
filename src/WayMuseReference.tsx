@@ -6,7 +6,7 @@ import { newId } from "./id";
 import Onboarding from "./Onboarding";
 import { haptic, readCalendarEvents } from "./nativeExtras";
 import type { CalendarEvent } from "./nativeExtras";
-import { subscribeChrome } from "./chrome";
+import { subscribeChrome, useHideNativeChrome } from "./chrome";
 import { installGlobalHaptics } from "./haptics";
 import { useKeyboardInset } from "./useKeyboardInset";
 import ChatPage from "./pages/ChatPage";
@@ -55,6 +55,8 @@ export default function WayMuseReference() {
   const [overlay, setOverlay] = useState<Overlay>("");
   const [attachmentMenu, setAttachmentMenu] = useState(false);
   const [courseImportOpen, setCourseImportOpen] = useState(false);
+  // 导入层是我们自己的全屏 sheet，但原生输入框会浮在它上面：打开时一并隐藏
+  useHideNativeChrome(courseImportOpen);
   const [taskMode, setTaskMode] = useState<"任务" | "课表">("任务");
   const [tasks, setTasks] = useState<Task[]>(() =>
     storage.getTasks(seedTasks).filter((task) => !task.id.startsWith("seed-")),

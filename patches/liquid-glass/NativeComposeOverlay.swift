@@ -276,6 +276,16 @@ final class NativeComposeOverlay: NSObject {
         let text = (textField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         onSubmit?(text)
+        // 发完立刻清空：否则用户会看到「消息已发出，但输入框还留着同一句话」
+        clearAfterSend()
+    }
+
+    /// 发送后清空输入框，并同步给 JS，避免两边状态不一致
+    private func clearAfterSend() {
+        textField.text = ""
+        lastEmittedText = ""
+        refreshActionButton()
+        onTextChange?("")
     }
 
     @objc private func handleVoiceDown() {
@@ -295,9 +305,10 @@ final class NativeComposeOverlay: NSObject {
 
 extension NativeComposeOverlay: UITextFieldDelegate {
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-        let text = textField.text ?? ""
+        let text = (textField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return false }
         onSubmit?(text)
+        clearAfterSend()
         return true
     }
 }

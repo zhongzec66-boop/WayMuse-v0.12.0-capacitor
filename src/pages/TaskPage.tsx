@@ -2,6 +2,7 @@ import { AlertTriangle, Check, Clock3, Plus, Trash2, X } from "lucide-react";
 import { Fragment, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { newId } from "../id";
+import { useHideNativeChrome } from "../chrome";
 import type { Course, Overlay, Task } from "../types";
 
 export type TaskMode = "任务" | "课表";
@@ -113,6 +114,9 @@ export default function TaskPage({
   // ── 课程录入 / 批量导入 ──
   const [courseOpen, setCourseOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  // iOS 的输入框和标签栏是原生视图，浮在网页之上：弹层打开时必须藏起来，
+  // 否则「保存」按钮永远被它们盖住。
+  useHideNativeChrome(courseOpen || importOpen);
   const [draftName, setDraftName] = useState("");
   const [draftWeekday, setDraftWeekday] = useState(1);
   const [draftStart, setDraftStart] = useState("08:00");
