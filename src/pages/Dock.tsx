@@ -34,6 +34,7 @@ export default function Dock({
   nav,
   agentName,
   agentAvatar,
+  dockHidden,
 }: {
   nativeTabsActive: boolean;
   attachmentMenu: boolean;
@@ -47,6 +48,7 @@ export default function Dock({
   nav: (page: Page) => void;
   agentName: string;
   agentAvatar: string;
+  dockHidden?: boolean;
 }) {
   const composeText =
     overlay === "新增任务" || overlay === "添加记忆" ? "" : draft;
@@ -132,7 +134,7 @@ export default function Dock({
 
   const nativeComposeActive = useNativeCompose({
     enabled: isNativeComposeSupported(),
-    hidden: overlay !== "",
+    hidden: overlay !== "" || Boolean(dockHidden),
     text: composeText,
     placeholder,
     onTextChange: setDraft,

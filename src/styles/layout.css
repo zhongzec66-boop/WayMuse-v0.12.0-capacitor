@@ -586,3 +586,19 @@ html[data-platform="android"] .wr-chat-scroll {
 html[data-platform="android"] .wr-dock {
   bottom: calc(var(--space-12) + var(--native-tabbar, 0px));
 }
+
+/* ── 滚动时收起底部 dock ──────────────────────────────────
+   参考酷安 / 苹果音乐：往下滚时让开内容，往上滚一点就回来。
+   注意只位移、不改内容区 padding：否则收起瞬间内容会跳一下。 */
+.wr-phone .wr-dock {
+  transition:
+    transform var(--dur-2) var(--ease),
+    opacity var(--dur-2) var(--ease);
+  will-change: transform;
+}
+
+.wr-phone[data-dock="hidden"] .wr-dock {
+  transform: translateY(calc(100% + var(--space-32)));
+  opacity: 0;
+  pointer-events: none;
+}
