@@ -1,5 +1,5 @@
 import { Capacitor } from "@capacitor/core";
-import { DEFAULT_VOICE, synthesizeSpeech } from "./breeze";
+import { synthesizeSpeech } from "./breeze";
 import type { BreezeConfig } from "./breeze";
 import { playAudioNative, stopAudioNative } from "./nativeExtras";
 
@@ -28,30 +28,54 @@ function blobToBase64(blob: Blob): Promise<string> {
 
 export type VoiceStatus = "idle" | "loading" | "ready" | "playing" | "error";
 
+export type VoiceMode = "api" | "system";
+
 export type VoiceState = {
   status: VoiceStatus;
   url?: string;
+  /** 秒；0 表示拿不到时长，UI 不显示 */
+  duration?: number;
   error?: string;
 };
 
-export function hasBreezeKey(): boolean {
-  // 延迟到调用方传 key，这里只给 UI 一个快速判断
-  return true;
+/** 读音频时长；拿不到就返回 0，UI 会退回不显示时长 */
+export function readDuration(url: string): Promise<number> {
+  return new Promise((resolve) => {
+    const audio = new Audio();
+    audio.preload = "metadata";
+    const done = (value: number) => resolve(Number.isFinite(value) ? value : 0);
+    audio.onloadedmetadata = () => done(audio.duration);
+    audio.onerror = () => done(0);
+    audio.src = url;
+  });
 }
 
-/** 取缓存的音频地址；没有就调 Breeze 合成一次 */
-export async function ensureVoiceUrl(
+export type VoiceClip = { url: string; duration: number };
+
+/** 取缓存的音频；没有就调 Breeze 合成一次（带时长） */
+export async function ensureVoice(
   messageId: string,
   text: string,
   config: BreezeConfig,
-): Promise<string> {
+): Promise<VoiceClip> {
   const cached = urlCache.get(messageId);
-  if (cached) return cached;
+  if (cached) {
+    return { url: cached, duration: await readDuration(cached) };
+  }
 
   const blob = await synthesizeSpeech(text, config);
   const url = URL.createObjectURL(blob);
   urlCache.set(messageId, url);
-  return url;
+  return { url, duration: await readDuration(url) };
+}
+
+/** 浏览器里正在播的元素；原生走 playAudioNative，不用这个 */
+let webAudio: HTMLAudioElement | null = null;
+
+function stopWebAudio(): void {
+  if (!webAudio) return;
+  webAudio.pause();
+  webAudio = null;
 }
 
 /** 播放一段已经合成好的音频 */
@@ -64,7 +88,13 @@ export async function playVoice(url: string): Promise<void> {
     return;
   }
 
+  // 先停掉上一条，避免两段声音重叠
+  stopWebAudio();
   const audio = new Audio(url);
+  webAudio = audio;
+  audio.onended = () => {
+    if (webAudio === audio) webAudio = null;
+  };
   await audio.play();
 }
 
@@ -72,10 +102,9 @@ export async function stopVoice(): Promise<void> {
   if (Capacitor.isNativePlatform()) {
     await stopAudioNative();
   }
-}
-
-export function defaultVoiceId(): string {
-  return DEFAULT_VOICE;
+  // 审查时发现：原先浏览器分支只调了原生 stop（no-op），
+  // 点「停止」其实停不掉网页里的 Audio，这里补上。
+  stopWebAudio();
 }
 
 export function clearVoiceCache(): void {

@@ -16,7 +16,6 @@ import {
   Square,
   Trash2,
   TriangleAlert,
-  Volume2,
 } from "lucide-react";
 import { localSuggestions, parseReply, planTasks } from "../agent";
 import { matchSkills } from "../skills";
@@ -24,7 +23,14 @@ import { parseCourseText, toCourses } from "../courseImport";
 import type { ParsedCourse } from "../courseImport";
 import { BRAND } from "../brand";
 import BotAvatar from "../BotAvatar";
-import { ensureVoiceUrl, playVoice, toSpeechText } from "../voiceMessage";
+import {
+  clearVoiceCache,
+  ensureVoice,
+  playVoice,
+  stopVoice,
+  toSpeechText,
+} from "../voiceMessage";
+import VoiceBubble from "../VoiceBubble";
 import { useHideNativeChrome } from "../chrome";
 import { haptic } from "../nativeExtras";
 import { formatSearchContext, webSearch } from "../search";
@@ -182,7 +188,7 @@ export default function ChatPage({
   });
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [streaming, setStreaming] = useState(false);
+  const [streaming, setStreaming] = useState(false);
   const [searchOn, setSearchOn] = useState(() => storage.getSearchEnabled());
   const [titleMenu, setTitleMenu] = useState(false);
   const [searchKey] = useState(() => storage.getSearchKey());
@@ -521,6 +527,9 @@ export default function ChatPage({
     setUsage(null);
     setLatency(null);
     setError("");
+    // 对话清空后语音片段也没用了：释放 Blob URL，避免内存一直涨
+    clearVoiceCache();
+    setVoiceStates({});
     storage.setDeepSeekMessages([]);
   };
 
@@ -562,15 +571,45 @@ export default function ChatPage({
       }));
       return;
     }
+
+    const existing = voiceStates[message.id];
+    // 已经合成过：直接播，不再花一次 token
+    if (existing?.url && existing.status !== "loading") {
+      setVoiceStates((prev) => ({
+        ...prev,
+        [message.id]: { ...prev[message.id], status: "playing" },
+      }));
+      try {
+        await playVoice(existing.url);
+      } finally {
+        setVoiceStates((prev) => ({
+          ...prev,
+          [message.id]: { ...prev[message.id], status: "ready" },
+        }));
+      }
+      return;
+    }
+
     setVoiceStates((prev) => ({ ...prev, [message.id]: { status: "loading" } }));
     try {
-      const url = await ensureVoiceUrl(message.id, toSpeechText(message.content), {
-        apiKey: key,
-        voiceId: storage.getBreezeVoice(),
-      });
-      setVoiceStates((prev) => ({ ...prev, [message.id]: { status: "playing", url } }));
-      await playVoice(url);
-      setVoiceStates((prev) => ({ ...prev, [message.id]: { status: "ready", url } }));
+      const clip = await ensureVoice(
+        message.id,
+        toSpeechText(message.content),
+        { apiKey: key, voiceId: storage.getBreezeVoice() },
+      );
+      setVoiceStates((prev) => ({
+        ...prev,
+        [message.id]: {
+          status: "playing",
+          url: clip.url,
+          duration: clip.duration,
+        },
+      }));
+      await playVoice(clip.url);
+      setVoiceStates((prev) => ({
+        ...prev,
+        [message.id]: { ...prev[message.id], status: "ready" },
+      }));
     } catch (error) {
       setVoiceStates((prev) => ({
         ...prev,
@@ -580,6 +619,15 @@ export default function ChatPage({
         },
       }));
     }
+  };
+
+  const stopVoiceMessage = async (messageId: string) => {
+    await stopVoice();
+    setVoiceStates((prev) => {
+      const current = prev[messageId];
+      if (!current) return prev;
+      return { ...prev, [messageId]: { ...current, status: "ready" } };
+    });
   };
 
   const suggestions = [
@@ -1163,25 +1211,12 @@ export default function ChatPage({
                         })()}
                       <div className="wr-msg-foot">
                         <small>{formatTime(message.createdAt)}</small>
-                        <button
-                          type="button"
-                          className="wr-voice-btn"
-                          onClick={() => void playVoiceMessage(message)}
-                          disabled={voiceStates[message.id]?.status === "loading"}
-                        >
-                          <Volume2 size={14} />
-                          {voiceStates[message.id]?.status === "loading"
-                            ? "合成中…"
-                            : voiceStates[message.id]?.status === "playing"
-                              ? "播放中…"
-                              : "语音"}
-                        </button>
+                        <VoiceBubble
+                          state={voiceStates[message.id]}
+                          onRequest={() => void playVoiceMessage(message)}
+                          onStop={() => void stopVoiceMessage(message.id)}
+                        />
                       </div>
-                      {voiceStates[message.id]?.status === "error" && (
-                        <p className="wr-voice-error">
-                          {voiceStates[message.id]?.error}
-                        </p>
-                      )}
                     </div>
                   ),
                 )}

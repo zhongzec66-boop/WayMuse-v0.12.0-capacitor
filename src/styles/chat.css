@@ -1698,30 +1698,62 @@
   font-size: var(--text-12);
 }
 
-/* 语音消息：消息底部的小按钮，点了用 Breeze 合成后播放 */
-.wr-msg-foot {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-}
 
-.wr-voice-btn {
+/* ── 语音气泡 ──────────────────────────────────────────────
+   波形 + 时长；播放时波形跳动，合成中显示省略号。 */
+.wr-voice-bubble {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-2) var(--space-8);
+  gap: var(--space-8);
+  min-height: var(--space-32);
+  padding: var(--space-4) var(--space-12);
   border-radius: var(--radius-pill);
   background: var(--primary-soft);
   color: var(--primary);
   font-size: var(--text-12);
 }
 
-.wr-voice-btn:disabled {
-  opacity: 0.6;
+.wr-voice-bubble[data-state="error"] {
+  background: var(--danger-soft, rgba(163, 58, 44, 0.12));
+  color: var(--danger);
 }
 
-.wr-voice-error {
-  margin: var(--space-4) 0 0;
-  color: var(--danger);
-  font-size: var(--text-12);
+.wr-voice-bubble[data-state="loading"] {
+  opacity: 0.7;
+}
+
+.wr-voice-wave {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: var(--space-16);
+}
+
+.wr-voice-wave i {
+  width: 2px;
+  height: 40%;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: 0.45;
+}
+
+.wr-voice-bubble[data-state="playing"] .wr-voice-wave i {
+  animation: wm-voice-wave 900ms ease-in-out infinite;
+}
+
+@keyframes wm-voice-wave {
+  0%,
+  100% {
+    height: 30%;
+    opacity: 0.5;
+  }
+  50% {
+    height: 100%;
+    opacity: 1;
+  }
+}
+
+.wr-voice-time {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
