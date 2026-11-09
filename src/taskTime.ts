@@ -14,6 +14,11 @@ import type { Task } from "./types";
 export const DEFAULT_DUE_TIME = "20:00";
 
 export function taskDueAt(task: Task): Date | null {
+  // 有精确时刻就用它：「30 秒后提醒我」这种需求用日期表达不了
+  if (task.dueAt) {
+    const exact = new Date(task.dueAt);
+    if (!Number.isNaN(exact.getTime())) return exact;
+  }
   if (!task.deadline) return null;
   const time = task.time?.trim() || DEFAULT_DUE_TIME;
   const parsed = new Date(`${task.deadline}T${time}:00`);

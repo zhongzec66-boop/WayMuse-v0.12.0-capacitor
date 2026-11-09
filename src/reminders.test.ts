@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { notificationId, planReminders } from "./reminders";
+import { planTasks } from "./agent";
 import { taskDueAt } from "./taskTime";
 import { nextDueTask } from "./upnext";
 import type { Task } from "./types";
@@ -165,5 +166,67 @@ describe("nextDueTask（上岛用）", () => {
       NOW,
     );
     expect(next).toBeNull();
+  });
+});
+
+describe("相对时间提醒（5 秒后提醒我）", () => {
+  it("已过提前量但还没到期的，按到期时刻发", () => {
+    const due = new Date(NOW.getTime() + 5_000);
+    const planned = planReminders(
+      [task({ id: "a", dueAt: due.toISOString() })],
+      NOW,
+    );
+    expect(planned).toHaveLength(1);
+    expect(planned[0].at.getTime()).toBe(due.getTime());
+    expect(planned[0].body).toBe("现在提醒");
+  });
+
+  it("刚过期不久的也立刻发一条，不静默丢掉", () => {
+    const due = new Date(NOW.getTime() - 10_000);
+    const planned = planReminders(
+      [task({ id: "a", dueAt: due.toISOString() })],
+      NOW,
+    );
+    expect(planned).toHaveLength(1);
+    expect(planned[0].at.getTime()).toBe(NOW.getTime() + 1000);
+  });
+
+  it("逾期超过一分钟的不再补发", () => {
+    const due = new Date(NOW.getTime() - 5 * 60_000);
+    expect(
+      planReminders([task({ id: "a", dueAt: due.toISOString() })], NOW),
+    ).toHaveLength(0);
+  });
+});
+
+describe("planTasks 换算相对时间", () => {
+  it("remindIn 换算成精确的 dueAt", () => {
+    const tasks = planTasks(
+      "m1",
+      0,
+      { title: "写作业", summary: "", steps: ["写"], remindIn: 5 },
+      NOW,
+    );
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0].dueAt).toBe(new Date(NOW.getTime() + 5000).toISOString());
+    expect(tasks[0].deadline).toBe("2026-11-09");
+  });
+
+  it("只有 date + time 时照常传下去", () => {
+    const tasks = planTasks(
+      "m1",
+      0,
+      {
+        title: "复习",
+        summary: "",
+        steps: ["看书"],
+        deadline: "2026-11-10",
+        time: "19:30",
+      },
+      NOW,
+    );
+    expect(tasks[0].dueAt).toBeUndefined();
+    expect(tasks[0].deadline).toBe("2026-11-10");
+    expect(tasks[0].time).toBe("19:30");
   });
 });

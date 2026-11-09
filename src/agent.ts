@@ -10,6 +10,10 @@ export type Plan = {
   steps: string[];
   /** 可选：YYYY-MM-DD，用户提到时间时给出 */
   deadline?: string;
+  /** 可选：HH:mm，用户说了具体钟点时给出 */
+  time?: string;
+  /** 可选：多少秒后提醒。用于「5 秒后 / 20 分钟后提醒我」这种相对时间 */
+  remindIn?: number;
   /** 可选：重要程度，影响 Today 排序 */
   priority?: Priority;
 };
@@ -33,10 +37,14 @@ export const PLAN_INSTRUCTION = `【回复协议】
 需要制定计划时，先给一句回应，再在回复末尾附上方案块（前端会渲染成卡片，
 不要在正文里重复步骤）：
 
-<plans>[{"title":"标题（≤24字）","summary":"一句话说明（≤40字）","steps":["步骤1","步骤2"],"deadline":"YYYY-MM-DD","priority":"high|medium|low"}]</plans>
+<plans>[{"title":"标题（≤24字）","summary":"一句话说明（≤40字）","steps":["步骤1","步骤2"],"deadline":"YYYY-MM-DD","time":"HH:mm","remindIn":秒数,"priority":"high|medium|low"}]</plans>
 
 - 每个方案 2–4 个步骤，步骤 ≤30 字。
 - 只有用户提到具体时间（明天考试、周五截止）时才写 deadline，否则省略。
+- 用户说了具体钟点（下午三点、21:30）就写 time（24 小时制 HH:mm）。
+- 用户说的是相对时间（5 秒后、20 分钟后提醒我）就用 remindIn（整数秒），
+  这时不要再猜 deadline，前端会按当前时间换算。这种请求必须给方案卡，
+  不要只在正文里答应。
 - priority 仅在明显紧急时给 high，其余可省略。
 
 如果对话里出现了值得长期记住的用户事实（专业、目标、偏好、重要日程），
@@ -79,15 +87,28 @@ function parsePlan(value: unknown): Plan | null {
     .map((step) => step.trim().slice(0, 80));
   if (!steps.length) return null;
   const deadlineRaw = parseDeadline(record.deadline);
+  const timeRaw =
+    typeof record.time === "string" &&
+    /^\d{1,2}:\d{2}$/.test(record.time.trim())
+      ? record.time.trim().padStart(5, "0")
+      : undefined;
+  const remindRaw = Number(record.remindIn);
+  const remindIn =
+    Number.isFinite(remindRaw) && remindRaw > 0 && remindRaw <= 86_400
+      ? Math.round(remindRaw)
+      : undefined;
   // 早于今天的 deadline 一律丢弃：模型偶尔会沿用训练数据里的旧日期
   const today = localDateKey();
-  const deadline = deadlineRaw && deadlineRaw >= today ? deadlineRaw : undefined;
+  const deadline =
+    deadlineRaw && deadlineRaw >= today ? deadlineRaw : undefined;
   return {
     title: record.title.trim().slice(0, 24),
     summary:
       typeof record.summary === "string" ? record.summary.slice(0, 60) : "",
     steps,
     deadline,
+    time: timeRaw,
+    remindIn,
     priority: parsePriority(record.priority),
   };
 }
@@ -171,14 +192,25 @@ export function planTasks(
   messageId: string,
   index: number,
   plan: Plan,
+  now: Date = new Date(),
 ): Task[] {
+  // 「30 秒后提醒我」这种用日期表达不了，换算成精确时刻存进 dueAt
+  const exact =
+    plan.remindIn && plan.remindIn > 0
+      ? new Date(now.getTime() + plan.remindIn * 1000)
+      : null;
+
   return plan.steps.map((text, step) => ({
     id: `plan-${messageId}-${index}-${step}`,
     text,
     category: plan.title,
     done: false,
     priority: plan.priority ?? "medium",
-    deadline: plan.deadline,
+    deadline: exact ? localDateKey(exact) : plan.deadline,
+    time: exact
+      ? `${String(exact.getHours()).padStart(2, "0")}:${String(exact.getMinutes()).padStart(2, "0")}`
+      : plan.time,
+    dueAt: exact ? exact.toISOString() : undefined,
   }));
 }
 

@@ -59,14 +59,20 @@ export function planReminders(
     if (task.done) continue;
     const due = taskDueAt(task);
     if (!due) continue;
-    if (due.getTime() <= nowMs) continue;
 
-    const lead = new Date(due.getTime() - LEAD_MINUTES * 60_000);
+    const dueMs = due.getTime();
+    // 逾期超过一分钟的就不再补通知了（上岛那条负责显示逾期）
+    if (dueMs <= nowMs - 60_000) continue;
+
+    const leadMs = dueMs - LEAD_MINUTES * 60_000;
+    // 提前量已经过了（比如「5 秒后提醒我」），就按到期时刻发；
+    // 要是连到期时刻都过了，就立刻发一条，别静默丢掉。
+    const atMs = leadMs > nowMs ? leadMs : Math.max(dueMs, nowMs + 1000);
     planned.push({
       id: notificationId(task.id),
       title: task.text.slice(0, 60),
-      body: `${LEAD_MINUTES} 分钟后到期`,
-      at: lead.getTime() > nowMs ? lead : due,
+      body: atMs - nowMs <= 60_000 ? "现在提醒" : `${LEAD_MINUTES} 分钟后到期`,
+      at: new Date(atMs),
     });
   }
 
