@@ -1,6 +1,5 @@
 import MarkdownIt from "markdown-it";
 import katex from "katex";
-import "katex/dist/katex.min.css";
 
 /**
  * 把助手回复渲染成 HTML（Markdown + 数学公式）。

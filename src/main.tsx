@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { Capacitor } from "@capacitor/core";
 import ErrorBoundary from "./ErrorBoundary";
 import WayMuseReference from "./WayMuseReference";
+import "katex/dist/katex.min.css";
 import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/layout.css";
