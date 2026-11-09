@@ -66,12 +66,6 @@ jobs:
       - name: Copy web app into Android project
         run: npx cap sync android
 
-      # variables.gradle 里是 compileSdk/targetSdk 36，必须显式装对应平台
-      - name: Install Android SDK packages
-        run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager --install "platforms;android-36" "build-tools;36.0.0" "platform-tools"
-
       - name: Build debug APK
         run: |
           cd android
