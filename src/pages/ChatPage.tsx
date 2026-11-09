@@ -16,6 +16,7 @@ import {
   Square,
   Trash2,
   TriangleAlert,
+  Volume2,
 } from "lucide-react";
 import { localSuggestions, parseReply, planTasks } from "../agent";
 import { matchSkills } from "../skills";
@@ -23,7 +24,7 @@ import { parseCourseText, toCourses } from "../courseImport";
 import type { ParsedCourse } from "../courseImport";
 import { BRAND } from "../brand";
 import BotAvatar from "../BotAvatar";
-import { speak, toSpeechText } from "../tts";
+import { ensureVoiceUrl, playVoice, toSpeechText } from "../voiceMessage";
 import { useHideNativeChrome } from "../chrome";
 import { haptic } from "../nativeExtras";
 import { formatSearchContext, webSearch } from "../search";
@@ -181,7 +182,7 @@ export default function ChatPage({
   });
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [streaming, setStreaming] = useState(false);
+  const [streaming, setStreaming] = useState(false);
   const [searchOn, setSearchOn] = useState(() => storage.getSearchEnabled());
   const [titleMenu, setTitleMenu] = useState(false);
   const [searchKey] = useState(() => storage.getSearchKey());
@@ -547,6 +548,40 @@ export default function ChatPage({
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
+  // 语音消息：按消息 id 记录合成/播放状态，同一条只合成一次
+  const [voiceStates, setVoiceStates] = useState<
+    Record<string, { status: "idle" | "loading" | "playing" | "ready" | "error"; url?: string; error?: string }>
+  >({});
+
+  const playVoiceMessage = async (message: { id: string; content: string }) => {
+    const key = storage.getBreezeKey().trim();
+    if (!key) {
+      setVoiceStates((prev) => ({
+        ...prev,
+        [message.id]: { status: "error", error: "先在设置里填 Breeze Key" },
+      }));
+      return;
+    }
+    setVoiceStates((prev) => ({ ...prev, [message.id]: { status: "loading" } }));
+    try {
+      const url = await ensureVoiceUrl(message.id, toSpeechText(message.content), {
+        apiKey: key,
+        voiceId: storage.getBreezeVoice(),
+      });
+      setVoiceStates((prev) => ({ ...prev, [message.id]: { status: "playing", url } }));
+      await playVoice(url);
+      setVoiceStates((prev) => ({ ...prev, [message.id]: { status: "ready", url } }));
+    } catch (error) {
+      setVoiceStates((prev) => ({
+        ...prev,
+        [message.id]: {
+          status: "error",
+          error: error instanceof Error ? error.message.slice(0, 60) : "合成失败",
+        },
+      }));
+    }
+  };
+
   const suggestions = [
     "明天考试，我有点慌，陪我安排一下复习",
     "我想准备第一份实习，有什么方案？",
@@ -585,9 +620,7 @@ export default function ChatPage({
             <button
               onClick={() => {
                 setTitleMenu(false);
-                if (lastAssistant) {
-                  void speak(toSpeechText(lastAssistant.content));
-                }
+                if (lastAssistant) void playVoiceMessage(lastAssistant);
               }}
             >
               <PhoneCall size={19} /> 朗读最后一条
@@ -1128,7 +1161,27 @@ export default function ChatPage({
                             </section>
                           );
                         })()}
-                      <small>{formatTime(message.createdAt)}</small>
+                      <div className="wr-msg-foot">
+                        <small>{formatTime(message.createdAt)}</small>
+                        <button
+                          type="button"
+                          className="wr-voice-btn"
+                          onClick={() => void playVoiceMessage(message)}
+                          disabled={voiceStates[message.id]?.status === "loading"}
+                        >
+                          <Volume2 size={14} />
+                          {voiceStates[message.id]?.status === "loading"
+                            ? "合成中…"
+                            : voiceStates[message.id]?.status === "playing"
+                              ? "播放中…"
+                              : "语音"}
+                        </button>
+                      </div>
+                      {voiceStates[message.id]?.status === "error" && (
+                        <p className="wr-voice-error">
+                          {voiceStates[message.id]?.error}
+                        </p>
+                      )}
                     </div>
                   ),
                 )}

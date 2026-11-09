@@ -1697,3 +1697,31 @@
   color: var(--primary);
   font-size: var(--text-12);
 }
+
+/* 语音消息：消息底部的小按钮，点了用 Breeze 合成后播放 */
+.wr-msg-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.wr-voice-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-8);
+  border-radius: var(--radius-pill);
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: var(--text-12);
+}
+
+.wr-voice-btn:disabled {
+  opacity: 0.6;
+}
+
+.wr-voice-error {
+  margin: var(--space-4) 0 0;
+  color: var(--danger);
+  font-size: var(--text-12);
+}
