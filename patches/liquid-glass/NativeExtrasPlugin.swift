@@ -4,6 +4,7 @@ import UIKit
 import AVFoundation
 import Speech
 import EventKit
+import Vision
 
 /// 原生「震动 + 本地语音识别」桥。
 ///
@@ -33,6 +34,7 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "beginCallAudio", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "endCallAudio", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "audioRoute", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "recognizeText", returnType: CAPPluginReturnPromise),
     ]
 
     private let engine = AVAudioEngine()
@@ -377,6 +379,45 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
         // 就会被系统路由回听筒（声音突然变得很小）。会话留到 endAudioSession 再关。
     }
 
+
+    // MARK: - 图片文字识别（Vision，设备本地）
+
+    /// 从图片里认字。
+    ///
+    /// 用苹果自带的 Vision：iOS 内置、中文开箱即用、完全在设备上跑，
+    /// 不需要第三方 SDK，也不涨包体。
+    @objc func recognizeText(_ call: CAPPluginCall) {
+        guard let base64 = call.getString("base64"),
+              let data = Data(base64Encoded: base64),
+              let image = UIImage(data: data),
+              let cgImage = image.cgImage else {
+            call.reject("image-required")
+            return
+        }
+
+        let request = VNRecognizeTextRequest { request, error in
+            if let error {
+                call.reject("ocr-failed: \(error.localizedDescription)")
+                return
+            }
+            let lines = (request.results as? [VNRecognizedTextObservation] ?? [])
+                .compactMap { $0.topCandidates(1).first?.string }
+            call.resolve(["text": lines.joined(separator: "\n")])
+        }
+        request.recognitionLevel = .accurate
+        request.usesLanguageCorrection = true
+        // 中文优先，其次英文；不支持的语言组合会在运行时被忽略
+        request.recognitionLanguages = ["zh-Hans", "en-US"]
+
+        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                try handler.perform([request])
+            } catch {
+                call.reject("ocr-failed: \(error.localizedDescription)")
+            }
+        }
+    }
     // MARK: - 音频播放（锁扬声器）
 
     /// 统一把会话配成「播放 + 录音」并强制走扬声器。

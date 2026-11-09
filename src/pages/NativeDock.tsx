@@ -3,6 +3,7 @@ import type { ChangeEvent, ComponentProps } from "react";
 
 import WebDock from "./WebDock";
 import { COMPOSE_SLOT_ID, useNativeCompose } from "../nativeCompose";
+import { recognizeImageText } from "../ocr";
 import type { Page } from "../types";
 
 type DockProps = ComponentProps<typeof WebDock>;
@@ -48,8 +49,15 @@ export default function NativeDock(props: DockProps) {
     const header = `name=${encodeURIComponent(file.name)};type=${encodeURIComponent(file.type || "application/octet-stream")};size=${file.size}`;
 
     if (!isText) {
-      // 图片等二进制：只把元信息发过去，模型看不了图，由 H5 层提示
-      onAttach(`[[FILE:${header}]]\n[[/FILE]]`);
+      // 图片先试本地 OCR；认不出再退回「只记文件名」
+      const recognized = file.type.startsWith("image/")
+        ? await recognizeImageText(file)
+        : "";
+      onAttach(
+        recognized
+          ? `[[FILE:${header}]]\n（以下是这张图片里认出的文字）\n${recognized.slice(0, 16000)}\n[[/FILE]]`
+          : `[[FILE:${header}]]\n（你只能看到文件名和大小，看不到里面的内容）\n[[/FILE]]`,
+      );
       return;
     }
 

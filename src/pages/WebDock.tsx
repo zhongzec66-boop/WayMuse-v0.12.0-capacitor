@@ -15,6 +15,7 @@ import { haptic } from "../nativeExtras";
 
 import type { Overlay, Page } from "../types";
 import { COMPOSE_SLOT_ID, useNativeCompose } from "../nativeCompose";
+import { recognizeImageText } from "../ocr";
 
 export default function WebDock({
   nativeTabsActive,
@@ -89,11 +90,18 @@ export default function WebDock({
           : text;
       payload = `[[FILE:${header}]]` + "\n" + body + "\n[[/FILE]]";
     } else if (!isText) {
-      // 图片/PDF/Word 这类读不出文字，明确告诉模型它看不到内容
-      payload =
-        `[[FILE:${header}]]` +
-        "\n（这是二进制文件，你只能看到文件名和大小，看不到里面的内容）" +
-        "\n[[/FILE]]";
+      // 图片先试本地 OCR（Vision，不上传）；PDF/Word 之类仍然读不到
+      const recognized = file.type.startsWith("image/")
+        ? await recognizeImageText(file)
+        : "";
+      payload = recognized
+        ? `[[FILE:${header}]]` +
+          "\n（以下是这张图片里认出的文字）\n" +
+          recognized.slice(0, 16000) +
+          "\n[[/FILE]]"
+        : `[[FILE:${header}]]` +
+          "\n（这是二进制文件，你只能看到文件名和大小，看不到里面的内容）" +
+          "\n[[/FILE]]";
     }
     onAttach(payload);
   };
