@@ -202,58 +202,61 @@ export default function Dock({
           placeholder={placeholder}
         />
         <button
-          className={speech.listening ? "wr-compose-mic listening" : undefined}
+          className={speech.listening ? "wr-compose-mic listening" : "wr-compose-mic"}
           data-no-haptic="true"
           aria-label={
-            draft
-              ? "发送"
-              : speech.supported
-                ? speech.listening
-                  ? "结束语音输入"
-                  : "语音输入"
-                : "录制语音"
+            speech.supported
+              ? speech.listening
+                ? "结束语音输入"
+                : "按住说话"
+              : "录制语音"
           }
+          title={speech.supported ? "按住说话" : "录制语音"}
           onClick={() => {
-            // 「按住说话」松手后补发的 click：忽略，绝不当作发送
+            // 「按住说话」松手后补发的 click：忽略，绝不当成别的操作
             if (voiceGestureRef.current) {
               voiceGestureRef.current = false;
               return;
             }
-            if (draft) {
-              void haptic("light");
-              submit();
-            } else if (!speech.supported) {
-              openIntake("语音");
-            }
+            // 不支持按住说话的平台：点一下进语音录入页
+            if (!speech.supported) openIntake("语音");
           }}
           onPointerDown={() => {
-            if (draft || !speech.supported) return;
+            if (!speech.supported) return;
             voiceGestureRef.current = true;
             void haptic("medium");
             speech.start();
           }}
           onPointerUp={() => {
-            if (draft || !speech.supported) return;
+            if (!speech.supported) return;
             void haptic("light");
             speech.stop();
           }}
           onPointerCancel={() => {
-            if (draft || !speech.supported) return;
+            if (!speech.supported) return;
             // 手指划走 / 系统中断：还原成开口前的文字，不留半截识别结果
             speech.cancel();
           }}
           onPointerLeave={() => {
-            if (draft || !speech.supported || !speech.listening) return;
+            if (!speech.supported || !speech.listening) return;
             speech.cancel();
           }}
         >
-          {draft ? (
-            <Send size={20} />
-          ) : (
-            <span className="wr-voice-ring">
-              <AudioLines size={21} />
-            </span>
-          )}
+          <span className="wr-voice-ring">
+            <AudioLines size={20} />
+          </span>
+        </button>
+        <button
+          className="wr-compose-send"
+          disabled={!draft.trim()}
+          aria-label="发送"
+          onClick={() => {
+            if (!draft.trim()) return;
+            void haptic("light");
+            submit();
+          }}
+        >
+          <Send size={19} />
         </button>
       </div>
       <nav

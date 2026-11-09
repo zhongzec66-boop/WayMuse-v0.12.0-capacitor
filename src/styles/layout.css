@@ -63,6 +63,39 @@
   color: var(--ink-2);
 }
 
+/* 麦克风与发送分开：一个只负责「按住说话」，一个只负责发送。
+   以前一个按钮三种行为，用户猜不到点下去会发生什么。 */
+.wr-compose-mic {
+  min-width: var(--space-40) !important;
+  min-height: var(--space-40) !important;
+  color: var(--ink-2);
+  transition: color var(--dur-1) var(--ease);
+}
+
+.wr-compose-mic.listening {
+  color: var(--primary);
+}
+
+.wr-compose-send {
+  min-width: var(--space-40) !important;
+  min-height: var(--space-40) !important;
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  color: var(--on-primary);
+  transition:
+    opacity var(--dur-1) var(--ease),
+    transform var(--dur-1) var(--ease);
+}
+
+.wr-compose-send:disabled {
+  opacity: 0.28;
+  background: var(--ink-3);
+}
+
+.wr-compose-send:not(:disabled):active {
+  transform: scale(var(--motion-press));
+}
+
 .wr-compose input {
   min-width: 0;
   flex: 1;

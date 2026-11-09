@@ -27,7 +27,10 @@ final class NativeComposeOverlay: NSObject {
     private let stack = UIStackView()
     private let attachButton = UIButton(type: .system)
     private let textField = UITextField()
-    private let actionButton = UIButton(type: .system)
+    /// 麦克风和发送分开：一个只负责「按住说话」，一个只负责发送。
+    /// 以前共用一颗按钮、靠有无文字切换图标，用户猜不到点下去会发生什么。
+    private let micButton = UIButton(type: .system)
+    private let sendButton = UIButton(type: .system)
 
     private weak var host: UIView?
     private weak var webView: UIView?
@@ -164,17 +167,20 @@ final class NativeComposeOverlay: NSObject {
         textField.addTarget(self, action: #selector(textDidChange), for: .editingChanged)
         textField.translatesAutoresizingMaskIntoConstraints = false
 
-        actionButton.addTarget(self, action: #selector(handleAction), for: .touchUpInside)
-        // 长按说话：按下开始识别，松手结束
-        actionButton.addTarget(self, action: #selector(handleVoiceDown), for: .touchDown)
-        actionButton.addTarget(self, action: #selector(handleVoiceUp), for: .touchUpInside)
-        actionButton.addTarget(self, action: #selector(handleVoiceUp), for: .touchUpOutside)
-        actionButton.addTarget(self, action: #selector(handleVoiceUp), for: .touchCancel)
-        actionButton.translatesAutoresizingMaskIntoConstraints = false
+        // 麦克风：按住说话（按下开始、松手结束）
+        micButton.addTarget(self, action: #selector(handleVoiceDown), for: .touchDown)
+        micButton.addTarget(self, action: #selector(handleVoiceUp), for: .touchUpInside)
+        micButton.addTarget(self, action: #selector(handleVoiceUp), for: .touchUpOutside)
+        micButton.addTarget(self, action: #selector(handleVoiceUp), for: .touchCancel)
+        micButton.translatesAutoresizingMaskIntoConstraints = false
+
+        sendButton.addTarget(self, action: #selector(handleSend), for: .touchUpInside)
+        sendButton.translatesAutoresizingMaskIntoConstraints = false
 
         stack.addArrangedSubview(attachButton)
         stack.addArrangedSubview(textField)
-        stack.addArrangedSubview(actionButton)
+        stack.addArrangedSubview(micButton)
+        stack.addArrangedSubview(sendButton)
 
         NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(equalTo: container.contentView.leadingAnchor, constant: 8),
@@ -184,8 +190,10 @@ final class NativeComposeOverlay: NSObject {
 
             attachButton.widthAnchor.constraint(equalToConstant: 44),
             attachButton.heightAnchor.constraint(equalToConstant: 44),
-            actionButton.widthAnchor.constraint(equalToConstant: 44),
-            actionButton.heightAnchor.constraint(equalToConstant: 44),
+            micButton.widthAnchor.constraint(equalToConstant: 40),
+            micButton.heightAnchor.constraint(equalToConstant: 40),
+            sendButton.widthAnchor.constraint(equalToConstant: 40),
+            sendButton.heightAnchor.constraint(equalToConstant: 40),
         ])
     }
 
@@ -207,17 +215,25 @@ final class NativeComposeOverlay: NSObject {
         textField.font = .systemFont(ofSize: 17)
         textField.tintColor = tintColor
         attachButton.tintColor = UIColor.secondaryLabel
-        actionButton.tintColor = tintColor
+        micButton.tintColor = UIColor.secondaryLabel
+        sendButton.tintColor = tintColor
         refreshActionButton()
     }
 
     private func refreshActionButton() {
         let hasText = !(textField.text ?? "").isEmpty
-        let symbol = hasText ? "arrow.up.circle.fill" : "waveform"
-        let config = UIImage.SymbolConfiguration(pointSize: 20, weight: .semibold)
-        actionButton.setImage(UIImage(systemName: symbol, withConfiguration: config), for: .normal)
+        let config = UIImage.SymbolConfiguration(pointSize: 19, weight: .semibold)
+        let sendConfig = UIImage.SymbolConfiguration(pointSize: 22, weight: .semibold)
+        micButton.setImage(UIImage(systemName: "waveform", withConfiguration: config), for: .normal)
+        sendButton.setImage(
+            UIImage(systemName: "arrow.up.circle.fill", withConfiguration: sendConfig),
+            for: .normal
+        )
         attachButton.isEnabled = isEnabled
-        actionButton.isEnabled = isEnabled
+        micButton.isEnabled = isEnabled
+        // 没内容时发送键不可用，视觉上也要明显（不靠用户猜）
+        sendButton.isEnabled = isEnabled && hasText
+        sendButton.alpha = hasText ? 1 : 0.28
     }
 
     // MARK: - 键盘
@@ -256,15 +272,9 @@ final class NativeComposeOverlay: NSObject {
         onAttach?()
     }
 
-    @objc private func handleAction() {
-        let text = textField.text ?? ""
-        if text.isEmpty {
-            // 兜底：没收到按下事件时，仍按一次点击处理
-            if !voicePressActive {
-                onVoice?()
-            }
-            return
-        }
+    @objc private func handleSend() {
+        let text = (textField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
         onSubmit?(text)
     }
 

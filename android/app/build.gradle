@@ -1,7 +1,7 @@
-apply plugin: 'com.android.application'
+﻿apply plugin: 'com.android.application'
 
-// release 签名从环境变量读取（CI 里由 GitHub Secrets 注入），
-// 本地没有这些变量时自动跳过，仍然可以 assembleDebug。
+// release 绛惧悕浠庣幆澧冨彉閲忚鍙栵紙CI 閲岀敱 GitHub Secrets 娉ㄥ叆锛夛紝
+// 鏈湴娌℃湁杩欎簺鍙橀噺鏃惰嚜鍔ㄨ烦杩囷紝浠嶇劧鍙互 assembleDebug銆?
 def releaseStorePath = System.getenv("ANDROID_KEYSTORE_PATH")
 def hasReleaseSigning = releaseStorePath != null && file(releaseStorePath).exists()
 
@@ -12,8 +12,8 @@ android {
         applicationId "app.waymuse.student"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 122
-        versionName "0.12.2"
+        versionCode 123
+        versionName "0.12.3"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -70,3 +70,4 @@ try {
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }
+

@@ -620,8 +620,10 @@ export default function ChatPage({
         onClose={() => onCallOpenChange(false)}
       />
 
-      <div className="wr-chat-scroll">
-        {messages.length === 0 && (
+      {/* 空态固定在可视区里，不参与滚动：
+          以前它在滚动容器内，用户往下翻头像就没了，整页像一张长截图。 */}
+      {!showConfig && messages.length === 0 && (
+        <div className="wr-chat-empty">
           <button
             className="wr-chat-hero"
             aria-label="打开快捷操作"
@@ -636,7 +638,39 @@ export default function ChatPage({
             <b>{agentName}</b>
             <small>{statusLabel}</small>
           </button>
-        )}
+          <div className="wr-ai-empty">
+            <p>
+              {apiKey
+                ? "直接说事，或者从下面挑一个"
+                : "连接 DeepSeek 后开始聊天。"}
+            </p>
+            {!apiKey && (
+              <button
+                type="button"
+                className="wr-ai-primary"
+                onClick={onSettings}
+              >
+                连接 DeepSeek
+              </button>
+            )}
+            <div className="wr-ai-suggestions">
+              {suggestions.map((text) => (
+                <button
+                  type="button"
+                  key={text}
+                  onClick={() => {
+                    void sendMessage(text, messages);
+                  }}
+                >
+                  {text}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="wr-chat-scroll">
         {searchOpen && (
           <div className="wr-chat-search">
             <Search size={18} />
@@ -836,39 +870,6 @@ export default function ChatPage({
               </p>
             )}
           </section>
-        )}
-
-        {!showConfig && !messages.length && (
-          <div className="wr-ai-empty">
-            {/* 头像和名字已经在空态 hero 里了，这里只留引导 */}
-            <p>
-              {apiKey
-                ? "直接说事，或者从下面挑一个"
-                : "连接 DeepSeek 后开始聊天。"}
-            </p>
-            {!apiKey && (
-              <button
-                type="button"
-                className="wr-ai-primary"
-                onClick={onSettings}
-              >
-                连接 DeepSeek
-              </button>
-            )}
-            <div className="wr-ai-suggestions">
-              {suggestions.map((text) => (
-                <button
-                  type="button"
-                  key={text}
-                  onClick={() => {
-                    void sendMessage(text, messages);
-                  }}
-                >
-                  {text}
-                </button>
-              ))}
-            </div>
-          </div>
         )}
 
         {!showConfig && messages.length > 0 && (

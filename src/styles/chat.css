@@ -1599,3 +1599,28 @@
 .wr-chat-head:not(.is-empty) .wr-chat-title {
   padding-top: 0;
 }
+
+/* ── 空态固定层 ────────────────────────────────────────────
+   空态不再放在滚动容器里：以前往下翻，头像和引导会被滚走，
+   整页像一张长截图。现在它铺满可视区、内部居中，只有消息列表滚动。 */
+.wr-chat-empty {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-16);
+  padding: calc(var(--safe-top) + 118px) var(--page-pad)
+    calc(var(--content-bottom) + var(--safe-bottom) + var(--space-16));
+  pointer-events: none;
+}
+
+.wr-chat-empty > * {
+  pointer-events: auto;
+}
+
+.wr-chat-empty .wr-ai-empty {
+  padding: 0;
+}
