@@ -466,3 +466,62 @@
   color: var(--ink);
   font-size: var(--text-14);
 }
+
+/* ── 今日简报卡 ───────────────────────────────────────────
+   打开 App 第一眼要能回答「现在该干什么」，所以放在问候语下面、
+   时间轴上面：一句话看完，不需要滚动。 */
+.wr-brief {
+  margin: var(--space-12) 0 var(--space-16);
+  padding: var(--space-16);
+  border: var(--border-1) solid var(--glass-line);
+  border-radius: var(--radius-20);
+  background: var(--surface);
+}
+
+.wr-brief header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--space-12);
+}
+
+.wr-brief header span {
+  color: var(--ink);
+  font-size: var(--text-14);
+  font-weight: var(--weight-semibold);
+}
+
+.wr-brief header em {
+  color: var(--ink-3);
+  font-size: var(--text-12);
+  font-style: normal;
+}
+
+.wr-brief ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wr-brief li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-8);
+  color: var(--ink-2);
+  font-size: var(--text-14);
+  line-height: var(--leading-body);
+}
+
+.wr-brief li svg {
+  flex: 0 0 auto;
+  margin-top: var(--space-2);
+  color: var(--primary);
+}
+
+.wr-brief li b {
+  color: var(--ink);
+  font-weight: var(--weight-medium);
+}

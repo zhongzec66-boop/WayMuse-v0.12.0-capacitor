@@ -4,6 +4,7 @@ import type { CalendarEvent } from "../nativeExtras";
 import type { Dispatch, SetStateAction } from "react";
 import type { Course, Overlay, Page, Task } from "../types";
 import { academicWeek, readTermStart } from "../term";
+import BriefCard from "../BriefCard";
 
 /** 全站统一 Asia/Shanghai。 */
 function shanghaiParts() {
@@ -180,6 +181,13 @@ export default function TodayPage({
         {greeting(now)}，{profileName} · {date} · 第{" "}
         {academicWeek(readTermStart())} 周
       </p>
+
+      <BriefCard
+        todayCourses={todayCourses}
+        tasks={tasks}
+        nowMinutes={now}
+        todayKey={todayKey}
+      />
 
       {/* ── 今天的时间轴 ───────────────────────────── */}
       <section className="wr-dayline" aria-label="今天的时间轴">
