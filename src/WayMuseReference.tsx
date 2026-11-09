@@ -14,6 +14,7 @@ import {
   updateLiveActivity,
 } from "./liveActivity";
 import { dueLabel, nextDueTask } from "./upnext";
+import { syncTaskReminders } from "./reminders";
 import { useKeyboardInset } from "./useKeyboardInset";
 import ChatPage from "./pages/ChatPage";
 import Dock from "./pages/Dock";
@@ -179,6 +180,12 @@ export default function WayMuseReference() {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
+  }, [tasks]);
+
+  // 本地通知：App 不运行时也要能提醒。和上岛共用同一份任务数据，
+  // 但走的是两条独立通道（通知是系统调度，岛是前台/后台的实时显示）。
+  useEffect(() => {
+    void syncTaskReminders(tasks);
   }, [tasks]);
 
   const todayWeekday = getShanghaiWeekday();
