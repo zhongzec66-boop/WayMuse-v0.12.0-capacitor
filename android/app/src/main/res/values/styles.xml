@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+    </style>
+
+    <!--
+      运行期主题。
+      小米澎湃 HyperOS 默认把状态栏/导航栏画成半透明或跟随壁纸，
+      这里显式指定颜色与深色图标，保证与页面渐变背景连成一体、文字可读。
+    -->
+    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:background">@null</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@color/waymuseBackground</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <!--
+          Android 15+（targetSdk 35）会强制 edge-to-edge，WebView 会延伸到状态栏和
+          导航栏下面，env(safe-area-inset-*) 在 WebView 里又拿不到可靠值 ——
+          表现就是「顶部一块空白」和「底部按钮被挡」。
+          这里显式退出 edge-to-edge，让系统栏重新占位。
+        -->
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+        <!-- 禁止 WebView 强制深色反色：我们的配色是自己控制的，被反色会变脏 -->
+        <item name="android:forceDarkAllowed">false</item>
+        <item name="android:windowBackground">@color/waymuseBackground</item>
+    </style>
+
+
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="android:background">@color/waymuseBackground</item>
+        <item name="windowSplashScreenBackground">@color/waymuseBackground</item>
+    </style>
+</resources>

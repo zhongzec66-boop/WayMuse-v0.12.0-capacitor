@@ -55,7 +55,7 @@ iOS 27 的 Liquid Glass 相比 iOS 26 有几处变化，会影响原生壳和 We
 | 14 | TestFlight | 无 | 先内测，再提交审核 |
 | 15 | 年龄分级 | 未定 | AI 对话可能涉及 12+/17+，按问卷如实填 |
 | 16 | 出口合规 | 未定 | 只用 HTTPS 通常可填 `ITSAppUsesNonExemptEncryption = NO` |
-| 17 | 许可证 | GPL-3.0-or-later | GPLv3 与 App Store 条款存在已知冲突；需法律评估/替换衍生代码 |
+| 17 | 许可证 | **MIT**（2026-11 已确认） | 仓库中无 GPL 代码，依赖全为 MIT/ISC/Apache-2.0，与 App Store 无冲突 |
 
 ### 最大的审核风险：Guideline 4.2 Minimum Functionality
 
@@ -68,11 +68,17 @@ App Store 明确不接受“只是把网站打包”的 App。当前项目如果
 
 必须至少补一类原生价值：本地通知、日历/课表导入、离线可用、Widget/Live Activity、Share Extension，或者真实的 AI 服务。否则建议先不要提交，避免被拒后浪费审核周期。
 
-### 另一个容易忽略的阻塞：GPL-3.0 与 App Store
+### 许可证：已解除的阻塞（2026-11）
 
-项目 `package.json` 写的是 `GPL-3.0-or-later`，`LICENSE` 也是 GPLv3，且代码派生自 nanoMuse。GPLv3 与 App Store 的 DRM/使用条款存在已知冲突（FSF 认为 GPLv3 与 App Store 条款不兼容；Apple 的条款会施加 GPL 不允许的额外限制）。
+历史上这个仓库的 `LICENSE`、`NOTICE`、`THIRD_PARTY_NOTICES.md` 是从项目模板继承的 GPLv3 文件，
+文档里也写过「代码派生自 nanoMuse」。2026-11 逐项核查后确认：
 
-这不是改一个 LICENSE 文件就能解决的：需要追溯 nanoMuse 的版权归属，取得版权方对 App Store 分发的许可，或替换掉 GPL 派生代码。**上架前必须做法律评估**，不要把“代码能跑”当成“能合法上架”。
+- 仓库里没有 OpenMinis / nanoMuse 的代码：无 `android/src`、无 `deps/`、无 `// nanoMuse:` 标记；
+- 全部依赖为 MIT / ISC / Apache-2.0，没有 GPL/AGPL；
+- 因此三个 GPL 文件已替换为 MIT 与准确的第三方声明。
+
+结论：**GPL 与 App Store 的冲突不再存在**。后续若要商业化，可以在新版本改用 Apache-2.0
+（MIT 版本不可撤回，已发布的副本永久 MIT）。贡献者提交 PR 需同意维护者可以换许可证再发布。
 
 另外，`WayMuse` 作为 App 名称需要在 App Store Connect 和商标数据库做一次检索，避免名称被占用或侵权。
 

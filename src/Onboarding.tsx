@@ -1,4 +1,5 @@
 import { BRAND } from "./brand";
+import { storage } from "./storage";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import {
@@ -9,12 +10,15 @@ import {
   Users,
 } from "lucide-react";
 import AvatarPicker from "./AvatarPicker";
+import BotAvatar from "./BotAvatar";
 import {
   COMPANION_PRESETS,
   COMPANION_TYPES,
   DEFAULT_PROFILE,
   GRADES,
+  IDENTITIES,
   RESPONSE_LENGTHS,
+  SCHOOL_LEVELS,
   TONES,
 } from "./profile";
 import type {
@@ -42,9 +46,10 @@ export default function Onboarding({
   onFinish: (profile: UserProfile) => void;
 }) {
   const [step, setStep] = useState(0);
+  const [apiKey, setApiKey] = useState(() => storage.getDeepSeekKey());
   const [profile, setProfile] = useState<UserProfile>({ ...DEFAULT_PROFILE });
   const [entering, setEntering] = useState(false);
-  const steps = 5;
+  const steps = 7;
 
   const update = <K extends keyof UserProfile>(key: K, value: UserProfile[K]) =>
     setProfile((current) => ({ ...current, [key]: value }));
@@ -60,6 +65,10 @@ export default function Onboarding({
 
   const next = () => {
     if (step === steps - 1) {
+      // 先把 Key 存下来，再进入主界面
+      if (apiKey.trim()) {
+        storage.setDeepSeekKey(apiKey.trim(), true);
+      }
       setEntering(true);
       const finalProfile: UserProfile = {
         ...profile,
@@ -96,31 +105,25 @@ export default function Onboarding({
       </div>
       <div
         className={
-          step === 1 || step === 2 || step === 3
-            ? "wr-onboard-body form"
-            : "wr-onboard-body"
+          step === 1 || step === 2 ? "wr-onboard-body form" : "wr-onboard-body"
         }
         key={step}
       >
         {step === 0 && (
           <>
-            <img className="wr-onboard-emblem" src="/avatar.svg" alt="" />
-            <h1>先建立你的本地档案。</h1>
-            <p>
-              不用注册账号。先告诉我你的学业背景，再设置 {BRAND}{" "}
-              该怎么称呼你、以什么方式陪你。
-            </p>
-            <div className="wr-onboard-note">资料只保存在当前设备。</div>
+            <BotAvatar className="wr-onboard-emblem" />
+            <h1>你的基本情况</h1>
+            <p>不用注册。资料只存在这台手机上。</p>
           </>
         )}
 
         {step === 1 && (
           <>
             <div className="wr-onboard-kicker">你的学业</div>
-            <h1>先认识你的学习生活。</h1>
+            <h1>学业情况</h1>
             <div className="wr-onboard-form">
-              <label>
-                学校
+              <label className="wr-field-block">
+                <span>学校</span>
                 <input
                   value={profile.school}
                   onChange={(event) => update("school", event.target.value)}
@@ -128,9 +131,10 @@ export default function Onboarding({
                   maxLength={80}
                 />
               </label>
+
               <div className="wr-onboard-grid">
-                <label>
-                  专业
+                <label className="wr-field-block">
+                  <span>专业</span>
                   <input
                     value={profile.major}
                     onChange={(event) => update("major", event.target.value)}
@@ -138,8 +142,8 @@ export default function Onboarding({
                     maxLength={80}
                   />
                 </label>
-                <label>
-                  年级
+                <label className="wr-field-block">
+                  <span>年级</span>
                   <select
                     value={profile.grade}
                     onChange={(event) => update("grade", event.target.value)}
@@ -152,8 +156,42 @@ export default function Onboarding({
                   </select>
                 </label>
               </div>
-              <label>
-                主要课程
+
+              <div className="wr-onboard-grid">
+                <label className="wr-field-block">
+                  <span>当前身份</span>
+                  <select
+                    value={profile.identity}
+                    onChange={(event) => update("identity", event.target.value)}
+                  >
+                    <option value="">请选择</option>
+                    {IDENTITIES.map((value) => (
+                      <option value={value} key={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="wr-field-block">
+                  <span>院校层次</span>
+                  <select
+                    value={profile.schoolLevel}
+                    onChange={(event) =>
+                      update("schoolLevel", event.target.value)
+                    }
+                  >
+                    <option value="">请选择</option>
+                    {SCHOOL_LEVELS.map((value) => (
+                      <option value={value} key={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <label className="wr-field-block">
+                <span>主要课程</span>
                 <textarea
                   rows={3}
                   value={profile.courses}
@@ -161,18 +199,56 @@ export default function Onboarding({
                   placeholder="例如：高等数学、数据结构、宏观经济学"
                   maxLength={600}
                 />
+                <small>用顿号或逗号分开</small>
               </label>
             </div>
-            <p className="wr-onboard-hint">
-              都可以先跳过，之后在设置 → 个人档案里补充。
-            </p>
           </>
         )}
 
         {step === 2 && (
           <>
+            <div className="wr-onboard-kicker">你的方向</div>
+            <h1>最近在忙什么</h1>
+            <div className="wr-onboard-form">
+              <label className="wr-field-block">
+                <span>目标方向</span>
+                <input
+                  value={profile.direction}
+                  onChange={(event) => update("direction", event.target.value)}
+                  placeholder="例如：找暑期实习 / 准备考研"
+                  maxLength={80}
+                />
+              </label>
+
+              <label className="wr-field-block">
+                <span>兴趣方向</span>
+                <input
+                  value={profile.interest}
+                  onChange={(event) => update("interest", event.target.value)}
+                  placeholder="例如：产品设计、数据分析、摄影"
+                  maxLength={120}
+                />
+                <small>随便写几个词就行，我会据此调整给建议的角度。</small>
+              </label>
+
+              <label className="wr-field-block">
+                <span>所在城市</span>
+                <input
+                  value={profile.city}
+                  onChange={(event) => update("city", event.target.value)}
+                  placeholder="例如：无锡"
+                  maxLength={40}
+                />
+                <small>只存在本机</small>
+              </label>
+            </div>
+          </>
+        )}
+
+        {step === 3 && (
+          <>
             <div className="wr-onboard-kicker">称呼与 WayMuse 头像</div>
-            <h1>{BRAND} 该怎么称呼你？</h1>
+            <h1>怎么称呼你</h1>
             <input
               className="wr-onboard-input"
               autoFocus
@@ -192,10 +268,10 @@ export default function Onboarding({
           </>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <>
             <div className="wr-onboard-kicker">陪伴方式</div>
-            <h1>你希望 {BRAND} 以什么方式陪伴你？</h1>
+            <h1>陪伴方式</h1>
             <div className="wr-companion-grid">
               {COMPANION_TYPES.map((type) => (
                 <button
@@ -265,22 +341,42 @@ export default function Onboarding({
               </div>
             )}
 
-            {profile.companionType !== "自定义" && (
-              <p className="wr-onboard-hint">
-                当前风格：{profile.tone} · {profile.responseLength}
-                回复。之后可以在设置里调整。
-              </p>
-            )}
             <p className="wr-onboard-hint">
               {BRAND} 是 AI，不是真人；亲密表达会保持克制。
             </p>
           </>
         )}
 
-        {step === 4 && (
+        {step === 6 && (
           <>
-            <img className="wr-onboard-emblem small" src="/avatar.svg" alt="" />
-            <h1>你的资料，由你决定。</h1>
+            <BotAvatar className="wr-onboard-emblem small" />
+            <h1>填写 API Key</h1>
+            <p>
+              这一步只做一次。Key 只存在这台手机上，也会直接发给 DeepSeek，
+              不经过任何中间服务器。
+            </p>
+            <label className="wr-onboard-field">
+              <span>DeepSeek Key</span>
+              <input
+                type="password"
+                value={apiKey}
+                placeholder="sk-..."
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(event) => setApiKey(event.target.value)}
+              />
+            </label>
+            <p className="wr-onboard-hint">
+              DeepSeek Key 在 platform.deepseek.com 申请。
+              暂时不填也能进，之后随时可以在设置里补。
+            </p>
+          </>
+        )}
+
+        {step === 5 && (
+          <>
+            <BotAvatar className="wr-onboard-emblem small" />
+            <h1>数据说明</h1>
             <p>
               学业档案、头像、称呼和陪伴方式都只保存在本机。没有账户，也没有云端副本。
             </p>
@@ -288,7 +384,7 @@ export default function Onboarding({
               <Cloud />
               <span>
                 <b>DeepSeek 接入</b>
-                <small>可在设置 → AI 连接中填写自己的 Key</small>
+                <small>在设置里填写自己的 Key</small>
               </span>
               <span>可选</span>
             </div>
@@ -304,8 +400,8 @@ export default function Onboarding({
       </button>
       {entering && (
         <div className="wr-entry">
-          <img className="wr-entry-mark" src="/avatar.svg" alt="" />
-          <div>{profile.callName || "同学"}，陪你走下一步。</div>
+          <BotAvatar className="wr-entry-mark" />
+          <div>正在进入</div>
         </div>
       )}
     </div>

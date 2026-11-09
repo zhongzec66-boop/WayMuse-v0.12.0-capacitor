@@ -1,107 +1,610 @@
-﻿/* Today brief and course rows. */
+/* Today 页：一条竖着的「今天」时间轴。
+   学生的一天是按课表和截止时间走的，不是可以互换的模块卡片。 */
 
-.wr-brief {
-  padding: var(--space-16);
-  border: var(--border-1) solid var(--glass-line);
-  border-radius: var(--radius-28);
-  background: var(--glass-bg);
-  box-shadow: var(--glass-shadow);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
-}
-
-.wr-brief-date {
-  color: var(--accent-ink);
-  font-size: var(--text-14);
-  font-weight: var(--weight-semibold);
-}
-
-.wr-brief h2 {
-  margin: var(--space-16) 0;
-  color: var(--ink);
-  font-size: var(--text-26);
-  font-weight: var(--weight-bold);
-  line-height: var(--leading-tight);
-}
-
-.wr-brief p {
-  margin: 0;
-  color: var(--ink-2);
-  font-size: var(--text-17);
-  line-height: var(--leading-body);
-}
-
-.wr-brief-label {
-  margin: var(--space-24) 0 var(--space-8);
-  color: var(--ink-3);
-  font-size: var(--text-12);
-  font-weight: var(--weight-semibold);
-}
-
-.wr-brief-end {
-  margin: var(--space-16) 0 0;
-  color: var(--ink-2);
-  font-size: var(--text-14);
-  line-height: var(--leading-body);
-}
-
-.wr-course-list {
-  display: grid;
+.wr-head-actions {
+  display: flex;
   gap: var(--space-8);
 }
 
-.wr-course-row {
+.wr-round-solid {
+  border-color: transparent;
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.wr-today-sub {
+  margin: calc(var(--space-4) * -1) 0 var(--space-16);
+  color: var(--ink-3);
+  font-size: var(--text-13);
+}
+
+/* ── 时间轴 ───────────────────────────────────────── */
+
+.wr-dayline {
+  margin-bottom: var(--space-12);
+  padding: var(--space-16);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+.wr-dayline-head {
   display: flex;
-  align-items: center;
-  gap: var(--space-12);
-  padding: var(--space-12);
-  border: var(--border-1) solid var(--glass-line);
-  border-radius: var(--radius-16);
-  background: var(--surface);
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--space-12);
 }
 
-.wr-course-row span {
-  min-width: 0;
-  flex: 1;
-}
-
-.wr-course-row b {
-  display: block;
+.wr-dayline-head > span {
   color: var(--ink);
-  font-size: var(--text-17);
+  font-size: var(--text-15);
   font-weight: var(--weight-semibold);
 }
 
-.wr-course-row small {
-  display: block;
-  margin-top: var(--space-4);
-  color: var(--ink-2);
-  font-size: var(--text-12);
+.wr-dayline-head em {
+  color: var(--card-caption);
+  font-size: var(--text-11);
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
 }
 
-.wr-course-row time {
+.wr-dayline-empty {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: var(--text-13);
+  line-height: var(--leading-body);
+}
+
+.wr-dayline-cta {
+  width: 100%;
+  min-height: var(--control-44);
+  margin-top: var(--space-12);
+  padding: 0 var(--space-12);
+  border: var(--border-1) dashed var(--primary-line);
+  border-radius: var(--radius-16);
   color: var(--primary);
-  font-size: var(--text-14);
+  font-size: var(--text-13);
+  text-align: left;
+}
+
+.wr-timeline {
+  position: relative;
+  margin: 0;
+  padding: 0 0 0 4px;
+  list-style: none;
+}
+
+.wr-timeline::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 52px;
+  width: 1px;
+  background: var(--divider);
+}
+
+.wr-timeline li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 40px 13px 1fr auto;
+  align-items: start;
+  gap: var(--space-8);
+  padding: var(--space-8) 0;
+}
+
+.wr-timeline-time {
+  color: var(--primary);
+  font-size: var(--text-12);
+  font-variant-numeric: tabular-nums;
+  line-height: 22px;
+  text-align: right;
+}
+
+.wr-timeline-dot {
+  position: relative;
+  z-index: 1;
+  width: 9px;
+  height: 9px;
+  margin-top: 7px;
+  border: 2px solid var(--card-bg);
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+.wr-timeline-body {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.wr-timeline-body b {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: var(--text-15);
+  font-weight: var(--weight-medium);
+  line-height: 1.35;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.wr-course-row button {
-  min-width: var(--control-44);
-  min-height: var(--control-44);
+.wr-timeline-body small {
+  overflow: hidden;
+  color: var(--card-caption);
+  font-size: var(--text-11);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wr-timeline-state {
+  flex: 0 0 auto;
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+  color: var(--ink-3);
+  font-size: 10px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+/* 行内动作：默认隐藏，悬停/聚焦时才出现，避免每行两个按钮太吵 */
+.wr-timeline-act,
+.wr-timeline-x {
+  position: absolute;
+  top: 6px;
+  width: 24px;
+  height: 24px;
   display: grid;
   place-items: center;
-  border-radius: var(--radius-pill);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity var(--dur-1) var(--ease);
+}
+
+.wr-timeline-act {
+  right: 64px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.wr-timeline-x {
+  right: 8px;
+  color: var(--ink-3);
+  font-size: 15px;
+  line-height: 1;
+}
+
+.wr-timeline li:hover .wr-timeline-act,
+.wr-timeline li:focus-within .wr-timeline-act,
+.wr-timeline li:hover .wr-timeline-x,
+.wr-timeline li:focus-within .wr-timeline-x {
+  opacity: 1;
+}
+
+/* 状态配色 */
+.wr-timeline li[data-state="done"] .wr-timeline-body b {
   color: var(--ink-3);
 }
 
-.wr-course-empty {
-  width: 100%;
-  min-height: var(--tile-height);
+.wr-timeline li[data-state="done"] .wr-timeline-dot {
+  background: var(--divider);
+}
+
+.wr-timeline li[data-state="live"] .wr-timeline-dot {
+  box-shadow: 0 0 0 4px var(--primary-soft);
+}
+
+.wr-timeline li[data-state="live"] .wr-timeline-state {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.wr-timeline li[data-state="next"] .wr-timeline-state {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.wr-timeline li[data-state="overdue"] .wr-timeline-dot {
+  background: var(--danger);
+}
+
+.wr-timeline li[data-state="overdue"] .wr-timeline-state {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.wr-timeline li[data-state="overdue"] .wr-timeline-time {
+  color: var(--danger);
+}
+
+/* ── 本周 ─────────────────────────────────────────── */
+
+.wr-weekline {
+  margin-bottom: var(--space-12);
+  padding: var(--space-16);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+.wr-weekline > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--space-12);
+}
+
+.wr-weekline > header span {
+  color: var(--ink);
+  font-size: var(--text-15);
+  font-weight: var(--weight-semibold);
+}
+
+.wr-weekline > header em {
+  color: var(--card-caption);
+  font-size: var(--text-11);
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.wr-weekline-link {
+  margin-top: var(--space-8);
+  color: var(--primary);
+  font-size: var(--text-13);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wr-timeline-act,
+  .wr-timeline-x {
+    transition: none;
+  }
+}
+
+/* 课表为空时的说明（原先是跳转到「添加资料」页的按钮，那个页面已移除） */
+.wr-dayline-note {
+  margin: var(--space-8) 0 0;
   padding: var(--space-12);
+  border: var(--border-1) dashed var(--glass-line);
+  border-radius: var(--radius-16);
+  color: var(--ink-2);
+  font-size: var(--text-14);
+  line-height: var(--leading-body);
+}
+
+
+/* ── 课表导入 ─────────────────────────────────────────────── */
+.wr-course-import {
+  max-height: 88%;
+}
+
+.wr-course-import-input {
+  width: 100%;
+  min-height: var(--space-84);
+  margin-bottom: var(--space-12);
+  padding: var(--space-12);
+  border: var(--border-1) solid var(--divider);
+  border-radius: var(--radius-16);
+  background: var(--field-bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-14);
+  line-height: var(--leading-body);
+  resize: vertical;
+}
+
+.wr-course-import-actions {
+  display: flex;
+  gap: var(--space-8);
+  margin-bottom: var(--space-16);
+}
+
+.wr-course-import-sample {
+  flex: 0 0 auto;
+  min-height: var(--control-44);
+  padding: 0 var(--space-16);
+  border-radius: var(--radius-pill);
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: var(--text-14);
+}
+
+.wr-course-import-parse {
+  flex: 1;
+  min-height: var(--control-44);
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: var(--text-17);
+}
+
+.wr-course-import-parse:disabled {
+  opacity: 0.4;
+}
+
+.wr-course-import-count {
+  margin-bottom: var(--space-8);
+  color: var(--ink-2);
+  font-size: var(--text-14);
+}
+
+.wr-course-import-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0 0 var(--space-16);
+  padding: 0;
+  list-style: none;
+}
+
+.wr-course-import-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  border: var(--border-1) solid var(--glass-line);
+  border-radius: var(--radius-16);
+  background: var(--surface);
+  font-size: var(--text-14);
+}
+
+.wr-course-import-day {
+  color: var(--primary);
+  font-weight: var(--weight-semibold);
+}
+
+.wr-course-import-time {
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.wr-course-import-name {
+  flex: 1;
+  min-width: 0;
+  color: var(--ink);
+}
+
+.wr-course-import-place {
+  color: var(--ink-3);
+  font-size: var(--text-12);
+}
+
+.wr-course-import-save {
+  width: 100%;
+  min-height: calc(var(--space-4) * 13);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  border-radius: var(--radius-28);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: var(--text-17);
+}
+
+.wr-course-import-save:disabled {
+  opacity: 0.4;
+}
+
+.wr-course-import-empty {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  color: var(--danger);
+  font-size: var(--text-14);
+}
+
+.wr-course-import-failed {
+  margin-top: var(--space-12);
+  color: var(--ink-3);
+  font-size: var(--text-12);
+}
+
+.wr-course-import-failed > button {
+  color: var(--accent-ink);
+}
+
+.wr-course-import-failed ul {
+  margin: var(--space-8) 0 0;
+  padding-left: var(--space-20);
+}
+
+/* 课表为空的导入入口 */
+.wr-dayline-import {
+  width: 100%;
+  min-height: var(--control-44);
+  margin-top: var(--space-8);
   border: var(--border-1) dashed var(--primary-line);
   border-radius: var(--radius-16);
   background: var(--primary-soft);
   color: var(--primary);
   font-size: var(--text-14);
-  text-align: left;
+}
+
+/* AI 解析：次级操作，放在「解析」下面 */
+.wr-course-import-ai {
+  width: 100%;
+  min-height: var(--control-44);
+  margin-bottom: var(--space-16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  border: var(--border-1) solid var(--primary-line);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--primary);
+  font-size: var(--text-14);
+}
+
+.wr-course-import-ai:disabled {
+  opacity: 0.5;
+}
+
+.wr-course-import-ai-error {
+  margin: 0 0 var(--space-12);
+  color: var(--danger);
+  font-size: var(--text-12);
+}
+
+/* 开学日期：教学周的基准 */
+.wr-course-import-term {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  margin-bottom: var(--space-12);
+  color: var(--ink-2);
+  font-size: var(--text-14);
+}
+
+.wr-course-import-term input {
+  min-height: var(--control-44);
+  padding: 0 var(--space-12);
+  border: var(--border-1) solid var(--divider);
+  border-radius: var(--radius-12);
+  background: var(--field-bg);
+  color: var(--ink);
+  font-size: var(--text-14);
+}
+
+/* ── 今日简报卡 ───────────────────────────────────────────
+   打开 App 第一眼要能回答「现在该干什么」，所以放在问候语下面、
+   时间轴上面：一句话看完，不需要滚动。 */
+.wr-brief {
+  margin: var(--space-12) 0 var(--space-16);
+  padding: var(--space-16);
+  border: var(--border-1) solid var(--glass-line);
+  border-radius: var(--radius-20);
+  background: var(--surface);
+}
+
+.wr-brief header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--space-12);
+}
+
+.wr-brief header span {
+  color: var(--ink);
+  font-size: var(--text-14);
+  font-weight: var(--weight-semibold);
+}
+
+.wr-brief header em {
+  color: var(--ink-3);
+  font-size: var(--text-12);
+  font-style: normal;
+}
+
+.wr-brief ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wr-brief li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-8);
+  color: var(--ink-2);
+  font-size: var(--text-14);
+  line-height: var(--leading-body);
+}
+
+.wr-brief li svg {
+  flex: 0 0 auto;
+  margin-top: var(--space-2);
+  color: var(--primary);
+}
+
+.wr-brief li b {
+  color: var(--ink);
+  font-weight: var(--weight-medium);
+}
+
+/* ── 今日简报卡（状态卡写法）──────────────────────────────
+   分类 chip → 结论 → 步骤 → 一个主动作。 */
+.wr-brief-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin-bottom: var(--space-12);
+  color: var(--primary);
+  font-size: var(--text-12);
+  font-weight: var(--weight-medium);
+}
+
+.wr-brief-title {
+  margin: 0 0 var(--space-8);
+  color: var(--ink);
+  font-size: var(--text-20);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+}
+
+.wr-brief-lead {
+  margin: 0 0 var(--space-12);
+  color: var(--ink-2);
+  font-size: var(--text-14);
+  line-height: var(--leading-body);
+}
+
+.wr-brief-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0 0 var(--space-16);
+  padding: 0;
+  list-style: none;
+}
+
+.wr-brief-steps li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  color: var(--ink-2);
+  font-size: var(--text-14);
+}
+
+.wr-brief-steps li svg {
+  flex: 0 0 auto;
+  color: var(--ink-3);
+}
+
+.wr-brief-steps li[data-state="live"] svg {
+  color: var(--primary);
+}
+
+.wr-brief-steps li[data-state="done"] svg {
+  color: var(--success);
+}
+
+.wr-brief-step-text {
+  flex: 1;
+  min-width: 0;
+  color: var(--ink);
+}
+
+.wr-brief-steps li em {
+  color: var(--ink-3);
+  font-size: var(--text-12);
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.wr-brief-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: var(--control-44);
+  padding: 0 var(--space-20);
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: var(--text-14);
+  font-weight: var(--weight-medium);
 }

@@ -4,6 +4,9 @@ import {
   Download,
   Eye,
   EyeOff,
+  FileText,
+  Globe,
+
   KeyRound,
   Plus,
   RotateCcw,
@@ -14,10 +17,17 @@ import {
   Trash2,
   TriangleAlert,
 } from "lucide-react";
-import { parseReply, planTasks } from "../agent";
+import { localSuggestions, parseReply, planTasks } from "../agent";
+import { matchSkills } from "../skills";
+import { parseCourseText, toCourses } from "../courseImport";
+import type { ParsedCourse } from "../courseImport";
 import { BRAND } from "../brand";
 import BotAvatar from "../BotAvatar";
-import { storage } from "../storage";
+import { useHideNativeChrome } from "../chrome";
+import { haptic } from "../nativeExtras";
+import { formatSearchContext, webSearch } from "../search";
+import type { SearchProvider } from "../search";
+import { storage, createMemory } from "../storage";
 import { newId } from "../id";
 import {
   DeepSeekError,
@@ -35,7 +45,52 @@ import type {
   DeepSeekMessage,
   DeepSeekUsage,
 } from "../deepseek/types";
-import type { Course, Task } from "../types";
+import type { Course, Memory, Task } from "../types";
+type FileBlock = {
+  name: string;
+  size: number;
+  binary: boolean;
+  content: string;
+};
+
+/** 解析消息里的 [[FILE:{...}]]…[[/FILE]] 附件块。 */
+function splitFileBlock(content: string): {
+  file: FileBlock | null;
+  rest: string;
+} {
+  const start = content.indexOf("[[FILE:");
+  if (start < 0) return { file: null, rest: content };
+  const headerEnd = content.indexOf("]]", start);
+  if (headerEnd < 0) return { file: null, rest: content };
+  const endMark = content.indexOf("[[/FILE]]", headerEnd);
+  const headerRaw = content.slice(start + 7, headerEnd);
+  const body = endMark > 0 ? content.slice(headerEnd + 2, endMark) : "";
+  let meta: { n?: unknown; s?: unknown; b?: unknown } = {};
+  try {
+    meta = JSON.parse(headerRaw) as typeof meta;
+  } catch {
+    meta = {};
+  }
+  const rest = (
+    content.slice(0, start) + (endMark > 0 ? content.slice(endMark + 9) : "")
+  ).trim();
+  return {
+    file: {
+      name: typeof meta.n === "string" ? meta.n : "文件",
+      size: typeof meta.s === "number" ? meta.s : 0,
+      binary: meta.b === true,
+      content: body.trim(),
+    },
+    rest,
+  };
+}
+
+function formatBytes(n: number): string {
+  if (!n) return "未知大小";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
 
 type ConnectState = "idle" | "testing" | "ok" | "error";
 
@@ -60,6 +115,8 @@ function describeError(error: unknown): string {
   return "请求失败，请稍后重试。";
 }
 
+const WEEKDAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+
 function formatTime(timestamp: number): string {
   return new Intl.DateTimeFormat("zh-CN", {
     hour: "2-digit",
@@ -78,6 +135,8 @@ export default function ChatPage({
   tasks,
   onSettings,
   onTasksChange,
+  onMemoriesChange,
+  onCoursesChange,
   onViewPlans,
 }: {
   agentName: string;
@@ -85,11 +144,13 @@ export default function ChatPage({
   pendingMessage: { id: number; text: string } | null;
   onPendingConsumed: () => void;
   profile: UserProfile;
-  memories: string[];
+  memories: Memory[];
   courses: Course[];
   tasks: Task[];
   onSettings: () => void;
   onTasksChange: (tasks: Task[]) => void;
+  onMemoriesChange: (memories: Memory[]) => void;
+  onCoursesChange: (courses: Course[]) => void;
   onViewPlans: () => void;
 }) {
   const [config, setConfig] = useState<DeepSeekConfig>(() =>
@@ -101,6 +162,14 @@ export default function ChatPage({
   );
   const [showKey, setShowKey] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
+  /** 用户发来的课表：等确认后再写进课表 */
+  const [courseProposal, setCourseProposal] = useState<ParsedCourse[] | null>(
+    null,
+  );
+  /** 收到图片时给一句实话：当前模型看不了图 */
+  const [imageCourseHint, setImageCourseHint] = useState(false);
+  /** 这一轮命中了哪些技能，给用户一个可见的信号 */
+  const [activeSkills, setActiveSkills] = useState<string[]>([]);
   const [messages, setMessages] = useState<DeepSeekMessage[]>(() => {
     const saved = storage.getDeepSeekMessages();
     return saved.filter(
@@ -112,6 +181,12 @@ export default function ChatPage({
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [searchOn, setSearchOn] = useState(() => storage.getSearchEnabled());
+  const [titleMenu, setTitleMenu] = useState(false);
+  const [searchKey] = useState(() => storage.getSearchKey());
+  const [searchProvider] = useState<SearchProvider>(
+    () => storage.getSearchProvider() as SearchProvider,
+  );
   const [error, setError] = useState("");
   const [connectState, setConnectState] = useState<ConnectState>("idle");
   const [connectText, setConnectText] = useState("");
@@ -202,9 +277,63 @@ export default function ChatPage({
   const sendMessage = async (text: string, history: DeepSeekMessage[]) => {
     const content = text.trim();
     if (!content || streaming) return;
+
+    // 技能命中：决定这一轮要不要加载专门的做事方法
+    setActiveSkills(matchSkills(content).map((skill) => skill.name));
+
+    // 附件或直接粘贴的课表：先本地认一遍。
+    // 认出来就问一句「要不要加进课表」，而不是替用户决定，也不是当普通消息忽略。
+    const fileMatch = content.match(/\[\[FILE:([^\]]*)\]\]([\s\S]*?)\[\[\/FILE\]\]/);
+    const attachMeta = fileMatch?.[1] ?? "";
+    const attachBody = fileMatch ? fileMatch[2] : content;
+    const isImage =
+      /image\//i.test(attachMeta) ||
+      /\.(png|jpe?g|webp|heic|gif|bmp)$/i.test(attachMeta);
+    if (isImage) {
+      setImageCourseHint(true);
+      setCourseProposal(null);
+    } else {
+      setImageCourseHint(false);
+      const parsed = parseCourseText(attachBody);
+      if (parsed.courses.length >= 2) setCourseProposal(parsed.courses);
+    }
+
+    // 联网搜索：只在开关打开且有 key 时查一次，结果拼进 system prompt
+    let webContext = "";
+    if (searchOn && searchKey.trim()) {
+      const hits = await webSearch(content, {
+        provider: searchProvider,
+        apiKey: searchKey,
+      });
+      webContext = formatSearchContext(content, hits);
+    }
+
+    // 没有 Key 时走本地兜底：仍然给用户「可说 → 可确认 → 可落地」的闭环，
+    // 而不是把连接设置硬塞到用户面前。
     if (!apiKey.trim()) {
-      setError("请先连接 DeepSeek，再发送消息。");
-      setShowConfig(true);
+      const local = localSuggestions(content);
+      const parts = [local.text];
+      if (local.plans.length) {
+        parts.push(`<plans>${JSON.stringify(local.plans)}</plans>`);
+      }
+      if (local.memories.length) {
+        parts.push(`<memories>${JSON.stringify(local.memories)}</memories>`);
+      }
+      const now = Date.now();
+      setMessages([
+        ...history,
+        { id: newId(), role: "user", content, createdAt: now },
+        {
+          id: newId(),
+          role: "assistant",
+          content: parts.join("\n\n"),
+          createdAt: now,
+          model: "本地建议",
+        },
+      ]);
+      setError("");
+      setUsage(null);
+      setLatency(null);
       return;
     }
 
@@ -236,11 +365,13 @@ export default function ChatPage({
     const payload: ChatRequestMessage[] = [
       {
         role: "system",
-        content: buildSystemPrompt(config, profile, {
-          memories,
-          courses,
-          tasks,
-        }),
+        content: buildSystemPrompt(
+          config,
+          profile,
+          { memories, courses, tasks },
+          webContext,
+          content,
+        ),
       },
       ...history
         .filter((message) => message.content.trim())
@@ -254,7 +385,13 @@ export default function ChatPage({
     const requestConfig: DeepSeekConfig = {
       ...config,
       temperature: profile.temperature,
-      maxTokens: Math.max(1400, responseTokenBudget(profile.responseLength)),
+      // 设置页里的 maxTokens 之前被写死的 1400 覆盖了；这里让设置生效。
+      // 开思考模式时思考内容也吃额度，给不足就只剩「思考过程」没有正文。
+      maxTokens: Math.max(
+        config.maxTokens,
+        responseTokenBudget(profile.responseLength),
+        config.thinking ? 4096 : 0,
+      ),
     };
 
     try {
@@ -311,6 +448,9 @@ export default function ChatPage({
         );
         setUsage(result.usage);
         setLatency(Math.round(performance.now() - startedAt));
+        // 模型用 <courses> 块整理了课表 → 直接弹确认卡，不让它说「我没有工具」
+        const parsedCourses = parseReply(result.content || "").courses;
+        if (parsedCourses.length) setCourseProposal(parsedCourses);
         if (firstTokenAt) {
           setConnectState("ok");
           setConnectText(
@@ -406,6 +546,12 @@ export default function ChatPage({
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
+  const suggestions = [
+    "明天考试，我有点慌，陪我安排一下复习",
+    "我想准备第一份实习，有什么方案？",
+    "今天有点累，想聊一会儿",
+  ];
+
   const statusLabel =
     connectState === "ok"
       ? "已连接"
@@ -417,33 +563,121 @@ export default function ChatPage({
             ? "待测试"
             : "未连接";
 
-  const suggestions = [
-    "明天考试，我有点慌，陪我安排一下复习",
-    "我想准备第一份实习，有什么方案？",
-    "今天有点累，想聊一会儿",
-  ];
+  // 标题菜单打开时要隐藏原生 chrome，否则会被原生输入框盖住
+  useHideNativeChrome(Boolean(titleMenu));
 
   return (
     <>
-      <div className="wr-chat-head">
+      {titleMenu && (
+        <div
+          className="wr-overlay wr-overlay-fixed"
+          onClick={() => setTitleMenu(false)}
+        >
+          <div
+            className="wr-sheet wr-titlemenu"
+            onClick={(event) => event.stopPropagation()}
+          >
+                        <button
+              onClick={() => {
+                const next = !searchOn;
+                setSearchOn(next);
+                storage.setSearchEnabled(next);
+                void haptic("light");
+              }}
+            >
+              <Globe size={19} /> 联网搜索
+              <em>{searchOn ? "已开" : "已关"}</em>
+            </button>
+            <button
+              onClick={() => {
+                setTitleMenu(false);
+                setSearchOpen(true);
+              }}
+            >
+              <Search size={19} /> 搜索聊天记录
+            </button>
+            <button onClick={() => setTitleMenu(false)}>取消</button>
+          </div>
+        </div>
+      )}
+
+      <div
+        className={
+          messages.length === 0 ? "wr-chat-head is-empty" : "wr-chat-head"
+        }
+      >
         <button className="wr-round" aria-label="设置" onClick={onSettings}>
           <Settings />
         </button>
-        <div className="wr-chat-title">
+        <button
+          className="wr-chat-title"
+          aria-label="打开快捷操作"
+          onClick={() => {
+            void haptic("medium");
+            setTitleMenu(true);
+          }}
+        >
           <span className="wr-chat-orb">
             <BotAvatar source={agentAvatar} replying={streaming} />
           </span>
           <b>{agentName}</b>
-        </div>
-        <button
-          className="wr-round"
-          aria-label="搜索聊天记录"
-          aria-expanded={searchOpen}
-          onClick={() => setSearchOpen((value) => !value)}
-        >
-          <Search />
+          <span className={`wr-chat-sub ${connectState}`}>
+            {streaming ? "正在回复…" : statusLabel}
+          </span>
         </button>
+        {/* 右侧留白，保证标题严格居中 */}
+        <span className="wr-chat-head-spacer" aria-hidden="true" />
       </div>
+
+      {/* 空态固定在可视区里，不参与滚动：
+          以前它在滚动容器内，用户往下翻头像就没了，整页像一张长截图。 */}
+      {!showConfig && messages.length === 0 && (
+        <div className="wr-chat-empty">
+          <button
+            className="wr-chat-hero"
+            aria-label="打开快捷操作"
+            onClick={() => {
+              void haptic("medium");
+              setTitleMenu(true);
+            }}
+          >
+            <span className="wr-hero-orb">
+              <BotAvatar source={agentAvatar} replying={streaming} />
+            </span>
+            <b>{agentName}</b>
+            <small>{statusLabel}</small>
+          </button>
+          <div className="wr-ai-empty">
+            <p>
+              {apiKey
+                ? "直接说事，或者从下面挑一个"
+                : "连接 DeepSeek 后开始聊天。"}
+            </p>
+            {!apiKey && (
+              <button
+                type="button"
+                className="wr-ai-primary"
+                onClick={onSettings}
+              >
+                连接 DeepSeek
+              </button>
+            )}
+            <div className="wr-ai-suggestions">
+              {suggestions.map((text) => (
+                <button
+                  type="button"
+                  key={text}
+                  onClick={() => {
+                    void sendMessage(text, messages);
+                  }}
+                >
+                  {text}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="wr-chat-scroll">
         {searchOpen && (
@@ -480,15 +714,16 @@ export default function ChatPage({
             m.content.toLowerCase().includes(searchQuery.trim().toLowerCase()),
           ) && <p className="wr-chat-search-empty">没有找到相关聊天记录</p>}
 
-        <div className="wr-chat-status-line">
-          <span className={`wr-ai-status ${connectState}`}>{statusLabel}</span>
-          {apiKey && <span>{config.model}</span>}
-          {streaming && (
-            <button type="button" className="wr-chat-stop" onClick={stop}>
-              <Square size={13} /> 停止
-            </button>
-          )}
-        </div>
+        {(apiKey || streaming) && (
+          <div className="wr-chat-status-line">
+            {apiKey && <span>{config.model}</span>}
+            {streaming && (
+              <button type="button" className="wr-chat-stop" onClick={stop}>
+                <Square size={13} /> 停止
+              </button>
+            )}
+          </div>
+        )}
 
         {showConfig && (
           <section className="wr-ai-config">
@@ -646,40 +881,6 @@ export default function ChatPage({
           </section>
         )}
 
-        {!showConfig && !messages.length && (
-          <div className="wr-ai-empty">
-            <img className="wr-ai-empty-mark" src="/avatar.svg" alt="" />
-            <h2>和 {agentName} 聊聊</h2>
-            <p>
-              {apiKey
-                ? "想聊聊近况，还是一起学点什么？"
-                : "连接 DeepSeek 后开始聊天。"}
-            </p>
-            {!apiKey && (
-              <button
-                type="button"
-                className="wr-ai-primary"
-                onClick={onSettings}
-              >
-                连接 DeepSeek
-              </button>
-            )}
-            <div className="wr-ai-suggestions">
-              {suggestions.map((text) => (
-                <button
-                  type="button"
-                  key={text}
-                  onClick={() => {
-                    void sendMessage(text, messages);
-                  }}
-                >
-                  {text}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         {!showConfig && messages.length > 0 && (
           <div className="wr-ai-toolbar">
             <span>{messages.length} 条消息</span>
@@ -713,10 +914,54 @@ export default function ChatPage({
                 )
                 .map((message) =>
                   message.role === "user" ? (
-                    <div className="wr-ai-row user" key={message.id}>
-                      <div className="wr-ai-bubble user">{message.content}</div>
-                      <small>{formatTime(message.createdAt)}</small>
-                    </div>
+                    (() => {
+                      const parsed = splitFileBlock(message.content);
+                      return (
+                        <div className="wr-ai-row user" key={message.id}>
+                          {parsed.file && (
+                            <div className="wr-file-card">
+                              <span className="wr-file-mark">
+                                <FileText size={16} />
+                              </span>
+                              <span className="wr-file-body">
+                                <b>{parsed.file.name}</b>
+                                <small>
+                                  {formatBytes(parsed.file.size)}
+                                  {parsed.file.binary
+                                    ? " · 仅记录文件名"
+                                    : " · 内容已读入对话"}
+                                </small>
+                              </span>
+                              {!parsed.file.binary &&
+                                parsed.file.content.trim() && (
+                                  <button
+                                    className="wr-file-remember"
+                                    onClick={() =>
+                                      onMemoriesChange([
+                                        ...memories,
+                                        createMemory(
+                                          parsed
+                                            .file!.content.replace(/\s+/g, " ")
+                                            .trim()
+                                            .slice(0, 60),
+                                        ),
+                                      ])
+                                    }
+                                  >
+                                    记住这段
+                                  </button>
+                                )}
+                            </div>
+                          )}
+                          {parsed.rest && (
+                            <div className="wr-ai-bubble user">
+                              {parsed.rest}
+                            </div>
+                          )}
+                          <small>{formatTime(message.createdAt)}</small>
+                        </div>
+                      );
+                    })()
                   ) : (
                     <div className="wr-ai-row assistant" key={message.id}>
                       <div className="wr-ai-bubble assistant">
@@ -832,7 +1077,42 @@ export default function ChatPage({
                             </section>
                           );
                         })}
-                      <small>{formatTime(message.createdAt)}</small>
+                      {(!streaming ||
+                        message.id !== messages[messages.length - 1]?.id) &&
+                        (() => {
+                          const proposed = parseReply(
+                            message.content,
+                          ).memories.filter(
+                            (item) => !memories.some((m) => m.text === item),
+                          );
+                          if (!proposed.length) return null;
+                          return (
+                            <section
+                              className="wr-memory-proposal"
+                              aria-label="记忆建议"
+                            >
+                              <small>想记住这些 · 等你确认</small>
+                              <ul>
+                                {proposed.map((item) => (
+                                  <li key={item}>{item}</li>
+                                ))}
+                              </ul>
+                              <button
+                                className="wr-ai-primary"
+                                onClick={() =>
+                                  onMemoriesChange([
+                                    ...proposed.map((text) =>
+                                      createMemory(text),
+                                    ),
+                                    ...memories,
+                                  ])
+                                }
+                              >
+                                记住这些
+                              </button>
+                            </section>
+                          );
+                        })()}
                     </div>
                   ),
                 )}
@@ -850,6 +1130,65 @@ export default function ChatPage({
               <button type="button" onClick={retry} disabled={streaming}>
                 <RotateCcw size={15} /> 重试上一条
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* 用户发来课表（粘贴的文字或文件）后，先问一句要不要加进课表，
+            而不是替他做决定，也不是把课表内容当成普通聊天忽略掉。 */}
+        {!showConfig && courseProposal && (
+          <section className="wr-course-proposal" aria-label="课表导入确认">
+            <small>看起来是课表 · 等你确认</small>
+            <h3>把你发来的 {courseProposal.length} 门课加进课表？</h3>
+            <ul>
+              {courseProposal.slice(0, 6).map((course, index) => (
+                <li key={`${course.name}-${index}`}>
+                  <span>{WEEKDAYS[course.weekday]}</span>
+                  <span>
+                    {course.start}–{course.end}
+                  </span>
+                  <b>{course.name}</b>
+                  {course.place && <em>{course.place}</em>}
+                </li>
+              ))}
+            </ul>
+            {courseProposal.length > 6 && (
+              <p className="wr-course-proposal-more">
+                还有 {courseProposal.length - 6} 门课
+              </p>
+            )}
+            <div className="wr-plan-actions">
+              <button
+                type="button"
+                onClick={() => {
+                  const added = toCourses(courseProposal, courses, newId);
+                  if (added.length) onCoursesChange([...courses, ...added]);
+                  setCourseProposal(null);
+                }}
+              >
+                加入课表
+              </button>
+              <button type="button" onClick={() => setCourseProposal(null)}>
+                先不用
+              </button>
+            </div>
+          </section>
+        )}
+
+        {!showConfig && activeSkills.length > 0 && (
+          <div className="wr-skill-chip" role="status">
+            已启用：{activeSkills.join(" · ")}
+          </div>
+        )}
+
+        {!showConfig && imageCourseHint && (
+          <div className="wr-ai-error" role="status">
+            <TriangleAlert size={18} />
+            <div>
+              <b>图片我先看不了</b>
+              <p>
+                当前模型不支持看图。把课表上的文字复制粘贴过来，我就能解析并排进课表。
+              </p>
             </div>
           </div>
         )}

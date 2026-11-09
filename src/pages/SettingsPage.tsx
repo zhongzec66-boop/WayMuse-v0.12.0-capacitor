@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { ArrowLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
 import ConnectionsPanel from "./ConnectionsPanel";
+import BotAvatar from "../BotAvatar";
 import AvatarPicker from "../AvatarPicker";
+import { haptic } from "../nativeExtras";
 import { storage } from "../storage";
 import { APP_VERSION } from "../version";
 import { DeepSeekError, listDeepSeekModels } from "../deepseek/client";
@@ -52,6 +54,21 @@ export default function SettingsPage({
     "idle" | "testing" | "ok" | "error"
   >("idle");
   const [deepSeekMessage, setDeepSeekMessage] = useState("");
+
+  /* ── 联网搜索 ── */
+  const [searchProvider, setSearchProvider] = useState(() =>
+    storage.getSearchProvider(),
+  );
+  const [searchKey, setSearchKey] = useState(() => storage.getSearchKey());
+  const [searchOn, setSearchOn] = useState(() => storage.getSearchEnabled());
+  const safeTop = (() => {
+    if (typeof window === "undefined") return 0;
+    const raw = getComputedStyle(document.documentElement)
+      .getPropertyValue("--safe-top")
+      .trim();
+    const value = Number.parseFloat(raw);
+    return Number.isFinite(value) ? Math.round(value) : 0;
+  })();
 
   const updateProfile = <K extends keyof UserProfile>(
     key: K,
@@ -149,25 +166,30 @@ export default function SettingsPage({
       </div>
       <div className="wr-settings-scroll">
         <nav className="wr-settings-jump" aria-label="设置分区">
-          {["个人档案", "陪伴风格", "模型连接", "App 连接", "隐私与数据"].map(
-            (name) => (
-              <button
-                key={name}
-                onClick={() =>
-                  document
-                    .getElementById(`setting-${name}`)
-                    ?.scrollIntoView({ behavior: "smooth", block: "start" })
-                }
-              >
-                {name}
-              </button>
-            ),
-          )}
+          {[
+            "个人档案",
+            "陪伴风格",
+            "模型连接",
+            "语音",
+            "App 连接",
+            "隐私与数据",
+          ].map((name) => (
+            <button
+              key={name}
+              onClick={() =>
+                document
+                  .getElementById(`setting-${name}`)
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" })
+              }
+            >
+              {name}
+            </button>
+          ))}
         </nav>
         <div className="wr-settings-profile">
           <div className="wr-settings-profile-head">
             <div className="wr-settings-avatar">
-              <img src={agentAvatar || "/avatar.svg"} alt="" />
+              <BotAvatar source={agentAvatar} />
             </div>
             <div>
               <div className="wr-settings-brand">{agentName}</div>
@@ -462,6 +484,82 @@ export default function SettingsPage({
             />
             深度思考（回复更慢）
           </label>
+        </div>
+
+        <div className="wr-settings-label" id="setting-联网搜索">
+          联网搜索
+        </div>
+        <div className="wr-settings-group">
+          <label className="wr-settings-field">
+            <span>
+              服务商
+              <small>不填 key 也能联网；填了质量更好</small>
+            </span>
+            <select
+              value={searchProvider}
+              onChange={(event) => {
+                setSearchProvider(event.target.value);
+                storage.setSearchProvider(event.target.value);
+              }}
+            >
+              <option value="serper">Serper · Google 结果</option>
+              <option value="tavily">Tavily · 带网页摘要</option>
+            </select>
+          </label>
+          <label className="wr-settings-field">
+            <span>
+              搜索 API Key（可选）
+              <small>
+                serper.dev 每月 2500 次免费 · tavily.com 每月 1000 次免费
+              </small>
+            </span>
+            <input
+              type="password"
+              value={searchKey}
+              placeholder={
+                searchProvider === "tavily" ? "tvly-…" : "粘贴 Serper key"
+              }
+              autoComplete="off"
+              spellCheck={false}
+              onChange={(event) => {
+                setSearchKey(event.target.value);
+                storage.setSearchKey(event.target.value);
+              }}
+            />
+          </label>
+          <label className="wr-settings-check">
+            <input
+              type="checkbox"
+              checked={searchOn}
+              onChange={(event) => {
+                setSearchOn(event.target.checked);
+                storage.setSearchEnabled(event.target.checked);
+              }}
+            />
+            聊天时默认联网（每次提问多一次搜索请求）
+          </label>
+          <p className="wr-settings-note">
+            不填 key 也能联网：默认走 DuckDuckGo 和维基百科的免费接口，
+            不需要注册。想要更完整的网页结果再填上面的 key。
+          </p>
+        </div>
+
+        <div className="wr-settings-label" id="setting-触感">
+          触感
+        </div>
+        <div className="wr-settings-group">
+          <button
+            type="button"
+            className="wr-settings-test"
+            onClick={() => void haptic("medium")}
+          >
+            试一下震动
+          </button>
+          <p className="wr-settings-note">
+            没反应的话，先检查系统是否开了「低电量模式」。
+            <br />
+            顶部安全区：{safeTop}px
+          </p>
         </div>
 
         <div className="wr-settings-label" id="setting-App 连接">

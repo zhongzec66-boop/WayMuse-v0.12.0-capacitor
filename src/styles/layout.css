@@ -38,6 +38,30 @@
   color: var(--ink-2);
 }
 
+/* 麦克风与发送分开：一个只负责「按住说话」，一个只负责发送。
+   以前一个按钮三种行为，用户猜不到点下去会发生什么。 */
+
+
+.wr-compose-send {
+  min-width: var(--space-40) !important;
+  min-height: var(--space-40) !important;
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  color: var(--on-primary);
+  transition:
+    opacity var(--dur-1) var(--ease),
+    transform var(--dur-1) var(--ease);
+}
+
+.wr-compose-send:disabled {
+  opacity: 0.28;
+  background: var(--ink-3);
+}
+
+.wr-compose-send:not(:disabled):active {
+  transform: scale(var(--motion-press));
+}
+
 .wr-compose input {
   min-width: 0;
   flex: 1;
@@ -48,6 +72,19 @@
 
 .wr-compose input::placeholder {
   color: var(--ink-3);
+}
+
+/* 原生输入框接管时：只保留这块区域作为定位锚点，
+   视觉与交互全部交给原生玻璃浮层，避免「Web 胶囊 + 原生胶囊」重影。 */
+.wr-compose-native {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.wr-compose-native > * {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .wr-dock nav {
@@ -63,6 +100,39 @@
 .wr-dock nav.wr-native-tabs > .wr-tab-highlight {
   opacity: 0;
   pointer-events: none;
+}
+
+/* 原生模式下 Tab 栏由 UITabBar 自己绘制玻璃，容器不再叠一层玻璃背景。
+   注意：原生栏是**贴底自由排布**的（不再被 DOM 槽位框住），所以这里
+   1) 把整个 Dock 抬到原生栏上方，2) 直接隐藏网页 Tab 行。 */
+.wr-dock-native {
+  /* 原生栏高度已含安全区，用 max 避免重复叠加 */
+  bottom: calc(var(--space-8) + max(var(--safe-bottom), var(--native-tabbar, 0px)));
+  padding-bottom: 0;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.wr-dock-native .wr-compose {
+  margin-bottom: 0;
+}
+
+.wr-dock-native nav {
+  display: none;
+}
+
+/* 内容区底部留白要跟着原生栏高度走，否则最后一条消息会被挡住。 */
+.wr-phone:has(.wr-dock-native) .wr-content {
+  padding-bottom: calc(var(--native-tabbar, 0px) + var(--space-84));
+}
+
+.wr-phone:has(.wr-dock-native) .wr-chat-scroll {
+  padding-bottom: calc(
+    var(--native-tabbar, 0px) + var(--space-84) + var(--space-16)
+  );
 }
 
 .wr-tab-highlight {
@@ -154,14 +224,24 @@
   color: var(--primary);
 }
 
+/* 记忆详情这类需要盖住底部 Dock 的弹层 */
+.wr-overlay-fixed {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+}
+
 .wr-overlay {
   position: absolute;
   inset: 0;
   z-index: var(--z-overlay);
   display: flex;
   align-items: flex-end;
+  /* 键盘弹起时整块弹层上移，否则「新增任务」的输入框会被输入法整个盖掉。 */
+  padding-bottom: var(--kb-inset, 0px);
   background: var(--scrim);
   animation: wm-fade var(--dur-2) var(--ease) both;
+  transition: padding-bottom var(--dur-2) var(--ease);
 }
 
 .wr-sheet {
@@ -367,18 +447,6 @@
   transform: translateY(-2px);
 }
 
-.wr-voice-ring {
-  display: grid;
-  place-items: center;
-  width: 25px;
-  height: 25px;
-  border: 2px solid currentColor;
-  border-radius: 50%;
-}
-.wr-voice-ring svg {
-  width: 17px;
-  height: 17px;
-}
 .wr-small-orb {
   overflow: hidden;
 }
@@ -386,4 +454,128 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* ── 语音输入状态 ─────────────────────────────────── */
+
+
+
+
+@keyframes wm-listening {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+
+@keyframes wm-mic-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(163, 58, 44, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(163, 58, 44, 0.15);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+}
+
+/* ── Android / 澎湃专用适配 ────────────────────────────────
+   不单独做一套页面，用 html[data-platform="android"] 做针对性覆盖：
+   系统栏占位、底部安全区、WebView 与输入法的差异都在这里收口。 */
+html[data-platform="android"] .wr-content {
+  padding-bottom: calc(var(--content-bottom) + var(--space-8));
+}
+
+html[data-platform="android"] .wr-chat-scroll {
+  /* 安卓底部没有 iOS 那种 34px 安全区，但导航栏会吃掉一块，
+     多留 24px 保证最后一条消息和拓展问题完整可见 */
+  padding-bottom: calc(var(--content-bottom) + var(--space-24));
+}
+
+html[data-platform="android"] .wr-dock {
+  bottom: calc(var(--space-12) + var(--native-tabbar, 0px));
+}
+
+/* ── 滚动时收起底部 dock ──────────────────────────────────
+   参考酷安 / 苹果音乐：往下滚时让开内容，往上滚一点就回来。
+   注意只位移、不改内容区 padding：否则收起瞬间内容会跳一下。 */
+.wr-phone .wr-dock {
+  transition:
+    transform var(--dur-2) var(--ease),
+    opacity var(--dur-2) var(--ease);
+  will-change: transform;
+}
+
+.wr-phone[data-dock="hidden"] .wr-dock {
+  transform: translateY(calc(100% + var(--space-32)));
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── 原生形态的底部区域 ──────────────────────────────────
+   不渲染输入框和 Tab 栏，只留一个透明锚点：
+   原生玻璃条按锚点的矩形定位，所以它必须存在，但不参与视觉。 */
+.wr-dock-anchor {
+  position: absolute;
+  right: var(--dock-inset);
+  /* --native-tabbar 是原生栏整体高度（贴屏幕底，已含安全区）。
+     取 max 而不是相加：插件没上报高度时退回 safe-bottom，不会顶穿。 */
+  bottom: calc(var(--space-8) + max(var(--safe-bottom), var(--native-tabbar, 0px)));
+  left: var(--dock-inset);
+  z-index: var(--z-dock);
+  pointer-events: none;
+}
+
+.wr-compose-slot {
+  height: 50px;
+  /* 绝对不能有背景/边框/阴影：有就是第二个「假输入框」 */
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+
+/* 内容区底部留白要吃掉原生 Tab 栏 + 输入框的高度 */
+.wr-phone:has(.wr-dock-anchor) .wr-content {
+  padding-bottom: calc(var(--native-tabbar, 0px) + var(--space-84));
+}
+
+.wr-phone:has(.wr-dock-anchor) .wr-chat-scroll {
+  padding-bottom: calc(
+    var(--native-tabbar, 0px) + var(--space-84) + var(--space-16)
+  );
+}
+
+/* 滚动收起：原生形态下把锚点整体下移，原生条跟着下去 */
+.wr-phone[data-dock="hidden"] .wr-dock-anchor {
+  transform: translateY(calc(100% + var(--space-32)));
+  opacity: 0;
+}
+
+.wr-dock-anchor {
+  transition:
+    transform var(--dur-2) var(--ease),
+    opacity var(--dur-2) var(--ease);
+}
+
+/* 键盘弹起：网页形态的输入框要跟着抬起来 */
+.wr-dock {
+  transition:
+    transform var(--dur-2) var(--ease),
+    opacity var(--dur-2) var(--ease),
+    bottom var(--dur-2) var(--ease);
+}
+
+html[data-kb="open"] .wr-dock {
+  bottom: calc(
+    var(--space-8) + var(--safe-bottom) + var(--kb-inset, 0px)
+  );
 }

@@ -11,7 +11,7 @@ export default function OverlaySheet({
   submit,
   onClearData,
 }: {
-  overlay: Exclude<Overlay, "" | "设置" | "资料导入" | "隐私与数据">;
+  overlay: Exclude<Overlay, "" | "设置" | "隐私与数据">;
   setOverlay: Dispatch<SetStateAction<Overlay>>;
   draft: string;
   setDraft: Dispatch<SetStateAction<string>>;

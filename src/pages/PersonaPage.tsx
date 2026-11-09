@@ -1,5 +1,6 @@
 import { ChevronRight, Settings2 } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
+import BotAvatar from "../BotAvatar";
 import type { UserProfile } from "../profile";
 import type { Overlay, Page } from "../types";
 
@@ -30,7 +31,7 @@ export default function PersonaPage({
       </div>
       <div className="wr-persona">
         <div className="wr-persona-orb">
-          <img src={agentAvatar || "/avatar.svg"} alt="" />
+          <BotAvatar source={agentAvatar} />
         </div>
         <h2>{agentName}</h2>
         <p>

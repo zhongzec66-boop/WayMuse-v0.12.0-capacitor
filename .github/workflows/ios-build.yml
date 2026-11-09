@@ -12,10 +12,10 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Check out WayMuse
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Node.js 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: npm
@@ -32,8 +32,54 @@ jobs:
       - name: Copy web app and native plugin into iOS project
         run: npx cap sync ios
 
+      # cap sync 会重写 ios/App/App/capacitor.config.json，
+      # 所以注册必须放在它之后。
+      - name: Register native compose plugin
+        run: node scripts/register-native-compose.cjs
+
       - name: Show Xcode version
         run: xcodebuild -version
+
+      # GitHub 的 release CDN 偶发 504，会让 SPM 拉 Capacitor.xcframework 失败，
+      # 这一步单独做、并且重试，避免整条流水线因为一次网络抖动白跑。
+      - name: Cache Swift packages
+        uses: actions/cache@v5
+        with:
+          path: build/DerivedData/SourcePackages
+          key: spm-${{ runner.os }}-${{ hashFiles('ios/App/CapApp-SPM/Package.swift') }}
+          restore-keys: |
+            spm-${{ runner.os }}-
+
+      - name: Resolve Swift package dependencies
+        run: |
+          # GitHub 的 release CDN 会间歇性 504。用递增退避拉长重试窗口，
+          # 而不是在同一个故障窗口里密集重试。
+          delays=(15 30 45 60 90 120 150 180)
+          for i in "${!delays[@]}"; do
+            attempt=$((i + 1))
+            if xcodebuild \
+                 -project ios/App/App.xcodeproj \
+                 -scheme App \
+                 -derivedDataPath build/DerivedData \
+                 -resolvePackageDependencies; then
+              echo "SPM resolved on attempt $attempt"
+              exit 0
+            fi
+            wait=${delays[$i]}
+            echo "::warning::SPM resolve failed (attempt $attempt), retrying in ${wait}s"
+            sleep "$wait"
+          done
+          echo "::error::SPM resolve failed after ${#delays[@]} attempts"
+          exit 1
+
+      # 解析成功就立即存盘：后续编译失败也不影响下次复用，
+      # 避免每轮都重新下载 xcframework。
+      - name: Save Swift package cache
+        if: success()
+        uses: actions/cache/save@v5
+        with:
+          path: build/DerivedData/SourcePackages
+          key: spm-${{ runner.os }}-${{ hashFiles('ios/App/CapApp-SPM/Package.swift') }}-${{ github.run_id }}
 
       - name: Build unsigned iPhone app
         run: |
@@ -60,7 +106,7 @@ jobs:
           unzip -l ../WayMuse-unsigned.ipa | grep -q 'Payload/App.app/Info.plist'
 
       - name: Upload unsigned IPA
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: WayMuse-unsigned-IPA
           path: build/WayMuse-unsigned.ipa

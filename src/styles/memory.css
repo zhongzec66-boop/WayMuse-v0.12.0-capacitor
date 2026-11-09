@@ -1,4 +1,4 @@
-﻿/* Memory guide and entries. */
+/* Memory guide and entries. */
 
 .wr-memory-tip {
   position: relative;
@@ -106,4 +106,623 @@
   display: grid;
   place-items: center;
   color: var(--ink-3);
+}
+
+/* ── 「关于我」结构化卡片 ─────────────────────────────── */
+
+.wr-fact-card,
+.wr-memory-block {
+  margin-top: var(--space-16);
+  padding: var(--space-16);
+  border: var(--border-1) solid var(--glass-line);
+  border-radius: var(--radius-28);
+  background: var(--glass-strong);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+.wr-fact-card > header,
+.wr-memory-block > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-12);
+  color: var(--ink);
+  font-size: var(--text-15);
+  font-weight: var(--weight-semibold);
+}
+
+.wr-fact-card > header button {
+  min-height: 32px;
+  padding: 0 var(--space-12);
+  border-radius: var(--radius-pill);
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: var(--text-12);
+  font-weight: var(--weight-medium);
+}
+
+.wr-memory-block > header em {
+  color: var(--ink-3);
+  font-size: var(--text-12);
+  font-style: normal;
+  font-weight: var(--weight-regular);
+}
+
+.wr-fact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-12);
+}
+
+.wr-fact-grid > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.wr-fact-grid small {
+  color: var(--ink-3);
+  font-size: var(--text-11);
+}
+
+.wr-fact-grid b {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: var(--text-15);
+  font-weight: var(--weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wr-fact-cta {
+  width: 100%;
+  min-height: var(--control-44);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  margin-top: var(--space-12);
+  border: var(--border-1) dashed var(--field-line);
+  border-radius: var(--radius-16);
+  color: var(--ink-2);
+  font-size: var(--text-13);
+}
+
+/* ── 记忆改成「标签云」，不再是一行行流水账 ───────────── */
+
+.wr-memory-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wr-memory-tags li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  max-width: 100%;
+  padding: 6px 6px 6px 12px;
+  border-radius: var(--radius-16);
+  background: var(--primary-soft);
+  color: var(--ink);
+  font-size: var(--text-13);
+  line-height: var(--leading-body);
+}
+
+.wr-memory-tags li button {
+  width: var(--space-20);
+  height: var(--space-20);
+  flex: 0 0 var(--space-20);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--ink-3);
+}
+
+.wr-memory-empty {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: var(--text-13);
+  line-height: var(--leading-body);
+}
+
+/* ── 记忆气泡场：磨砂玻璃 + 可拖拽的物理气泡 ─────────────── */
+
+.wr-bubblewrap {
+  margin-top: var(--space-16);
+}
+
+.wr-bubblewrap-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-8);
+  padding: 0 var(--space-4);
+}
+
+.wr-bubblewrap-head > span {
+  color: var(--ink);
+  font-size: var(--text-15);
+  font-weight: var(--weight-semibold);
+}
+
+.wr-bubblewrap-head em {
+  color: var(--ink-3);
+  font-size: var(--text-11);
+  font-style: normal;
+}
+
+.wr-bubblewrap-empty {
+  margin: 0;
+  padding: var(--space-16);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+  color: var(--ink-3);
+  font-size: var(--text-13);
+  line-height: var(--leading-body);
+}
+
+.wr-bubblefield {
+  position: relative;
+  height: clamp(260px, 38vh, 380px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: var(--card-radius);
+  background: rgba(255, 255, 255, 0.34);
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.9),
+    0 12px 32px rgba(16, 36, 56, 0.08);
+  /* 拖气泡时不要带着整页一起滚 */
+  touch-action: none;
+  overscroll-behavior: contain;
+  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  backdrop-filter: blur(20px) saturate(1.3);
+}
+
+.wr-bubblefield::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 -20px 34px -20px rgba(16, 36, 56, 0.16);
+  pointer-events: none;
+}
+
+.wr-membubble {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: 62%;
+  padding: 8px 13px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.95),
+    0 6px 16px rgba(16, 36, 56, 0.07);
+  color: #38424d;
+  font-size: var(--text-13);
+  line-height: 1.4;
+  text-align: left;
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  backdrop-filter: blur(12px) saturate(1.2);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  will-change: transform;
+}
+
+.wr-membubble:active {
+  cursor: grabbing;
+}
+
+/* 小事更轻更淡，重要更实一点（都保持低饱和） */
+.wr-membubble[data-weight="1"] {
+  padding: 6px 11px;
+  background: rgba(255, 255, 255, 0.3);
+  color: #6f7a86;
+  font-size: var(--text-12);
+}
+
+.wr-membubble[data-weight="3"] {
+  background: rgba(255, 255, 255, 0.68);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 1),
+    0 0 0 1px rgba(37, 99, 168, 0.14),
+    0 8px 22px rgba(16, 36, 56, 0.1);
+  color: #232e3a;
+  font-weight: var(--weight-medium);
+}
+
+/* ── 记忆详情弹层 ─────────────────────────────────────── */
+
+.wr-memo-field {
+  display: grid;
+  gap: var(--space-8);
+  margin-bottom: var(--space-16);
+  color: var(--ink-2);
+  font-size: var(--text-13);
+}
+
+.wr-memo-field textarea {
+  width: 100%;
+  padding: var(--space-12);
+  border: var(--border-1) solid var(--field-line);
+  border-radius: var(--radius-16);
+  background: var(--field-bg);
+  color: var(--ink);
+  font-size: var(--text-16);
+  line-height: var(--leading-body);
+  resize: none;
+}
+
+.wr-memo-weight {
+  display: grid;
+  gap: var(--space-8);
+  margin-bottom: var(--space-12);
+  color: var(--ink-2);
+  font-size: var(--text-13);
+}
+
+.wr-memo-weight > div {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-8);
+}
+
+.wr-memo-weight button {
+  min-height: var(--control-44);
+  border-radius: var(--radius-16);
+  background: var(--surface-muted);
+  color: var(--ink-2);
+  font-size: var(--text-14);
+}
+
+.wr-memo-weight button.selected {
+  background: var(--primary);
+  color: var(--on-primary);
+  font-weight: var(--weight-medium);
+}
+
+.wr-memo-note {
+  margin: 0 0 var(--space-16);
+  color: var(--ink-3);
+  font-size: var(--text-12);
+  line-height: var(--leading-body);
+}
+
+.wr-memo-save {
+  width: 100%;
+  min-height: var(--control-44);
+  border-radius: var(--radius-16);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: var(--text-16);
+  font-weight: var(--weight-medium);
+}
+
+/* 划过玻璃时的小涟漪 */
+.wr-ripple {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(37, 99, 168, 0.18) 0%,
+    rgba(37, 99, 168, 0) 70%
+  );
+  pointer-events: none;
+  animation: wm-ripple 0.75s ease-out forwards;
+}
+
+@keyframes wm-ripple {
+  from {
+    transform: scale(0.4);
+    opacity: 0.6;
+  }
+  to {
+    transform: scale(6);
+    opacity: 0;
+  }
+}
+
+/* ── 三份可编辑文件 ───────────────────────────────── */
+
+
+
+
+
+
+
+/* ── 文件编辑器 ───────────────────────────────────── */
+
+.wr-doceditor {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: calc(var(--safe-top) + 8px) var(--page-pad)
+    calc(var(--safe-bottom) + 16px);
+  background: var(--bg-top);
+}
+
+.wr-doceditor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  padding: var(--space-8) 0;
+}
+
+.wr-doceditor-head b {
+  color: var(--ink);
+  font-size: var(--text-15);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.02em;
+}
+
+.wr-doceditor-head button {
+  width: var(--control-44);
+  height: var(--control-44);
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--ink-2);
+}
+
+.wr-doceditor-hint {
+  margin: var(--space-4) 0 var(--space-12);
+  color: var(--ink-3);
+  font-size: var(--text-12);
+  line-height: var(--leading-body);
+}
+
+.wr-doceditor-area {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  padding: var(--space-16);
+  border-radius: var(--radius-20);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+  color: var(--ink);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  /* 必须 ≥16px：iOS 在聚焦 <16px 的输入框时会自动放大整个页面且不还原 */
+  font-size: 16px;
+  line-height: 1.65;
+  resize: none;
+}
+
+.wr-doceditor-actions {
+  padding-top: var(--space-12);
+}
+
+.wr-doceditor-save {
+  width: 100%;
+  min-height: var(--control-44);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  border-radius: var(--radius-16);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: var(--text-16);
+  font-weight: var(--weight-medium);
+}
+
+.wr-doceditor-save.danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.wr-picked-text {
+  margin: 0 0 var(--space-8);
+  padding: var(--space-16);
+  border-radius: var(--radius-16);
+  background: var(--surface-muted);
+  color: var(--ink);
+  font-size: var(--text-16);
+  line-height: var(--leading-body);
+}
+
+/* ── 点名字弹出的快捷菜单 ─────────────────────────── */
+
+/* 用组合选择器压过 .wr-sheet 的玻璃底色：
+   这里必须是不透明面板，否则在 backdrop-filter 不起作用的环境里
+   菜单会整块透明、字全叠在聊天记录上。 */
+.wr-sheet.wr-titlemenu {
+  /* 挂在名字正下方的小胶囊，而不是铺在底部的整张 sheet */
+  position: absolute;
+  top: calc(var(--safe-top) + 92px);
+  bottom: auto;
+  left: 50%;
+  width: max-content;
+  min-width: 188px;
+  max-width: 78vw;
+  min-height: 0;
+  max-height: none;
+  padding: 6px;
+  border-radius: var(--radius-20);
+  background: var(--card-bg);
+  box-shadow: 0 14px 44px rgba(16, 36, 56, 0.2);
+  /* 用 translate 而不是 transform：.wr-sheet 自带的进场动画会覆盖 transform */
+  translate: -50% 0;
+}
+
+.wr-titlemenu > button {
+  width: 100%;
+  min-height: var(--control-44);
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: 0 var(--space-16);
+  border-radius: var(--radius-16);
+  color: var(--ink);
+  font-size: var(--text-16);
+  text-align: left;
+}
+
+.wr-titlemenu > button:active {
+  background: var(--surface-muted);
+}
+
+.wr-titlemenu > button > em {
+  margin-left: auto;
+  color: var(--card-caption);
+  font-size: var(--text-12);
+  font-style: normal;
+}
+
+.wr-titlemenu > button:last-child {
+  margin-top: var(--space-8);
+  justify-content: center;
+  color: var(--ink-3);
+  font-size: var(--text-14);
+}
+
+/* ── 记忆页：健康卡 + 文件卡（iOS 分组卡片的语气，
+      但全部用 CSS 自绘玻璃，不依赖原生玻璃插件）────────── */
+
+.wr-section-title {
+  margin: var(--space-20) 2px var(--space-8);
+  color: var(--ink-3);
+  font-size: var(--text-12);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.02em;
+}
+
+.wr-health {
+  margin-top: var(--space-16);
+  padding: var(--space-16);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+.wr-health-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  margin-bottom: var(--space-12);
+}
+
+.wr-health-mark {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #fdeceb;
+  color: #d4453f;
+}
+
+.wr-health-title {
+  display: grid;
+  gap: 1px;
+}
+
+.wr-health-title b {
+  color: var(--ink);
+  font-size: var(--text-16);
+  font-weight: var(--weight-semibold);
+}
+
+.wr-health-title small {
+  color: var(--card-caption);
+  font-size: var(--text-11);
+}
+
+.wr-health-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-8);
+}
+
+.wr-health-tile {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-12);
+  border-radius: var(--radius-16);
+  /* 模拟玻璃：底色 + 内描边 + 极轻的高光，不依赖 backdrop-filter */
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.92) 0%,
+      rgba(255, 255, 255, 0.7) 100%
+    ),
+    var(--surface-muted);
+  box-shadow:
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.9),
+    0 1px 2px rgba(16, 36, 56, 0.05);
+}
+
+.wr-health-tile svg {
+  color: var(--ink-3);
+}
+
+.wr-health-tile b {
+  color: var(--ink);
+  font-size: var(--text-15);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.wr-health-tile small {
+  color: var(--card-caption);
+  font-size: var(--text-11);
+}
+
+.wr-filegrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-8);
+}
+
+.wr-filecard {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-12);
+  min-height: 96px;
+  border-radius: var(--radius-20);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+  text-align: left;
+}
+
+.wr-filecard-mark {
+  color: var(--primary);
+}
+
+.wr-filecard b {
+  margin-top: var(--space-4);
+  color: var(--ink);
+  font-size: var(--text-13);
+  font-weight: var(--weight-semibold);
+}
+
+.wr-filecard small {
+  overflow: hidden;
+  color: var(--ink-3);
+  font-size: var(--text-11);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.wr-filecard em {
+  margin-top: auto;
+  color: var(--card-caption);
+  font-size: var(--text-11);
+  font-style: normal;
 }

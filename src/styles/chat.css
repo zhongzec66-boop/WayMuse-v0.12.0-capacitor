@@ -6,16 +6,49 @@
   padding: 0;
 }
 
+/* 顶部导航条。
+   旧版只有几个浮动圆钮、没有背板，消息会直接贴到状态栏，滚动时「割裂」。
+   现在：玻璃背板顶到状态栏 + 底缘 mask 渐隐，内容从下方滚过时自然被柔化。 */
 .wr-chat-head {
   position: absolute;
-  top: var(--safe-top);
+  top: 0;
   right: 0;
   left: 0;
   z-index: var(--z-sticky);
-  display: grid;
-  grid-template-columns: 48px 1fr 48px;
-  align-items: start;
-  padding: 14px var(--page-pad) 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  /* 左右各留一个页面内边距：齿轮之前贴在屏幕边缘，像要被裁掉 */
+  padding-left: var(--page-pad);
+  padding-right: var(--page-pad);
+  /* 标题改成绝对居中后不再撑高容器，这里要显式给一个，
+     否则头像会被顶出去、和名字叠在一起 */
+  min-height: calc(var(--safe-top) + 150px);
+  /* 再往下 14px（约 5mm），避开灵动岛 */
+  pointer-events: none;
+}
+
+/* 玻璃背板：用「页面同色 + 遮罩渐隐」而不是纯 backdrop-filter。
+   原因：backdrop-filter 在滚动容器上方并不可靠（iOS 之外的引擎常常直接不生效），
+   只靠模糊一旦失效就会像截图那样「文字透过导航条」。
+   这里用与页面背景完全一致的 --bg-top 铺底，再让底缘渐隐，
+   所以没有模糊时也是「内容自然溶解」，模糊只是 iOS 上的额外质感。 */
+.wr-chat-head::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 calc(var(--space-20) * -1);
+  z-index: -1;
+  background: var(--bg-top);
+  -webkit-backdrop-filter: var(--topbar-blur);
+  backdrop-filter: var(--topbar-blur);
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 72%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
   pointer-events: none;
 }
 
@@ -24,52 +57,102 @@
 }
 
 .wr-chat-head .wr-round {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border: 1px solid rgba(255, 255, 255, 0.8);
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.38);
   box-shadow:
     inset 0 1px 2px rgba(255, 255, 255, 0.9),
-    0 1px 3px rgba(30, 50, 45, 0.15);
+    0 1px 3px rgba(30, 50, 45, 0.14);
   -webkit-backdrop-filter: blur(18px) saturate(1.2);
   backdrop-filter: blur(18px) saturate(1.2);
 }
 
 .wr-chat-head .wr-round svg {
-  width: 25px;
-  height: 25px;
+  width: 22px;
+  height: 22px;
 }
 
+/* 标题独立绝对居中：右侧按钮从 1 个变成 3 个时也不会把它挤偏 */
 .wr-chat-title {
+  position: absolute;
+  top: 50%;
+  left: 50%;
   min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-self: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 2px 6px;
+  border-radius: var(--radius-16);
+  transform: translate(-50%, -50%);
+}
+
+.wr-chat-title:active {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* 名字回到玻璃胶囊里：之前那版被我在重排头部时弄丢了 */
+.wr-chat-title > b {
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.62);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
+  backdrop-filter: blur(14px) saturate(1.1);
+  box-shadow:
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.85),
+    0 1px 3px rgba(16, 36, 56, 0.08);
+  color: var(--ink);
+  font-size: var(--text-13);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.02em;
+}
+
+.wr-chat-head-spacer {
+  width: var(--control-44);
+  height: var(--control-44);
+  flex: 0 0 auto;
 }
 
 .wr-chat-title b {
-  max-width: 180px;
-  margin-top: -3px;
-  padding: 5px 24px;
+  max-width: 160px;
+  margin-top: var(--space-4);
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.45);
-  box-shadow:
-    inset 0 1px 2px rgba(255, 255, 255, 0.8),
-    0 1px 2px rgba(30, 50, 45, 0.15);
-  -webkit-backdrop-filter: blur(18px);
-  backdrop-filter: blur(18px);
   color: var(--ink);
-  font-size: 15px;
+  font-size: var(--text-15);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* 连接状态从滚动区搬进标题栏：不再压住头像，也符合 iOS 导航栏「标题 + 副标题」。 */
+.wr-chat-sub {
+  max-width: 160px;
+  overflow: hidden;
+  color: var(--ink-3);
+  font-size: var(--text-11);
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wr-chat-sub.ok {
+  color: var(--primary);
+}
+
+.wr-chat-sub.error {
+  color: var(--danger);
+}
+
+.wr-chat-sub.testing {
+  color: var(--accent-ink);
+}
+
 .wr-chat-orb {
-  width: 58px;
-  height: 58px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -77,7 +160,7 @@
   border-radius: 999px;
   background: var(--primary-soft);
   color: var(--primary);
-  font-size: 25px;
+  font-size: 20px;
 }
 
 .wr-chat-scroll {
@@ -85,9 +168,9 @@
   overflow-y: auto;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
-  padding: calc(var(--safe-top) + 118px) var(--page-pad)
-    calc(var(--content-bottom) + var(--safe-bottom) + 16px);
-  scroll-padding-block: 118px 150px;
+  padding: calc(var(--safe-top) + 162px) var(--page-pad)
+    calc(var(--content-bottom) + var(--safe-bottom) + 48px);
+  scroll-padding-block: 132px 150px;
 }
 
 .wr-chat-search {
@@ -125,18 +208,273 @@
   height: 100%;
 }
 
-.wr-bot-avatar.replying .wr-bot-eyes {
-  transform-origin: 256px 270px;
-  animation: wm-bot-blink 2.2s ease-in-out infinite;
+/* ── 头像动效 ────────────────────────────────────────────────
+   造型只有「深色圆球 + 两只眼睛」，情绪靠眼神：呼吸、注视方向、
+   眨眼、出神时眯眼歪头。全部纯 CSS，跟随 prefers-reduced-motion。 */
+.wr-bot-avatar {
+  display: block;
+  overflow: visible;
 }
 
+.wr-bot-body {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: wm-bot-breathe 5s ease-in-out infinite;
+}
+
+.wr-bot-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: wm-bot-gaze 9s ease-in-out infinite;
+}
+
+.wr-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: wm-bot-blink 3.2s ease-in-out infinite;
+}
+
+/* ── 情绪：同一双眼睛在变形，不是换图 ───────────────────── */
+
+/* 回复中：呼吸变快 + 眯眼 + 快速扫视 = 专注 */
+.wr-bot-avatar[data-mood="thinking"] .wr-bot-body {
+  animation: wm-bot-breathe 2.6s ease-in-out infinite;
+}
+
+.wr-bot-avatar[data-mood="thinking"] .wr-bot-eyes {
+  animation: wm-bot-gaze-active 3.2s ease-in-out infinite;
+}
+
+.wr-bot-avatar[data-mood="thinking"] .wr-eye {
+  animation: wm-bot-think 1.8s ease-in-out infinite;
+}
+
+/* 开心：眯成两道弯 + 身体轻轻弹 */
+.wr-bot-avatar[data-mood="happy"] .wr-bot-body {
+  animation: wm-bot-bounce 1.8s ease-in-out infinite;
+}
+
+.wr-bot-avatar[data-mood="happy"] .wr-eye {
+  animation: wm-bot-happy 1.8s ease-in-out infinite;
+}
+
+/* 好奇：右眼半闭 + 歪头打量 */
+.wr-bot-avatar[data-mood="curious"] .wr-bot-eyes {
+  animation: wm-bot-tilt 5s ease-in-out infinite;
+}
+
+.wr-bot-avatar[data-mood="curious"] .wr-eye-r {
+  animation: wm-bot-squint 2.6s ease-in-out infinite;
+}
+
+/* 生气：两眼向内倾成 /\ */
+.wr-bot-avatar[data-mood="angry"] .wr-bot-body {
+  animation: wm-bot-puff 2.4s ease-in-out infinite;
+}
+
+.wr-bot-avatar[data-mood="angry"] .wr-eye-l {
+  animation: wm-bot-angry-l 2.4s ease-in-out infinite;
+}
+
+.wr-bot-avatar[data-mood="angry"] .wr-eye-r {
+  animation: wm-bot-angry-r 2.4s ease-in-out infinite;
+}
+
+/* 犯困：几乎闭眼，呼吸放慢 */
+.wr-bot-avatar[data-mood="sleepy"] .wr-bot-body {
+  animation: wm-bot-breathe 8s ease-in-out infinite;
+}
+
+.wr-bot-avatar[data-mood="sleepy"] .wr-eye {
+  animation: wm-bot-sleep 6s ease-in-out infinite;
+}
+
+/* 惊讶：眼睛放大，停一下再回去 */
+.wr-bot-avatar[data-mood="surprised"] .wr-eye {
+  animation: wm-bot-surprise 2.2s ease-in-out infinite;
+}
+
+@keyframes wm-bot-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.028);
+  }
+}
+
+/* 眨眼：快速闭合，不是匀速缩放 */
 @keyframes wm-bot-blink {
-  0%, 42%, 48%, 100% { transform: scaleY(1); }
-  45% { transform: scaleY(0.08); }
+  0%,
+  84%,
+  100% {
+    transform: scaleY(1);
+  }
+  87% {
+    transform: scaleY(0.06);
+  }
+  90% {
+    transform: scaleY(1);
+  }
+  92% {
+    transform: scaleY(0.5);
+  }
+  95% {
+    transform: scaleY(1);
+  }
+}
+
+/* 空闲：左看 → 回中 → 右看 → 回中，偶尔上扬一点 */
+@keyframes wm-bot-gaze {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  18% {
+    transform: translate(-7px, 1px) rotate(-1.5deg);
+  }
+  38% {
+    transform: translate(-2px, -3px) rotate(0deg);
+  }
+  62% {
+    transform: translate(6px, 1px) rotate(1.5deg);
+  }
+  82% {
+    transform: translate(1px, 2px) rotate(0deg);
+  }
+}
+
+/* 回复中：更快地在思考与注视之间切换 */
+@keyframes wm-bot-gaze-active {
+  0%,
+  100% {
+    transform: translate(0, -2px) rotate(0deg);
+  }
+  30% {
+    transform: translate(-6px, 0) rotate(-2deg);
+  }
+  60% {
+    transform: translate(5px, -1px) rotate(2deg);
+  }
+}
+
+/* 眯眼 = 专注/思考，比眨眼慢且幅度小 */
+@keyframes wm-bot-think {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  45% {
+    transform: scaleY(0.6);
+  }
+  70% {
+    transform: scaleY(0.86);
+  }
+}
+
+@keyframes wm-bot-bounce {
+  0%,
+  100% {
+    transform: scale(1) translateY(0);
+  }
+  40% {
+    transform: scale(1.05) translateY(-3px);
+  }
+  70% {
+    transform: scale(0.985) translateY(1px);
+  }
+}
+
+@keyframes wm-bot-happy {
+  0%,
+  100% {
+    transform: scaleY(0.34) translateY(9px);
+  }
+  50% {
+    transform: scaleY(0.26) translateY(12px);
+  }
+}
+
+@keyframes wm-bot-tilt {
+  0%,
+  100% {
+    transform: rotate(-6deg) translate(2px, 0);
+  }
+  50% {
+    transform: rotate(4deg) translate(-2px, -1px);
+  }
+}
+
+@keyframes wm-bot-squint {
+  0%,
+  12%,
+  100% {
+    transform: scaleY(1);
+  }
+  40%,
+  70% {
+    transform: scaleY(0.55);
+  }
+}
+
+@keyframes wm-bot-puff {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+@keyframes wm-bot-angry-l {
+  0%,
+  100% {
+    transform: rotate(20deg) translate(7px, -2px);
+  }
+  50% {
+    transform: rotate(24deg) translate(9px, -3px);
+  }
+}
+
+@keyframes wm-bot-angry-r {
+  0%,
+  100% {
+    transform: rotate(-20deg) translate(-7px, -2px);
+  }
+  50% {
+    transform: rotate(-24deg) translate(-9px, -3px);
+  }
+}
+
+@keyframes wm-bot-sleep {
+  0%,
+  100% {
+    transform: scaleY(0.16);
+  }
+  50% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes wm-bot-surprise {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  18%,
+  55% {
+    transform: scale(1.18);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .wr-bot-avatar.replying .wr-bot-eyes { animation: none; }
+  .wr-bot-avatar .wr-bot-body,
+  .wr-bot-avatar .wr-bot-eyes,
+  .wr-bot-avatar .wr-eye {
+    animation: none;
+  }
 }
 
 .wr-chat-date {
@@ -527,54 +865,54 @@
 .wr-ai-messages {
   display: flex;
   flex-direction: column;
-  gap: var(--space-12);
+  gap: 10px;
 }
 
 .wr-ai-row {
-  max-width: 90%;
+  width: 100%;
   display: flex;
   flex-direction: column;
   animation: wm-message-in var(--dur-2) var(--ease) both;
 }
 
 .wr-ai-row.user {
-  align-self: flex-end;
   align-items: flex-end;
 }
 
 .wr-ai-row.assistant {
-  width: 100%;
-  max-width: 90%;
   align-items: flex-start;
 }
 
 .wr-ai-row > small {
-  margin-top: var(--space-4);
+  margin-top: 3px;
   color: var(--ink-3);
-  font-size: var(--text-12);
+  font-size: var(--text-11);
+  line-height: 1.3;
 }
 
+/* 参照 iMessage：16px 正文、1.38 行高、18px 圆角 + 单角 5px 的「尾巴」。 */
 .wr-ai-bubble {
-  max-width: 90%;
-  padding: var(--space-12);
-  border-radius: var(--radius-28);
+  max-width: var(--chat-max-user);
+  padding: 7px 12px;
+  border-radius: var(--radius-18);
   color: var(--ink);
-  font-size: var(--text-17);
-  line-height: var(--leading-relaxed);
+  font-size: var(--text-16);
+  line-height: var(--leading-chat);
   word-break: break-word;
 }
 
 .wr-ai-bubble.user {
-  background: var(--primary);
-  color: var(--on-primary);
-  border-bottom-right-radius: var(--radius-16);
+  background: var(--chat-user-bg);
+  color: var(--chat-user-ink);
+  border-bottom-right-radius: 5px;
 }
 
 .wr-ai-bubble.assistant {
   width: auto;
-  border: var(--border-1) solid var(--glass-line);
-  border-bottom-left-radius: var(--radius-16);
-  background: var(--glass-strong);
+  max-width: 100%;
+  border: var(--border-1) solid var(--chat-surface-line);
+  border-bottom-left-radius: 5px;
+  background: var(--chat-surface);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
 }
@@ -644,8 +982,8 @@
 /* Minimal Markdown */
 
 .wr-ai-md {
-  font-size: var(--text-17);
-  line-height: var(--leading-relaxed);
+  font-size: var(--text-16);
+  line-height: var(--leading-chat);
 }
 
 .wr-ai-md p {
@@ -801,61 +1139,707 @@
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
+/* 一条助手消息只画一个气泡：段落之间留 7px，不再每段一张独立卡片。 */
 .wr-reply-parts {
+  max-width: 100%;
   display: grid;
-  gap: 8px;
-  justify-items: start;
+  gap: 7px;
+  justify-items: stretch;
+  padding: 9px 13px;
+  border: 1px solid var(--chat-surface-line);
+  border-radius: var(--radius-18);
+  border-bottom-left-radius: 5px;
+  background: var(--chat-surface);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  animation: wm-message-in var(--dur-2) var(--ease) both;
 }
 .wr-reply-part {
   max-width: 100%;
-  padding: 12px 15px;
-  border: 1px solid var(--glass-line);
-  border-radius: 20px 20px 20px 6px;
-  background: var(--glass-strong);
-  animation: wm-message-in var(--dur-2) var(--ease) both;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 .wr-plan-proposal {
   width: 100%;
-  margin-top: 12px;
-  padding: 16px;
-  border: 1px solid var(--glass-line);
-  border-radius: 24px;
-  background: var(--glass-strong);
+  margin-top: 8px;
+  padding: 14px;
+  border: 1px solid var(--chat-surface-line);
+  border-radius: var(--radius-20);
+  background: var(--chat-surface);
 }
 .wr-plan-proposal > small {
   color: var(--primary);
-  font-size: 12px;
+  font-size: var(--text-11);
 }
 .wr-plan-proposal h3 {
-  margin: 6px 0;
-  font-size: 17px;
+  margin: 4px 0;
+  font-size: var(--text-16);
+  line-height: var(--leading-tight);
 }
 .wr-plan-proposal p {
   margin: 0;
   color: var(--ink-2);
-  font-size: 14px;
+  font-size: var(--text-13);
+  line-height: var(--leading-body);
 }
 .wr-plan-proposal ol {
+  margin: 8px 0 10px;
   padding-left: 20px;
-  font-size: 14px;
-  line-height: 1.7;
+  font-size: var(--text-13);
+  line-height: 1.6;
 }
 .wr-plan-proposal > button {
   width: 100%;
 }
 .wr-plan-actions {
   display: flex;
-  gap: 12px;
+  gap: 10px;
 }
 .wr-plan-actions button {
-  padding: 10px;
-  border-radius: 18px;
+  flex: 1;
+  padding: 9px;
+  border-radius: var(--radius-16);
   background: var(--primary-soft);
   color: var(--primary);
-  font-size: 14px;
+  font-size: var(--text-13);
+  font-weight: var(--weight-medium);
 }
 .wr-plan-origin {
   display: block;
   color: var(--primary);
-  font-size: 12px;
+  font-size: var(--text-11);
+}
+.wr-memory-proposal {
+  width: 100%;
+  margin-top: 8px;
+  padding: 14px;
+  border: 1px solid var(--chat-surface-line);
+  border-radius: var(--radius-20);
+  background: var(--chat-surface);
+}
+.wr-memory-proposal > small {
+  color: var(--primary);
+  font-size: var(--text-11);
+}
+.wr-memory-proposal ul {
+  margin: 6px 0 10px;
+  padding-left: 18px;
+  color: var(--ink);
+  font-size: var(--text-13);
+  line-height: 1.6;
+}
+.wr-memory-proposal > button {
+  width: 100%;
+}
+
+/* 头像换成动画组件后，各处容器统一撑满 */
+.wr-bot-avatar {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.wr-ai-empty-mark.wr-bot-avatar {
+  width: var(--space-64);
+  height: var(--space-64);
+  margin: 0 auto var(--space-16);
+  border-radius: var(--radius-pill);
+}
+
+/* ── 用户发来的文件卡片 ───────────────────────────── */
+
+.wr-file-card {
+  max-width: var(--chat-max-user);
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: 8px 10px;
+  border: 1px solid var(--chat-surface-line);
+  border-radius: var(--radius-18);
+  border-bottom-right-radius: 5px;
+  background: var(--chat-surface);
+}
+
+.wr-file-mark {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.wr-file-body {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.wr-file-body b {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: var(--text-13);
+  font-weight: var(--weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wr-file-body small {
+  color: var(--ink-3);
+  font-size: var(--text-11);
+}
+
+.wr-file-remember {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: var(--text-11);
+  font-weight: var(--weight-medium);
+}
+
+/* ── 头部右侧动作组 ─────────────────────────────── */
+
+.wr-chat-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* 联网开关打开时的强调态 */
+.wr-round-on {
+  border-color: transparent;
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+/* ── 语音通话浮层 ───────────────────────────────── */
+
+.wr-call {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(var(--safe-top) + 48px) var(--page-pad)
+    calc(var(--safe-bottom) + 40px);
+  background: radial-gradient(
+    120% 80% at 50% 0%,
+    #dfeaf6 0%,
+    #eef2f7 45%,
+    #f7f0e7 100%
+  );
+  animation: wm-call-in var(--dur-3) var(--ease) both;
+}
+
+@keyframes wm-call-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.wr-call-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-16);
+  text-align: center;
+}
+
+.wr-call-face {
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.9),
+    0 18px 40px rgba(16, 36, 56, 0.14);
+}
+
+.wr-call-status {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-17);
+  font-weight: var(--weight-medium);
+}
+
+.wr-call-note {
+  max-width: 260px;
+  margin: 0;
+  color: var(--ink-3);
+  font-size: var(--text-12);
+  line-height: var(--leading-body);
+}
+
+.wr-call-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-20);
+}
+
+.wr-call-mic {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--on-primary);
+  box-shadow: 0 10px 24px rgba(37, 99, 168, 0.28);
+}
+
+.wr-call-mic:disabled {
+  opacity: 0.5;
+}
+
+.wr-call-mic.listening {
+  background: var(--danger);
+  animation: wm-call-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes wm-call-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(163, 58, 44, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 0 14px rgba(163, 58, 44, 0);
+  }
+}
+
+.wr-call-hangup {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--danger);
+  box-shadow: var(--shadow-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wr-call,
+  .wr-call-mic.listening {
+    animation: none;
+  }
+}
+
+/* ── 通话：退出、波纹、处理中 ───────────────────── */
+
+.wr-call-close {
+  position: absolute;
+  top: calc(var(--safe-top) + 10px);
+  left: var(--page-pad);
+  height: var(--control-44);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 14px 0 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.9);
+  color: var(--ink-2);
+  font-size: var(--text-13);
+}
+
+.wr-call-stage {
+  position: relative;
+  width: 132px;
+  height: 132px;
+  display: grid;
+  place-items: center;
+}
+
+.wr-call-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--primary);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 收音：三圈错开向外扩散 */
+.wr-call-stage.listening .wr-call-ring {
+  animation: wm-call-ripple 2.4s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+}
+
+.wr-call-stage.listening .r2 {
+  animation-delay: 0.8s;
+}
+
+.wr-call-stage.listening .r3 {
+  animation-delay: 1.6s;
+}
+
+/* 说话：整体呼吸，不扩散 */
+.wr-call-stage.speaking .wr-call-ring {
+  border: none;
+  background: var(--primary-soft);
+  animation: wm-call-breath 1.7s ease-in-out infinite;
+}
+
+.wr-call-stage.speaking .r2 {
+  animation-delay: 0.35s;
+}
+
+.wr-call-stage.speaking .r3 {
+  animation-delay: 0.7s;
+}
+
+@keyframes wm-call-ripple {
+  0% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  70% {
+    opacity: 0.08;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.85);
+  }
+}
+
+@keyframes wm-call-breath {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.22);
+  }
+}
+
+.wr-call-spinner {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  margin-right: 6px;
+  border: 2px solid var(--primary);
+  border-top-color: transparent;
+  border-radius: 50%;
+  vertical-align: -2px;
+  animation: wm-spin 0.85s linear infinite;
+}
+
+@keyframes wm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wr-call-ring,
+  .wr-call-spinner {
+    animation: none;
+  }
+}
+
+/* ── 空态：大头像占住视线中心 ───────────────────── */
+
+.wr-chat-head.is-empty .wr-chat-title {
+  display: none;
+}
+
+.wr-chat-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12vh var(--space-16) 0;
+  width: 100%;
+  text-align: center;
+}
+
+.wr-hero-orb {
+  width: 116px;
+  height: 116px;
+  display: block;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.9),
+    0 20px 48px rgba(16, 36, 56, 0.16);
+}
+
+.wr-chat-hero > b {
+  margin-top: var(--space-8);
+  color: var(--ink);
+  font-size: 22px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.02em;
+}
+
+.wr-chat-hero > small {
+  color: var(--ink-3);
+  font-size: var(--text-13);
+}
+
+/* 有消息之后头像缩回头部，但比原先的 44 大一号 */
+.wr-chat-orb {
+  width: 56px;
+  height: 56px;
+}
+
+.wr-chat-head:not(.is-empty) .wr-chat-title {
+  padding-top: 0;
+}
+
+/* ── 空态固定层 ────────────────────────────────────────────
+   空态不再放在滚动容器里：以前往下翻，头像和引导会被滚走，
+   整页像一张长截图。现在它铺满可视区、内部居中，只有消息列表滚动。 */
+.wr-chat-empty {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-16);
+  padding: calc(var(--safe-top) + 118px) var(--page-pad)
+    calc(var(--content-bottom) + var(--safe-bottom) + var(--space-16));
+  pointer-events: none;
+}
+
+.wr-chat-empty > * {
+  pointer-events: auto;
+}
+
+.wr-chat-empty .wr-ai-empty {
+  padding: 0;
+}
+
+/* 聊天里收到课表时的确认卡：和方案卡同一套语言，但强调「等你确认」 */
+.wr-course-proposal {
+  margin: 0 var(--page-pad) var(--space-12);
+  padding: var(--space-16);
+  border: var(--border-1) solid var(--primary-line);
+  border-radius: var(--radius-20);
+  background: var(--surface);
+}
+
+.wr-course-proposal small {
+  display: block;
+  margin-bottom: var(--space-8);
+  color: var(--primary);
+  font-size: var(--text-12);
+}
+
+.wr-course-proposal h3 {
+  margin: 0 0 var(--space-12);
+  color: var(--ink);
+  font-size: var(--text-17);
+  font-weight: var(--weight-semibold);
+}
+
+.wr-course-proposal ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0 0 var(--space-12);
+  padding: 0;
+  list-style: none;
+}
+
+.wr-course-proposal li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-8);
+  color: var(--ink-2);
+  font-size: var(--text-14);
+}
+
+.wr-course-proposal li b {
+  flex: 1;
+  min-width: 0;
+  color: var(--ink);
+  font-weight: var(--weight-medium);
+}
+
+.wr-course-proposal li em {
+  color: var(--ink-3);
+  font-size: var(--text-12);
+  font-style: normal;
+}
+
+.wr-course-proposal-more {
+  margin: 0 0 var(--space-12);
+  color: var(--ink-3);
+  font-size: var(--text-12);
+}
+
+/* 技能命中提示：让用户知道「这一轮我按专门的方法在答」 */
+.wr-skill-chip {
+  align-self: flex-start;
+  margin: 0 var(--page-pad) var(--space-8);
+  padding: var(--space-4) var(--space-12);
+  border-radius: var(--radius-pill);
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: var(--text-12);
+}
+
+
+/* ── 语音气泡 ──────────────────────────────────────────────
+   波形 + 时长；播放时波形跳动，合成中显示省略号。 */
+.wr-voice-bubble {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: var(--space-32);
+  padding: var(--space-4) var(--space-12);
+  border-radius: var(--radius-pill);
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: var(--text-12);
+}
+
+.wr-voice-bubble[data-state="error"] {
+  background: var(--danger-soft, rgba(163, 58, 44, 0.12));
+  color: var(--danger);
+}
+
+.wr-voice-bubble[data-state="loading"] {
+  opacity: 0.7;
+}
+
+.wr-voice-wave {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: var(--space-16);
+}
+
+.wr-voice-wave i {
+  width: 2px;
+  height: 40%;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: 0.45;
+}
+
+.wr-voice-bubble[data-state="playing"] .wr-voice-wave i {
+  animation: wm-voice-wave 900ms ease-in-out infinite;
+}
+
+@keyframes wm-voice-wave {
+  0%,
+  100% {
+    height: 30%;
+    opacity: 0.5;
+  }
+  50% {
+    height: 100%;
+    opacity: 1;
+  }
+}
+
+.wr-voice-time {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ── markdown-it 生成的结构（原来手写渲染器没有这些标签）──── */
+
+.wr-ai-md ul,
+.wr-ai-md ol {
+  margin: 0 0 var(--space-8);
+  padding-left: 1.2em;
+}
+
+.wr-ai-md li {
+  margin: 2px 0;
+}
+
+.wr-ai-md li > p {
+  margin: 0;
+}
+
+.wr-ai-md a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.wr-ai-md strong {
+  font-weight: var(--weight-semibold);
+}
+
+.wr-ai-md code {
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: var(--surface-muted);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.92em;
+}
+
+.wr-ai-md pre {
+  margin: 0 0 var(--space-8);
+  padding: var(--space-12);
+  overflow-x: auto;
+  border-radius: var(--radius-16);
+  background: var(--surface-muted);
+}
+
+.wr-ai-md pre code {
+  padding: 0;
+  background: none;
+  font-size: var(--text-13);
+  line-height: 1.6;
+}
+
+.wr-ai-md table {
+  width: 100%;
+  margin: 0 0 var(--space-8);
+  border-collapse: collapse;
+  font-size: var(--text-14);
+}
+
+.wr-ai-md th,
+.wr-ai-md td {
+  padding: 6px 8px;
+  border-bottom: var(--border-1) solid var(--divider);
+  text-align: left;
+}
+
+.wr-ai-md th {
+  color: var(--ink-2);
+  font-weight: var(--weight-medium);
+}
+
+.wr-ai-md blockquote {
+  margin: 0 0 var(--space-8);
+  padding-left: var(--space-12);
+  border-left: 2px solid var(--divider);
+  color: var(--ink-2);
+}
+
+/* 公式：行内的不要撑行高，块级的居中 */
+.wr-ai-md .katex {
+  font-size: 1.02em;
+}
+
+.wr-ai-md .katex-display {
+  margin: var(--space-8) 0;
+  overflow-x: auto;
+  overflow-y: hidden;
 }

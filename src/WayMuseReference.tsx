@@ -1,8 +1,21 @@
 import { useEffect, useState } from "react";
+import { App } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
 import { BRAND } from "./brand";
 import { newId } from "./id";
 import Onboarding from "./Onboarding";
-import WayMuseIntake from "./WayMuseIntake";
+import { haptic, readCalendarEvents } from "./nativeExtras";
+import type { CalendarEvent } from "./nativeExtras";
+import { subscribeChrome, useHideNativeChrome } from "./chrome";
+import { installGlobalHaptics } from "./haptics";
+import {
+  endLiveActivity,
+  startLiveActivity,
+  updateLiveActivity,
+} from "./liveActivity";
+import { dueLabel, nextDueTask } from "./upnext";
+import { syncTaskReminders } from "./reminders";
+import { useKeyboardInset } from "./useKeyboardInset";
 import ChatPage from "./pages/ChatPage";
 import Dock from "./pages/Dock";
 import MemoryPage from "./pages/MemoryPage";
@@ -11,15 +24,16 @@ import PersonaPage from "./pages/PersonaPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import SettingsPage from "./pages/SettingsPage";
 import TaskPage from "./pages/TaskPage";
+import CourseImportSheet from "./pages/CourseImportSheet";
 import TodayPage from "./pages/TodayPage";
 import { DEFAULT_PROFILE } from "./profile";
 import type { UserProfile } from "./profile";
-import { storage } from "./storage";
-import type { Course, Kind, Overlay, Page, Task } from "./types";
+import { storage, createMemory } from "./storage";
+import { academicWeek, isCourseInWeek, readTermStart } from "./term";
+import type { Course, Memory, Overlay, Page, Task } from "./types";
 import { useNativeTabs } from "./useNativeTabs";
 
 const seedTasks: Task[] = [];
-const seedMemories: string[] = [];
 const oldSeedMemories = new Set([
   "大二，计算机相关专业",
   "希望明年暑假找到第一份实习",
@@ -42,18 +56,20 @@ function getShanghaiWeekday(now = new Date()): number {
 }
 
 export default function WayMuseReference() {
+  // 键盘弹起时把被遮挡的高度写进 --kb-inset，弹层才能躲开键盘。
+  useKeyboardInset();
   const [page, setPage] = useState<Page>("聊天");
   const [overlay, setOverlay] = useState<Overlay>("");
   const [attachmentMenu, setAttachmentMenu] = useState(false);
-  const [intakeKind, setIntakeKind] = useState<Kind>("课表");
-  const [taskMode, setTaskMode] = useState<"任务" | "定时">("任务");
+  const [courseImportOpen, setCourseImportOpen] = useState(false);
+  // 导入层是我们自己的全屏 sheet，但原生输入框会浮在它上面：打开时一并隐藏
+  useHideNativeChrome(courseImportOpen);
+  const [taskMode, setTaskMode] = useState<"任务" | "课表">("任务");
   const [tasks, setTasks] = useState<Task[]>(() =>
     storage.getTasks(seedTasks).filter((task) => !task.id.startsWith("seed-")),
   );
-  const [memories, setMemories] = useState<string[]>(() =>
-    storage
-      .getMemories(seedMemories)
-      .filter((memory) => !oldSeedMemories.has(memory)),
+  const [memories, setMemories] = useState<Memory[]>(() =>
+    storage.getMemories().filter((memory) => !oldSeedMemories.has(memory.text)),
   );
   const [draft, setDraft] = useState("");
   const [pendingChat, setPendingChat] = useState<{
@@ -65,7 +81,9 @@ export default function WayMuseReference() {
   );
   const profileName = profile.callName.trim() || "同学";
   const [showTip, setShowTip] = useState(true);
+  const [chromeHidden, setChromeHidden] = useState(false);
   const [courses, setCourses] = useState<Course[]>(storage.getCourses);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [hasEntered, setHasEntered] = useState(storage.getEntered);
   const [agentName, setAgentName] = useState(
     () => storage.getAgentName() || BRAND,
@@ -82,7 +100,7 @@ export default function WayMuseReference() {
   }, [profile.avatar]);
 
   useEffect(() => {
-    document.title = `${BRAND} · 你的大学生活 AI 助理`;
+    document.title = `${BRAND} · 学业助理`;
   }, []);
   useEffect(() => {
     if (!hasEntered) return;
@@ -101,9 +119,83 @@ export default function WayMuseReference() {
     storage.setProfile(profile);
   }, [profile, hasEntered]);
 
+  useEffect(() => {
+    if (page !== "Today") return;
+    let alive = true;
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    void readCalendarEvents(start.toISOString(), end.toISOString()).then(
+      (events) => {
+        if (alive) setCalendarEvents(events);
+      },
+    );
+    return () => {
+      alive = false;
+    };
+  }, [page]);
+
+  // 任何网页浮层打开时，让原生 Tab 栏与输入框让位
+  useEffect(() => subscribeChrome(setChromeHidden), []);
+
+  // 全局触觉反馈：任何按钮按下都给一下轻震
+  useEffect(() => {
+    installGlobalHaptics();
+  }, []);
+
+  // ── 计划上岛 ─────────────────────────────────────
+  // 只把「最近的一件、有时间点、还没做完」的任务放上灵动岛；
+  // 岛上一个时间只能显示一个活动，所以这里自己也保证只维护一个。
+  useEffect(() => {
+    let activeKey = "";
+
+    const sync = () => {
+      const next = nextDueTask(tasks);
+      if (!next) {
+        if (activeKey) {
+          activeKey = "";
+          void endLiveActivity("task");
+        }
+        return;
+      }
+      const key = `${next.task.id}@${next.dueAt.toISOString()}`;
+      const detail = dueLabel(next);
+      const iso = next.dueAt.toISOString();
+      if (key === activeKey) {
+        void updateLiveActivity("task", next.task.text, detail, iso);
+        return;
+      }
+      activeKey = key;
+      void startLiveActivity("task", next.task.text, detail, iso);
+    };
+
+    sync();
+    const timer = window.setInterval(sync, 60_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") sync();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [tasks]);
+
+  // 本地通知：App 不运行时也要能提醒。和上岛共用同一份任务数据，
+  // 但走的是两条独立通道（通知是系统调度，岛是前台/后台的实时显示）。
+  useEffect(() => {
+    void syncTaskReminders(tasks);
+  }, [tasks]);
+
   const todayWeekday = getShanghaiWeekday();
+  // 单双周 / 1-16 周这类课，只有「本周要上」的才出现在今天
+  const termWeek = academicWeek(readTermStart());
   const todayCourses = courses
-    .filter((course) => course.weekday === todayWeekday)
+    .filter(
+      (course) =>
+        course.weekday === todayWeekday && isCourseInWeek(course, termWeek),
+    )
     .sort((a, b) => a.start.localeCompare(b.start));
   const date = new Intl.DateTimeFormat("zh-CN", {
     month: "long",
@@ -114,11 +206,14 @@ export default function WayMuseReference() {
 
   const submit = () => {
     if (!draft.trim()) return;
+    // 原生输入框的发送键直接走这里，所以触觉反馈要加在这一层，
+    // 否则从原生输入框发消息就完全没有震动。
+    void haptic("light");
     if (overlay === "新增任务") {
       setTasks([{ id: newId(), text: draft.trim(), done: false }, ...tasks]);
       setOverlay("");
     } else if (overlay === "添加记忆") {
-      setMemories([draft.trim(), ...memories]);
+      setMemories([createMemory(draft.trim()), ...memories]);
       setOverlay("");
     } else {
       setPendingChat({ id: Date.now(), text: draft.trim() });
@@ -131,12 +226,47 @@ export default function WayMuseReference() {
     setOverlay("");
     setAttachmentMenu(false);
   };
-  const nativeTabsActive = useNativeTabs(page, hasEntered, overlay, nav);
-  const openIntake = (kind: Kind) => {
-    setIntakeKind(kind);
-    setAttachmentMenu(false);
-    setOverlay("资料导入");
-  };
+
+  // Android（含小米澎湃 HyperOS）：系统返回键/返回手势不能直接把 App 杀掉。
+  // 语义：关浮层 → 回聊天页 → 再按一次才退出。
+  useEffect(() => {
+    if (
+      !Capacitor.isNativePlatform() ||
+      Capacitor.getPlatform() !== "android"
+    ) {
+      return;
+    }
+    let listener: { remove: () => Promise<void> } | undefined;
+    let disposed = false;
+    void App.addListener("backButton", () => {
+      if (overlay) {
+        setOverlay("");
+        return;
+      }
+      if (page !== "聊天") {
+        setPage("聊天");
+        return;
+      }
+      void App.minimizeApp();
+    })
+      .then((handle) => {
+        if (disposed) void handle.remove();
+        else listener = handle;
+      })
+      .catch(() => undefined);
+    return () => {
+      disposed = true;
+      void listener?.remove();
+    };
+  }, [overlay, page]);
+  // 原生 Liquid Glass Tab 栏：iOS 上由 LiquidGlassPlugin 接管，
+  // 其它环境自动回落到 Web Tab 栏（hook 内部判断平台）。
+  const nativeTabsActive = useNativeTabs(
+    page,
+    hasEntered,
+    chromeHidden ? "通话" : overlay,
+    nav,
+  );
   const exportDemoData = () => {
     try {
       const payload = JSON.stringify(storage.exportData(), null, 2);
@@ -165,7 +295,6 @@ export default function WayMuseReference() {
     setShowTip(true);
     setPage("Today");
     setAttachmentMenu(false);
-    setIntakeKind("课表");
     setOverlay("");
     setHasEntered(false);
   };
@@ -197,7 +326,10 @@ export default function WayMuseReference() {
 
   return (
     <div className="wr-page">
-      <div className="wr-phone">
+      <div className="wr-phone" data-dock="shown">
+        {/* 聊天页有自己的导航条；其它页用这条渐隐带，让上滚内容在状态栏处淡出，
+            而不是硬切一刀。 */}
+        {page !== "聊天" && <div className="wr-topfade" aria-hidden="true" />}
         <main
           key={page}
           className={`wr-content ${page === "聊天" ? "wr-content-chat" : ""}`}
@@ -206,13 +338,13 @@ export default function WayMuseReference() {
             <TodayPage
               profileName={profileName}
               date={date}
-              memories={memories}
               tasks={tasks}
               todayCourses={todayCourses}
+              calendarEvents={calendarEvents}
               courses={courses}
               setCourses={setCourses}
               setOverlay={setOverlay}
-              openIntake={openIntake}
+              onImportCourses={() => setCourseImportOpen(true)}
               nav={nav}
             />
           )}
@@ -222,6 +354,8 @@ export default function WayMuseReference() {
               setTaskMode={setTaskMode}
               tasks={tasks}
               setTasks={setTasks}
+              courses={courses}
+              setCourses={setCourses}
               setOverlay={setOverlay}
             />
           )}
@@ -248,6 +382,8 @@ export default function WayMuseReference() {
               tasks={tasks}
               onSettings={() => setOverlay("设置")}
               onTasksChange={setTasks}
+              onMemoriesChange={setMemories}
+              onCoursesChange={setCourses}
               onViewPlans={() => nav("任务")}
             />
           )}
@@ -267,23 +403,17 @@ export default function WayMuseReference() {
           setAttachmentMenu={setAttachmentMenu}
           draft={draft}
           setDraft={setDraft}
-          overlay={overlay}
+          overlay={chromeHidden ? "通话" : overlay}
           submit={submit}
-          openIntake={openIntake}
+          onAttach={(payload) => {
+            setPendingChat({ id: Date.now(), text: payload });
+            setPage("聊天");
+          }}
           page={page}
           nav={nav}
           agentName={agentName}
           agentAvatar={agentAvatar}
         />
-        {overlay === "资料导入" && (
-          <WayMuseIntake
-            key={intakeKind}
-            initialKind={intakeKind}
-            onClose={() => setOverlay("")}
-            onSaveCourse={(course) => setCourses([...courses, course])}
-            onSaveNote={(note) => setMemories([note, ...memories])}
-          />
-        )}
         {overlay === "设置" && (
           <SettingsPage
             profile={profile}
@@ -307,19 +437,27 @@ export default function WayMuseReference() {
         {overlay === "隐私与数据" && (
           <PrivacyPage onClose={() => setOverlay("设置")} />
         )}
-        {overlay &&
-          overlay !== "设置" &&
-          overlay !== "资料导入" &&
-          overlay !== "隐私与数据" && (
-            <OverlaySheet
-              overlay={overlay}
-              setOverlay={setOverlay}
-              draft={draft}
-              setDraft={setDraft}
-              submit={submit}
-              onClearData={clearDemoData}
-            />
-          )}
+        {courseImportOpen && (
+          <CourseImportSheet
+            existing={courses}
+            onClose={() => setCourseImportOpen(false)}
+            onSave={(list) => setCourses((current) => [...current, ...list])}
+            onOpenSettings={() => {
+              setCourseImportOpen(false);
+              setOverlay("设置");
+            }}
+          />
+        )}
+        {overlay && overlay !== "设置" && overlay !== "隐私与数据" && (
+          <OverlaySheet
+            overlay={overlay}
+            setOverlay={setOverlay}
+            draft={draft}
+            setDraft={setDraft}
+            submit={submit}
+            onClearData={clearDemoData}
+          />
+        )}
       </div>
     </div>
   );

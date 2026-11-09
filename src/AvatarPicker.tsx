@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { LoaderCircle, Trash2, Upload } from "lucide-react";
 import { imageFileToAvatar } from "./avatar";
+import BotAvatar from "./BotAvatar";
 
 export default function AvatarPicker({
   value,
@@ -23,11 +24,7 @@ export default function AvatarPicker({
         onClick={choose}
         aria-label={value ? "更换头像" : "上传头像"}
       >
-        {value ? (
-          <img src={value} alt="头像预览" />
-        ) : (
-          <img src="/avatar.svg" alt="WayMuse 默认头像" />
-        )}
+        {value ? <img src={value} alt="头像预览" /> : <BotAvatar />}
         {busy && (
           <span className="wr-avatar-busy">
             <LoaderCircle size={20} />
