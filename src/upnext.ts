@@ -1,3 +1,4 @@
+import { taskDueAt } from "./taskTime";
 import type { Task } from "./types";
 
 /**
@@ -17,19 +18,11 @@ export type UpNext = {
   dueAt: Date;
 };
 
-function dueDate(task: Task): Date | null {
-  if (!task.deadline) return null;
-  // 没写具体钟点就按当天结束算，和「今天到期」的语义一致
-  const time = task.time?.trim() || "23:59";
-  const parsed = new Date(`${task.deadline}T${time}:00`);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
 export function nextDueTask(tasks: Task[], now = new Date()): UpNext | null {
   const candidates: UpNext[] = [];
   for (const task of tasks) {
     if (task.done) continue;
-    const due = dueDate(task);
+    const due = taskDueAt(task);
     if (!due) continue;
     const deltaMinutes = (due.getTime() - now.getTime()) / 60000;
     if (deltaMinutes > UPCOMING_WINDOW_MINUTES) continue;

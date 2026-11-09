@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { dueAt, notificationId, planReminders } from "./reminders";
+import { notificationId, planReminders } from "./reminders";
+import { taskDueAt } from "./taskTime";
 import { nextDueTask } from "./upnext";
 import type { Task } from "./types";
 
@@ -10,20 +11,34 @@ function task(overrides: Partial<Task> & { id: string }): Task {
 /** 固定「现在」，避免测试依赖真实时钟 */
 const NOW = new Date("2026-11-09T20:00:00");
 
-describe("dueAt", () => {
+describe("taskDueAt（岛上和通知共用）", () => {
   it("截止日期 + 钟点", () => {
-    const value = dueAt(task({ id: "a", deadline: "2026-11-09", time: "21:30" }));
+    const value = taskDueAt(
+      task({ id: "a", deadline: "2026-11-09", time: "21:30" }),
+    );
     expect(value?.getHours()).toBe(21);
     expect(value?.getMinutes()).toBe(30);
   });
 
   it("没写钟点按 20:00", () => {
-    const value = dueAt(task({ id: "a", deadline: "2026-11-09" }));
+    const value = taskDueAt(task({ id: "a", deadline: "2026-11-09" }));
     expect(value?.getHours()).toBe(20);
   });
 
   it("没有截止日期返回 null", () => {
-    expect(dueAt(task({ id: "a" }))).toBeNull();
+    expect(taskDueAt(task({ id: "a" }))).toBeNull();
+  });
+});
+
+describe("两条通道的一致性", () => {
+  it("没写钟点时，岛上和通知算的是同一个时刻", () => {
+    const one = task({ id: "a", deadline: "2026-11-09" });
+    // 通知：提前 10 分钟 -> 19:50
+    const planned = planReminders([one], new Date("2026-11-09T08:00:00"));
+    expect(planned[0].at.getHours()).toBe(19);
+    expect(planned[0].at.getMinutes()).toBe(50);
+    // 上岛：同一个到期时刻 20:00
+    expect(taskDueAt(one)?.getHours()).toBe(20);
   });
 });
 
@@ -41,10 +56,26 @@ describe("planReminders", () => {
   it("只排未完成、且未来到期的任务", () => {
     const planned = planReminders(
       [
-        task({ id: "a", text: "写作业", deadline: "2026-11-09", time: "22:00" }),
-        task({ id: "b", text: "已完成", done: true, deadline: "2026-11-09", time: "22:00" }),
+        task({
+          id: "a",
+          text: "写作业",
+          deadline: "2026-11-09",
+          time: "22:00",
+        }),
+        task({
+          id: "b",
+          text: "已完成",
+          done: true,
+          deadline: "2026-11-09",
+          time: "22:00",
+        }),
         task({ id: "c", text: "没日期" }),
-        task({ id: "d", text: "已过期", deadline: "2026-11-01", time: "10:00" }),
+        task({
+          id: "d",
+          text: "已过期",
+          deadline: "2026-11-01",
+          time: "10:00",
+        }),
       ],
       NOW,
     );

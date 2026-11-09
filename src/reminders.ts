@@ -1,5 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
+import { taskDueAt } from "./taskTime";
 import type { Task } from "./types";
 
 /**
@@ -29,14 +30,6 @@ export function isReminderSupported(): boolean {
   return Capacitor.isNativePlatform();
 }
 
-/** 任务的到期时刻；没写钟点就按 20:00 算 */
-export function dueAt(task: Task): Date | null {
-  if (!task.deadline) return null;
-  const time = task.time?.trim() || "20:00";
-  const parsed = new Date(`${task.deadline}T${time}:00`);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
 /** 把任务 id 换成稳定的整数通知 id（同一个任务每次都算同一个值） */
 export function notificationId(taskId: string): number {
   let hash = 0;
@@ -64,7 +57,7 @@ export function planReminders(
 
   for (const task of tasks) {
     if (task.done) continue;
-    const due = dueAt(task);
+    const due = taskDueAt(task);
     if (!due) continue;
     if (due.getTime() <= nowMs) continue;
 
@@ -80,7 +73,6 @@ export function planReminders(
   planned.sort((a, b) => a.at.getTime() - b.at.getTime());
   return planned.slice(0, MAX_SCHEDULED);
 }
-
 
 /** 和系统打交道：先全撤再按最新计划重排 */
 export async function syncTaskReminders(tasks: Task[]): Promise<void> {
