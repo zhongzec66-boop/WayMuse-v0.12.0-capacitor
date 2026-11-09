@@ -96,6 +96,16 @@ jobs:
           cp android/app/build/outputs/apk/release/app-release.apk build/apk/WayMuse-android.apk
           ls -la build/apk
 
+      # 打印签名指纹：既确认用的是我们的证书，也方便和手机上的信息对照
+      - name: Verify APK signature
+        run: |
+          APKSIGNER="$(ls "$ANDROID_HOME"/build-tools/*/apksigner 2>/dev/null | head -n1)"
+          if [ -n "$APKSIGNER" ]; then
+            "$APKSIGNER" verify --print-certs build/apk/WayMuse-android.apk | head -n 12
+          else
+            echo "apksigner not found, skip"
+          fi
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
