@@ -8,7 +8,7 @@
 import { Capacitor } from "@capacitor/core";
 
 /** 线上地址；本地调试可用 localStorage 覆盖 */
-const DEFAULT_BASE = "https://api.101-32-101-117.sslip.io";
+const DEFAULT_BASE = "https://waymuse.duckdns.org";
 
 const TOKEN_KEY = "waymuse-auth";
 const DEVICE_KEY = "waymuse-device-id";
