@@ -17,6 +17,7 @@ import {
   Trash2,
   TriangleAlert,
 } from "lucide-react";
+import { ApiError, streamServerChat } from "../api";
 import { localSuggestions, parseReply, planTasks } from "../agent";
 import { matchSkills } from "../skills";
 import { parseCourseText, toCourses } from "../courseImport";
@@ -308,32 +309,128 @@ export default function ChatPage({
       webContext = formatSearchContext(content, hits);
     }
 
-    // 没有 Key 时走本地兜底：仍然给用户「可说 → 可确认 → 可落地」的闭环，
-    // 而不是把连接设置硬塞到用户面前。
+    // 没有本地 Key：优先走服务端代理（Key 在服务器，客户端只带令牌）
     if (!apiKey.trim()) {
-      const local = localSuggestions(content);
-      const parts = [local.text];
-      if (local.plans.length) {
-        parts.push(`<plans>${JSON.stringify(local.plans)}</plans>`);
-      }
-      if (local.memories.length) {
-        parts.push(`<memories>${JSON.stringify(local.memories)}</memories>`);
-      }
-      const now = Date.now();
+      const userMessage: DeepSeekMessage = {
+        id: newId(),
+        role: "user",
+        content,
+        createdAt: Date.now(),
+      };
+      const assistantId = newId();
+      const createdAt = Date.now();
+      const startedAt = performance.now();
+
       setMessages([
         ...history,
-        { id: newId(), role: "user", content, createdAt: now },
+        userMessage,
         {
-          id: newId(),
+          id: assistantId,
           role: "assistant",
-          content: parts.join("\n\n"),
-          createdAt: now,
-          model: "本地建议",
+          content: "",
+          createdAt,
+          model: "server",
         },
       ]);
       setError("");
       setUsage(null);
-      setLatency(null);
+      setStreaming(true);
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      try {
+        let serverContent = "";
+        await streamServerChat({
+          messages: [
+            {
+              role: "system",
+              content: buildSystemPrompt(
+                config,
+                profile,
+                { memories, courses, tasks },
+                webContext,
+                content,
+              ),
+            },
+            ...history.map((message) => ({
+              role: message.role,
+              content: message.content,
+            })),
+            { role: "user", content },
+          ],
+          temperature: profile.temperature,
+          maxTokens: Math.max(
+            config.maxTokens,
+            responseTokenBudget(profile.responseLength),
+            config.thinking ? 4096 : 0,
+          ),
+          signal: controller.signal,
+          onDelta: (delta) => {
+            serverContent += delta;
+            setMessages((current) =>
+              current.map((message) =>
+                message.id === assistantId
+                  ? { ...message, content: message.content + delta }
+                  : message,
+              ),
+            );
+          },
+        });
+
+        if (!serverContent.trim()) throw new Error("服务端没有返回内容");
+
+        const parsedServer = parseReply(serverContent).courses;
+        if (parsedServer.length) setCourseProposal(parsedServer);
+
+        setMessages((current) =>
+          current.map((message) =>
+            message.id === assistantId
+              ? {
+                  ...message,
+                  latencyMs: Math.round(performance.now() - startedAt),
+                }
+              : message,
+          ),
+        );
+        setConnectState("ok");
+        setConnectText("服务端代理");
+        setLatency(Math.round(performance.now() - startedAt));
+      } catch (serverError) {
+        if (serverError instanceof ApiError && serverError.status === 429) {
+          setError("今天的额度用完了，明天再来，或到设置里换成自己的 Key");
+          setMessages((current) =>
+            current.filter((message) => message.id !== assistantId),
+          );
+          return;
+        }
+
+        // 服务端不可用：退回本地建议，保证还能给出可执行方案
+        console.warn("[chat] server failed", serverError);
+        const local = localSuggestions(content);
+        const parts = [local.text];
+        if (local.plans.length) {
+          parts.push(`<plans>${JSON.stringify(local.plans)}</plans>`);
+        }
+        if (local.memories.length) {
+          parts.push(`<memories>${JSON.stringify(local.memories)}</memories>`);
+        }
+        setMessages([
+          ...history,
+          userMessage,
+          {
+            id: assistantId,
+            role: "assistant",
+            content: parts.join("\n\n"),
+            createdAt,
+            model: "本地建议",
+          },
+        ]);
+        setError("");
+      } finally {
+        setStreaming(false);
+        abortRef.current = null;
+      }
       return;
     }
 
@@ -395,6 +492,68 @@ export default function ChatPage({
     };
 
     try {
+      // ① 优先走服务端代理：Key 只在服务器，客户端只带令牌
+      try {
+        let serverContent = "";
+        await streamServerChat({
+          messages: payload.map((message) => ({
+            role: message.role,
+            content: message.content,
+          })),
+          temperature: requestConfig.temperature,
+          maxTokens: requestConfig.maxTokens,
+          signal: controller.signal,
+          onDelta: (delta) => {
+            firstTokenAt ??= performance.now();
+            serverContent += delta;
+            setMessages((current) =>
+              current.map((message) =>
+                message.id === assistantId
+                  ? { ...message, content: message.content + delta }
+                  : message,
+              ),
+            );
+          },
+        });
+
+        if (!serverContent.trim()) {
+          throw new Error("服务端没有返回内容");
+        }
+
+        setMessages((current) =>
+          current.map((message) =>
+            message.id === assistantId
+              ? {
+                  ...message,
+                  model: "server",
+                  latencyMs: Math.round(performance.now() - startedAt),
+                }
+              : message,
+          ),
+        );
+        const parsedServerCourses = parseReply(serverContent).courses;
+        if (parsedServerCourses.length) setCourseProposal(parsedServerCourses);
+        setConnectState("ok");
+        setConnectText("服务端代理");
+        setLatency(Math.round(performance.now() - startedAt));
+        return;
+      } catch (serverError) {
+        // 配额用完：明确告诉用户，不要静默失败
+        if (serverError instanceof ApiError && serverError.status === 429) {
+          setError("今天的额度用完了，明天再来，或到设置里换成自己的 Key");
+          setMessages((current) =>
+            current.filter(
+              (message) =>
+                message.id !== assistantId || Boolean(message.content.trim()),
+            ),
+          );
+          return;
+        }
+        // 没有自带 Key 时，服务端失败就是失败
+        if (!apiKey.trim()) throw serverError;
+        // 有自带 Key：继续往下走直连模式
+      }
+
       const result = await streamDeepSeekChat({
         config: requestConfig,
         apiKey,
