@@ -85,3 +85,21 @@
   background: var(--danger);
   color: var(--on-primary);
 }
+
+/* 登录页铺满屏幕：之前直接渲染在 .wr-phone 里（height:100dvh + overflow:hidden），
+   会被挤到看不见的位置，表现为「点登录没反应」。 */
+.wr-login-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background-image: var(--bg-layer);
+  background-color: var(--bg-mid);
+  background-repeat: repeat, no-repeat;
+  background-size: 200px 200px, 100% 100%;
+}
+
+.wr-login-overlay .wr-page {
+  min-height: 100dvh;
+}

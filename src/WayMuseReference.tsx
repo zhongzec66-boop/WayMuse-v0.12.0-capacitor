@@ -68,6 +68,8 @@ export default function WayMuseReference() {
   const [attachmentMenu, setAttachmentMenu] = useState(false);
   const [courseImportOpen, setCourseImportOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
+  // 登录页是铺满屏幕的浮层：原生 Tab 栏盖在 WebView 之上，必须让它让位
+  useHideNativeChrome(loginOpen);
   // 图片走视觉模型：选完直接发，先落到这里
   const [pendingImage, setPendingImage] = useState<{
     id: number;
@@ -522,13 +524,15 @@ export default function WayMuseReference() {
           <PrivacyPage onClose={() => setOverlay("设置")} />
         )}
         {loginOpen && (
-          <LoginPage
-            onClose={() => setLoginOpen(false)}
-            onLogin={() => {
-              setLoginOpen(false);
-              void account.reload();
-            }}
-          />
+          <div className="wr-login-overlay">
+            <LoginPage
+              onClose={() => setLoginOpen(false)}
+              onLogin={() => {
+                setLoginOpen(false);
+                void account.reload();
+              }}
+            />
+          </div>
         )}
         {courseImportOpen && (
           <CourseImportSheet
