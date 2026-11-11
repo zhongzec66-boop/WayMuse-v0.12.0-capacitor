@@ -34,6 +34,7 @@ import { backupFileName, createBackup, restoreBackup } from "./backup";
 import { useAccount } from "./useAccount";
 import { refreshInsights } from "./nativeInsights";
 import { academicWeek, isCourseInWeek, readTermStart } from "./term";
+import type { Assignment, Exam } from "./semester";
 import type { Course, Memory, Overlay, Page, Task } from "./types";
 import { useNativeTabs } from "./useNativeTabs";
 
@@ -94,6 +95,11 @@ export default function WayMuseReference() {
   const [showTip, setShowTip] = useState(true);
   const [chromeHidden, setChromeHidden] = useState(false);
   const [courses, setCourses] = useState<Course[]>(storage.getCourses);
+  // 学期结构化数据：作业与考试
+  const [assignments, setAssignments] = useState<Assignment[]>(
+    storage.getAssignments,
+  );
+  const [exams, setExams] = useState<Exam[]>(storage.getExams);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [hasEntered, setHasEntered] = useState(storage.getEntered);
   const [agentName, setAgentName] = useState(
@@ -146,6 +152,14 @@ export default function WayMuseReference() {
     if (!hasEntered) return;
     storage.setTasks(tasks);
   }, [tasks, hasEntered]);
+  useEffect(() => {
+    if (!hasEntered) return;
+    storage.setAssignments(assignments);
+  }, [assignments, hasEntered]);
+  useEffect(() => {
+    if (!hasEntered) return;
+    storage.setExams(exams);
+  }, [exams, hasEntered]);
   useEffect(() => {
     if (!hasEntered) return;
     storage.setProfile(profile);
@@ -407,6 +421,10 @@ export default function WayMuseReference() {
               setTasks={setTasks}
               courses={courses}
               setCourses={setCourses}
+              assignments={assignments}
+              setAssignments={setAssignments}
+              exams={exams}
+              setExams={setExams}
               setOverlay={setOverlay}
             />
           )}

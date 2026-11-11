@@ -3,6 +3,8 @@ import { Fragment, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { newId } from "../id";
 import { useHideNativeChrome } from "../chrome";
+import DeadlineCards from "./DeadlineCards";
+import type { Assignment, Exam } from "../semester";
 import type { Course, Overlay, Task } from "../types";
 
 export type TaskMode = "任务" | "课表";
@@ -101,6 +103,10 @@ export default function TaskPage({
   setTasks,
   courses,
   setCourses,
+  assignments,
+  setAssignments,
+  exams,
+  setExams,
   setOverlay,
 }: {
   taskMode: TaskMode;
@@ -109,6 +115,10 @@ export default function TaskPage({
   setTasks: Dispatch<SetStateAction<Task[]>>;
   courses: Course[];
   setCourses: Dispatch<SetStateAction<Course[]>>;
+  assignments: Assignment[];
+  setAssignments: Dispatch<SetStateAction<Assignment[]>>;
+  exams: Exam[];
+  setExams: Dispatch<SetStateAction<Exam[]>>;
   setOverlay: Dispatch<SetStateAction<Overlay>>;
 }) {
   // ── 课程录入 / 批量导入 ──
@@ -309,6 +319,14 @@ export default function TaskPage({
               );
             })}
           </div>
+
+          <DeadlineCards
+            courses={courses}
+            assignments={assignments}
+            setAssignments={setAssignments}
+            exams={exams}
+            setExams={setExams}
+          />
 
           {overdue.length > 0 && (
             <>

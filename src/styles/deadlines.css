@@ -1,0 +1,255 @@
+/* 作业卡与考试卡 —— 数值沿用 tokens.css 的 5 档字号与 4 的倍数间距 */
+
+.wr-deadline-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  margin-top: var(--space-16);
+}
+
+.wr-deadline-head .wr-section-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+}
+
+.wr-deadline-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: var(--text-13);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wr-deadline-add:active {
+  transform: scale(0.97);
+}
+
+.wr-deadline-empty {
+  margin: var(--space-8) 0 0;
+  color: var(--ink-3);
+  font-size: var(--text-13);
+  line-height: 1.5;
+}
+
+.wr-deadline-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin-top: var(--space-8);
+}
+
+.wr-deadline-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: 12px 14px;
+  border: 1px solid var(--chat-surface-line);
+  border-radius: var(--radius-16);
+  background: var(--chat-surface);
+}
+
+.wr-deadline-card.is-overdue {
+  border-color: color-mix(in srgb, var(--danger, #c0392b) 45%, transparent);
+}
+
+.wr-deadline-card.is-exam {
+  align-items: flex-start;
+}
+
+.wr-deadline-check {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1.5px solid var(--ink-3);
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.wr-deadline-check:active {
+  transform: scale(0.92);
+}
+
+.wr-deadline-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wr-deadline-body b {
+  font-size: var(--text-15);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.wr-deadline-body small {
+  color: var(--ink-3);
+  font-size: var(--text-13);
+}
+
+.wr-deadline-weight {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: var(--text-12);
+  font-weight: 600;
+}
+
+.wr-deadline-remove {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+
+.wr-deadline-progress {
+  margin-top: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--chat-surface-line);
+  overflow: hidden;
+}
+
+.wr-deadline-progress > i {
+  display: block;
+  height: 100%;
+  background: var(--primary);
+}
+
+/* ---------- 添加弹层 ---------- */
+
+.wr-deadline-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(10, 20, 30, 0.32);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.wr-deadline-sheet-card {
+  width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  border-radius: 20px 20px 0 0;
+  background: var(--bg, #fff);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.wr-deadline-sheet-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.wr-deadline-sheet-card h2 {
+  margin: 0;
+  font-size: var(--text-17);
+  font-weight: 700;
+}
+
+.wr-deadline-sheet-card header button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.wr-deadline-sheet-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--text-13);
+  color: var(--ink-2);
+}
+
+.wr-deadline-sheet-card input,
+.wr-deadline-sheet-card select {
+  min-height: 44px;
+  padding: 0 12px;
+  /* 边界要看得见，否则不知道哪里能点 */
+  border: 1px solid var(--primary-line);
+  border-radius: var(--radius-12);
+  background: #fff;
+  /* 16px 是硬要求：小于 16 时 iOS 网页套壳聚焦会自动放大页面 */
+  font-size: 16px;
+  color: var(--ink);
+}
+
+.wr-deadline-row {
+  display: flex;
+  gap: var(--space-12);
+}
+
+.wr-deadline-row label {
+  flex: 1;
+}
+
+.wr-deadline-sheet-actions {
+  display: flex;
+  gap: var(--space-8);
+  margin-top: var(--space-4);
+}
+
+.wr-deadline-sheet-actions button {
+  flex: 1;
+  min-height: 44px;
+  border: none;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: var(--text-15);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wr-deadline-sheet-actions button.is-primary {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.wr-deadline-sheet-actions button:disabled {
+  opacity: 0.45;
+}
+
+.wr-deadline-switch {
+  align-self: center;
+  border: none;
+  background: none;
+  color: var(--ink-3);
+  font-size: var(--text-13);
+  text-decoration: underline;
+  cursor: pointer;
+}
