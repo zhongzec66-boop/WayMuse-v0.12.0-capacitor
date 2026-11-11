@@ -1,205 +1,323 @@
-# WayMuse 交接 · 2026-11-10
+# WayMuse 交接文档
 
-> 上一版 `0.11.0` 的交接内容已过期，本文覆盖它。
+> 最后更新：2026-11-11 · App `0.25.0` · 服务端 `9b315f3`
+> 覆盖上一版 `0.11.0` 的交接内容。
+> 定位：**知道你的日程并提供陪伴的 Personal AI Agent**，不是"完美课表 UI"。
 
-## 一句话现状
+---
 
-**能自己用，但没闭环、没上架。** 核心链路（聊天 → 方案 → 任务 → 提醒）已打通，
-但只有装到 iOS 真机才能验证。Android 能出包，没测过。
+## 1. 一句话现状
 
-## 仓库与产物
+| 项 | 状态 |
+| --- | --- |
+| App | iOS + Android 双端出包，测试阶段，**全走服务端模型，用户不需要任何 Key** |
+| 后端 | 东京腾讯云轻量服务器，Docker + 复用自有 Caddy，HTTPS 正常 |
+| 知识库 | 462 条学长经验在线，聊天自动检索并引用 |
+| 识图 | 视觉模型可用（图片直接进模型）；课表截图可解析成结构化课程 |
+| 计费 | 未上线，配额超额直接 429，手动加额度 |
+
+---
+
+## 2. 仓库与分支
+
+| 仓库 | 地址 | 当前分支 / commit |
+| --- | --- | --- |
+| App | `github.com/zhongzec66-boop/WayMuse-v0.12.0-capacitor` | `feat/native-compose` @ `70b69b0` |
+| 服务端 | `github.com/zhongzec66-boop/waymuse-server` | `master` @ `9b315f3` |
+
+**注意：**
+- `main` 已合并过一次（`c51e679`），但之后的功能都在 `feat/native-compose`，合并前要先同步。
+- `github.com:443` 在本机经常不通，**推送走 SSH（22 端口）**：
+  - App 用 `~/.ssh/gh_app`，服务端用 `~/.ssh/gh_server`
+  - 已注册为两个仓库的 **deploy key**（写权限），不是账号级 key
+- 构建走 GitHub Actions（本地无法编译 iOS）：
+  - iOS：`macos-26`，产出 unsigned IPA
+  - Android：`ubuntu-latest`，产出 APK（已配 release 签名）
+
+---
+
+## 3. 架构
+
+```
+┌────────────── App (Capacitor 8 + React 18) ──────────────┐
+│  聊天 / Today / 计划 / 记忆 / 助理                        │
+│  课表(本机) · 任务 · 记忆 · 备份                             │
+│  ── 图片/截图 ──┐                                        │
+└─────────────────┼────────────────────────────────────────┘
+                  │ HTTPS  Bearer(设备令牌)
+                  ▼
+┌──────── WayMuse API (Fastify, 东京) ─────────────────────┐
+│  /api/auth/*      QQ 邮箱验证码 / 游客 / 刷新 / 登出        │
+│  /api/me*         账号、资料、配额                          │
+│  /api/ai/chat     SSE 代理 → deepseek-flash               │
+│  /api/course/parse-image  截图 → JSON 课程                 │
+│  ── 注入学长经验(检索 kb_entries)                          │
+└───────┬──────────────────┬───────────────────────────────┘
+        │                  │
+   Postgres 16         Redis 7
+   users/devices/      限流/计数器
+   usage_daily/quota_month
+   profiles/kb_entries
+```
+
+**关键设计：**
+- 模型 Key **只在服务端**，App 不持有任何密钥
+- 聊天记录**只在本机**，服务器只记 token 用量，不存对话正文
+- 经验库是**脱敏镜像**，不是原库；学校只用于匹配、不进入 prompt
+
+---
+
+## 4. 服务器
 
 | 项 | 值 |
-|---|---|
-| 分支 | `feat/native-compose` @ `33b337a`（领先 main **3 个提交**） |
-| main | `3babbe1`（已合并 78 个提交） |
-| 最新包 | `D:\AI工作区\_work (2)\_work\waymuse-builds\WayMuse-unsigned.ipa`（2.4 MB，run #74） |
-| 构建 | GitHub Actions：`Build unsigned iOS IPA` / `Build Android APK` |
-| 安装 | Windows 上用 Sideloadly，免费 Apple ID，7 天要重签 |
+| --- | --- |
+| 主机 | `101.32.101.117`（腾讯云轻量，东京，2C4G） |
+| 系统 | OpenCloudOS 9.6，Docker 29 |
+| 代码目录 | `/opt/waymuse-server` |
+| 对外域名 | `api.101-32-101-117.sslip.io`（临时，Let's Encrypt 自动续） |
+| API 监听 | `127.0.0.1:8787`（**只绑本机**，对外由 Caddy 反代） |
+| Caddy | 复用 `/opt/new-api` 的 Caddy 容器，配置在 `/opt/new-api/Caddyfile` |
+| 磁盘 | 60G，当前约 44%（已清理过 4.5G） |
+| 内存 | 3.5G，我们的栈约占 80MB；另有 3G swap |
 
-### 远端地址
+### 4.1 同机其他服务（勿动）
 
-`https://github.com/zhongzec66-boop/WayMuse-v0.12.0-capacitor`
+`new-api`、`pineapple-*`、`chuangzuo`、`welfare-quote-admin`、`new-api-caddy`。
+`snowluma`（DeepSeek→QQ 桥）**已停但未删除**，回滚方式：
+```bash
+docker update --restart=always snowluma && docker start snowluma
+```
+
+### 4.2 环境变量（`/opt/waymuse-server/.env`，权限 600）
+
+| 变量 | 说明 |
+| --- | --- |
+| `JWT_SECRET` | 令牌签名密钥 |
+| `DATABASE_URL` / `REDIS_URL` | 指向 compose 内的 `db` / `cache` |
+| `DEEPSEEK_API_KEY` | 模型 Key（**不写进任何仓库**） |
+| `DEEPSEEK_MODEL` | 当前 `deepseek-flash`（**支持视觉**） |
+| `MONTHLY_TOKEN_LIMIT` | `1000000` |
+| `DAILY_TOKEN_LIMIT` | `100000` |
+| `GLOBAL_DAILY_COST_CENTS` | `1000`（¥10/天全局熔断） |
+| `SMTP_*` | QQ 邮箱 + 授权码（登录验证码 & 告警） |
+| `TURNSTILE_SECRET` | **目前是 Cloudflare 测试密钥（永远通过）** |
 
 ---
 
-## 明天开工，按这个顺序
+## 5. 数据库（`waymuse`）
 
-### 1. 合并 3 个提交到 main
-
-这 3 个都编译通过，但 PDF 和提醒**还没装机验过**：
-
+```sql
+users              -- 账号（email 可空 = 游客）
+devices            -- 设备令牌，最多 2 台
+login_codes        -- 邮箱验证码（只存哈希）
+profiles           -- 学校/专业/年级/方向（经验匹配用）
+usage_daily        -- 每日 token 用量
+quota_month        -- 月度用量
+global_usage_daily -- 全局成本熔断
+kb_entries         -- 经验库（脱敏镜像，462 条）
+kb_query_log       -- 检索日志（命中条数）
+sync_state         -- 预留：增量同步游标
 ```
-a569b0a  PDF 改用系统 PDFKit（扫描件自动 OCR）
-059e747  灵动岛和本地通知统一到期时刻
-33b337a  支持「几秒/几分钟后提醒我」+ 方案卡磨砂玻璃
-```
 
-先装包验一遍，没问题再合：
+迁移：`migrations/001_init.sql`、`002_knowledge.sql`，执行 `npm run migrate`。
+
+---
+
+## 6. API 一览
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/health` | 存活（**监控用这个**） |
+| GET | `/ready` | 依赖检查（db / mail） |
+| POST | `/api/auth/guest` | 游客登录（设备号），60 次/IP/天 |
+| POST | `/api/auth/request-code` | 发验证码（Turnstile + 邮箱限流） |
+| POST | `/api/auth/verify` | 验证码登录/注册 |
+| POST | `/api/auth/refresh` | 刷新令牌（轮换） |
+| POST | `/api/auth/logout` | 吊销本设备 |
+| GET | `/api/me` | 账号 + 设备 + 资料 |
+| POST | `/api/me/profile` | 学校/专业/年级/方向 |
+| GET | `/api/me/quota` | 配额卡数据 |
+| POST | `/api/ai/chat` | SSE 流式代理（支持 `image_url` 块） |
+| POST | `/api/course/parse-image` | 课表截图 → 课程 JSON（20 次/人/天） |
+
+**响应头约定：**
+- `x-waymuse-kb`：命中的经验条数
+- `x-waymuse-kb-tags`：参考方向（URL 编码 JSON），客户端展开"看看"用
+
+---
+
+## 7. 配额与成本
+
+| 项 | 值 | 备注 |
+| --- | --- | --- |
+| 月额度 | 100 万 token | 单人 |
+| 日额度 | 10 万 token | 单人 |
+| 全局熔断 | ¥10/天 | **预算闸门**，超了全站 503 |
+| 成本模型 | 输入 100 分/M、输出 200 分/M | 约 ¥3~5/人/月 |
+| 识图 | 约 2000 token/张 | 图片按 1500 token 计入配额 |
+
+> ⚠️ 最坏情况：¥10/天 ≈ ¥300/月，**超过 ¥200 预算**。要压预算就把 `GLOBAL_DAILY_COST_CENTS` 调到 650。
+
+---
+
+## 8. 客户端关键文件
+
+| 文件 | 职责 |
+| --- | --- |
+| `src/WayMuseReference.tsx` | 顶层状态、页面路由、Dock 装配 |
+| `src/api.ts` | 服务端客户端（游客登录、刷新、配额、SSE、识图） |
+| `src/useAccount.ts` | 账号状态 + 静默游客登录 |
+| `src/pages/ChatPage.tsx` | 聊天（服务端流式、选项气泡、代码卡、引用条） |
+| `src/pages/AccountPanel.tsx` | 设置页顶部：账号 / 配额 / 我的信息 |
+| `src/pages/SettingsPage.tsx` | 设置（4 大块，无 Key 输入） |
+| `src/pages/LoginPage.tsx` | QQ 邮箱验证码登录 |
+| `src/pages/CourseImportSheet.tsx` | 课表导入（截图识别 + 文本） |
+| `src/pages/DeviceDataPanel.tsx` | Android 屏幕时间/步数授权 |
+| `src/deepseek/prompt.ts` | 系统提示词（含看图、人话化规则） |
+| `src/deepseek/CodeBlock.tsx` | 代码卡（高亮/复制/全屏） |
+| `src/nativeCapture.ts` | Android 原生拍照（降采样，防 OOM） |
+| `src/nativeInsights.ts` | Android 屏幕时间 / 步数 |
+| `src/backup.ts` | 导出/恢复（合并 = 保留现有、补齐缺失） |
+| `src/styles/layout.css` | **底部让位唯一真相**（`--dock-clear`） |
+
+Android 原生插件（Java）：
+- `NativeCapturePlugin` — 拍照/选图，长边压到 1600px
+- `NativeInsightsPlugin` — `UsageStatsManager` + 计步传感器
+
+---
+
+## 9. 已上线功能（0.25.0）
+
+- [x] 游客静默登录 / QQ 邮箱验证码登录 / 最多 2 台设备
+- [x] 服务端代理聊天（SSE），带心跳、配额、熔断
+- [x] 学长经验检索 + 引用条（可展开看参考方向）
+- [x] 识图（图片直接进视觉模型，带缩略图）
+- [x] 课表截图 → 结构化课程（7/7 实测命中）
+- [x] 选项气泡（点选即答，刷题场景）
+- [x] 代码卡（语法高亮 / 复制 / 全屏）
+- [x] 计划卡 / 记忆 / 今日简报
+- [x] Android 屏幕使用时间 + 步数（授权后进提示词）
+- [x] 数据导出 / 恢复（合并模式，不丢数据）
+- [x] 设置页 4 大块，字号紧凑，无冗余项
+
+---
+
+## 10. 运维手册
+
+### 部署（服务端）
 
 ```bash
-git checkout main
-git merge --no-ff feat/native-compose
-git push origin main
-git checkout feat/native-compose
+ssh -i ~/.ssh/waymuse_deploy root@101.32.101.117
+cd /opt/waymuse-server
+git fetch --depth=1 origin master && git reset --hard origin/master
+docker compose up -d --build waymuse-api
+docker compose exec -T waymuse-api npm run migrate
+curl -s localhost:8787/health
 ```
 
-### 2. 给 PAT 加 `workflow` 权限
-
-现在的 token **没有 `workflow` scope**，改不了 `.github/workflows/*`，
-所以「在 CI 里跑 `npm test`」这件事推不上去。
-
-去 GitHub → Settings → Developer settings → Personal access tokens →
-给这个 fine-grained token 勾上 **Workflow** 权限，然后重新执行我之前那个提交（已撤销，
-需要重新写一遍：两个 workflow 的 `npm run lint` 后面加一行 `npm test`）。
-
-### 3. 换掉泄露的 Android 签名密钥
-
-微信传来的 `waymuse-ipa.zip` 里有：
-
-```
-signing/waymuse-release.jks     ← 发布签名密钥
-signing/password.txt            ← 明文密码
-```
-
-**任何人拿到这个 zip 都能签出同源可覆盖安装的包。** 如果还没上架，
-直接换一个新 keystore；CI 用的是 GitHub Secrets，换三个值即可。
-
-### 4. 修灵动岛「已过期」显示
-
-`Text(timerInterval: Date()...due)` 在 `due` 过去之后行为未定义，
-可能显示 `00:00` 或空白。修法：`dueAt` 过期时改显示静态文案「已逾期 X 分钟」。
-
-位置：`ios/App/WayMuseWidget/WayMuseWidgetBundle.swift`。
-
-### 5. 收尾杂项
-
-- `npm run format:check` 是红的（16 个文件没过 Prettier，是上一批提交留下的）
-- 8 个 `src/*.ts` 的**注释**是乱码（GBK 编辑器存过），不影响界面
-- `NativeExtrasPlugin.swift` 里的语音代码（`startSpeech` 等）已经没人调用，可以删
-- `HANDOFF.md` 之外，`README.md` 也是旧的，和实际功能对不上
-
----
-
-## 功能现状
-
-### 聊天
-
-| 能力 | 说明 |
-|---|---|
-| 直连 DeepSeek | 用户自带 Key，流式输出 |
-| 本地兜底 | 没 Key 也能给通用方案 |
-| 方案卡 | 模型给方案 → 点「加入计划」写进任务（卡片是磨砂玻璃） |
-| 记忆提议 | 值得记的事先问，确认后写入 |
-| 联网搜索 | 默认开，Bing 结果注入，带来源 |
-| 技能 | 命中「考试/复习/论文/复盘」加载对应做法 |
-| 渲染 | Markdown + KaTeX 公式 + 表格，模型输出会被转义（防注入） |
-| 导出 | 对话导出 Markdown |
-
-### 文件与图片
-
-| 类型 | 实现 | 备注 |
-|---|---|---|
-| 图片 | iOS Vision OCR | 本地跑，不上传 |
-| PDF | **PDFKit**（系统框架） | 抽不到字自动转 OCR（扫描件） |
-| Word `.docx` | mammoth | 纯前端 |
-| Excel / CSV | SheetJS | 前 3 个 sheet |
-| 文本 / 代码 | 直接读 | 上限 16000 字 |
-
-### Today
-
-竖排时间轴，课程 + 任务 + 系统日历合并成一条线，状态分：已结束 / 进行中 / 逾期 / 今天到期。
-
-### 计划
-
-- 任务分组：逾期 / 今天 / 接下来 / 没定时间 / 已完成
-- 课程表：7 列网格，支持单双周
-- 课表导入：一行一门课 **或** 教务系统表格粘贴（按节次行）+ AI 兜底
-- 提醒：本地通知（提前 10 分钟）+ 灵动岛倒计时
-
-### 记忆
-
-- 三份可编辑明文：`IDENTITY.md` / `SOUL.md` / `MEMORY.md`
-- 记忆气泡场（可拖动、滑动推开）
-- **健康卡是假数据**（`src/health.ts`，固定值，为了调版式）
-
-### 系统集成（iOS）
-
-原生玻璃 Tab 栏 / 原生玻璃输入框 / 灵动岛 / 本地通知 / 全局触觉 / EventKit 日历与提醒事项
-
-### 已砍掉
-
-**语音全部不做**（识别、通话、朗读）。Swift 里还留着方法但没调用。
-
----
-
-## 已知问题
-
-| # | 问题 | 严重度 |
-|---|---|---|
-| 1 | PAT 缺 `workflow` 权限，测试进不了 CI | 中 |
-| 2 | Android keystore + 密码泄露 | **高** |
-| 3 | 灵动岛过期后倒计时显示未定义 | 中 |
-| 4 | 包体 2.4MB，1.27MB 是 pdf.js worker（iOS 已不用它，但保留给 Android/Web 兜底） | 低 |
-| 5 | `format:check` 红 | 低 |
-| 6 | 注释乱码 8 个文件 | 低 |
-| 7 | 健康卡假数据 | 低（你自己要求先这样） |
-
----
-
-## 常用命令
+### 回滚
 
 ```bash
-npm run typecheck     # 类型
-npm run lint          # ESLint，0 警告
-npm test              # 46 个单元测试（vitest）
-npm run build         # 生产构建
-npm run format        # Prettier 重排（注意：会动很多文件）
+cd /opt/waymuse-server && git log --oneline -5
+git reset --hard <上一个 commit> && docker compose up -d --build waymuse-api
 ```
 
-触发 iOS 构建（需要 token，见下）：
+### 备份 / 恢复
 
 ```bash
-curl -X POST \
-  -H "Authorization: Bearer <TOKEN>" \
-  -H "Accept: application/vnd.github+json" \
-  -d '{"ref":"feat/native-compose"}' \
-  https://api.github.com/repos/zhongzec66-boop/WayMuse-v0.12.0-capacitor/actions/workflows/ios-build.yml/dispatches
+# 每天 04:10 自动，保留 14 天
+/opt/waymuse-server/backup-db.sh
+ls -lh /opt/backups/db
+
+# 恢复演练（建临时库验证，之后删除）
+gunzip -c /opt/backups/db/<file>.sql.gz | \
+  docker exec -i waymuse-db psql -U waymuse -d restore_test
 ```
 
-Token 存在 `D:\tools\.waymuse-pat`（**不在仓库里，别提交**）。
+### 监控 / 告警
+
+- cron 每 5 分钟 `curl /health`，失败调 `/opt/waymuse-server/alert.py` 发邮件
+- 同一故障 30 分钟内只发一次
+- 日志：`docker logs waymuse-api --tail 100`
+
+### Caddy（重要）
+
+- 站点已写进 `/opt/new-api/Caddyfile`，**重启不会丢**
+- 改动前先备份，用容器自带 caddy 校验：
+  ```bash
+  docker cp /opt/new-api/Caddyfile new-api-caddy:/tmp/C.tmp
+  docker exec new-api-caddy caddy validate --config /tmp/C.tmp
+  docker restart new-api-caddy
+  ```
 
 ---
 
-## 关键文件地图
+## 11. 已知问题 / 待办
 
-| 文件 | 干什么 |
-|---|---|
-| `src/WayMuseReference.tsx` | 应用外壳：状态、路由、提醒/上岛的副作用 |
-| `src/pages/ChatPage.tsx` | 聊天，最大的文件 |
-| `src/pages/TaskPage.tsx` | 计划 + 课程表 |
-| `src/pages/MemoryPage.tsx` | 记忆（三份文件 + 气泡） |
-| `src/agent.ts` | 回复协议（`<plans>` / `<memories>`）与解析 |
-| `src/fileText.ts` | 文件 → 纯文本（PDF/Word/Excel 分发） |
-| `src/ocr.ts` | 图片 OCR + PDF 原生抽取的 JS 桥 |
-| `src/taskTime.ts` | 任务到期时刻的**唯一**计算点 |
-| `src/reminders.ts` | 本地通知的排程 |
-| `src/upnext.ts` | 灵动岛选哪一件事 |
-| `src/liveActivity.ts` | 灵动岛桥 + 占岛优先级仲裁 |
-| `src/markdown.ts` | Markdown + KaTeX 渲染 |
-| `src/courseImport.ts` | 课表解析（单行 / 表格两种格式） |
-| `patches/liquid-glass/*.swift` | 原生代码，由 `postinstall` 注入 SPM target |
+### 上线前必做
+
+| # | 事项 | 说明 |
+| --- | --- | --- |
+| 1 | **真实 Turnstile** | 现在是测试密钥，等于没有验证 |
+| 2 | **数据导出/删除端点** | PIPL 要求用户可查可删 |
+| 3 | **隐私政策更新** | App 内说明已改，正式政策要写"数据出境到东京" |
+| 4 | **异地备份** | 备份与服务器同机，建议传 COS |
+| 5 | **Android keystore 轮换** | 旧 keystore 曾在共享 zip 泄露，影响升级 |
+
+### 功能待做
+
+| # | 事项 | 备注 |
+| --- | --- | --- |
+| 6 | 多会话 | 会话列表 / 重命名 / 导出 / 删除 |
+| 7 | 文档输出 | 结构化文档 → 导出 .md / 长图 |
+| 8 | .ics 导入导出 | 解析 VEVENT 写进 App 课表（不碰系统日历） |
+| 9 | 课表云同步 | 需要服务端课表表（S1），现只在本机 |
+| 10 | 管理员加额度接口 | 充值方案定了再做 |
+| 11 | 经验库 k-匿名 | 同组 ≥3 条才允许引用；用户单独同意开关 |
+| 12 | 经验库定期同步 | 现在靠人工导出 CSV 再导入 |
+
+### 明确不做
+
+- 语音输入 / 朗读（用户决定暂缓）
+- iOS 设备数据（屏幕时间/健康）——需付费账号
+- Health Connect（心率/睡眠）——依赖重、国内 ROM 支持差
 
 ---
 
-## 两个值得记住的坑
+## 12. 待决策
 
-**1. 原生代码不走 pbxproj。**
-Swift 文件放在 `patches/liquid-glass/`，`postinstall` 把它们复制进
-`node_modules/@ajuarezso/capacitor-liquid-glass/ios/Sources/LiquidGlassPlugin/`，
-由 SPM 自动编译。好处是不用改 Xcode 工程；坏处是**不提交 node_modules 就没有原生代码**，
-所以这些文件必须留在 `patches/` 里。
+1. **充值与套餐**：免费额度多少？超额停还是降速？怎么收钱？
+2. **全局熔断**：维持 ¥10/天（≈¥300/月）还是压到 ¥6.5/天（≈¥200 预算）？
+3. **正式域名**：现在用 sslip.io 临时域名，接正式域名需改 Caddy 站点。
+4. **正式 Turnstile**：需要去 Cloudflare 建站点拿 Sitekey + Secret。
 
-**2. 到期时刻只能有一处计算。**
-之前灵动岛按 23:59 算、通知按 20:00 算，同一条任务两条通道互相打脸。
-现在统一走 `src/taskTime.ts` 的 `taskDueAt()`，有测试锁着。
+---
+
+## 13. 本地测试脚本
+
+都在 `H:\ai工作区\_work\server\`（Windows 侧，不进仓库）：
+
+| 脚本 | 用途 |
+| --- | --- |
+| `smoke.mjs` | 接口冒烟（游客/me/quota/401） |
+| `ai-test.mjs` | AI 流式对话 |
+| `vision-e2e.mjs` | 识图端到端 |
+| `course-e2e.mjs` | 课表截图解析 |
+| `kb-cases.mjs` | 经验库三种问题命中 |
+| `*-check.cjs` / `*-shot.cjs` | CDP 界面验证（需 `serve.cjs` + headless Chrome） |
+
+构建产物：`H:\ai工作区\_work\waymuse-ipa\<版本>\`。
+
+---
+
+## 14. 账号与密钥存放
+
+| 项 | 位置 |
+| --- | --- |
+| 服务器 SSH 私钥 | `~/.ssh/waymuse_deploy`（本机） |
+| GitHub deploy key | `~/.ssh/gh_app`、`~/.ssh/gh_server` |
+| GitHub PAT | 本机 git credential（Actions 触发、API） |
+| 模型 Key / SMTP / JWT | 服务器 `/opt/waymuse-server/.env`（600） |
+| Apple 免费账号 | 7 天重签，无 CloudKit / App Attest |
+
+**不要**把 `.env`、keystore、私钥提交进仓库。
