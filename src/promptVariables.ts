@@ -1,20 +1,31 @@
-import { PLAN_INSTRUCTION } from "../agent";
-import { BRAND } from "../brand";
-import type { UserProfile } from "../profile";
-import type { Course, Memory, Task } from "../types";
-import { docDefault, readDoc } from "../docs";
-import { academicWeek, isCourseInWeek, readTermStart } from "../term";
-import { skillsPrompt } from "../skills";
-import { insightsPromptLine } from "../nativeInsights";
+import type { UserProfile } from "./profile";
+import type { Course, Memory, Task } from "./types";
+import { docDefault, readDoc } from "./docs";
+import { academicWeek, isCourseInWeek, readTermStart } from "./term";
+import { insightsPromptLine } from "./nativeInsights";
 
-export const DEFAULT_SYSTEM_PROMPT = `你是 ${BRAND}，一个陪伴大学生、辅助学习的 AI Agent。以自然的聊天陪伴用户，先理解用户当下的感受和问题，再决定是否需要建议；闲聊不强行转成任务。学习时通过解释、例子和适量追问帮助用户理解，必要时一起拆解下一步。用简体中文回答。不要编造用户没有提供的经历；不确定时直接说明。回答保持具体、简短，必要时用列表。
+/**
+ * 把本机数据整理成「提示词变量」交给服务端。
+ *
+ * 提示词模板（人格、回复协议、四段技能）现在只在服务端，
+ * 客户端只负责把**用户的数据**整理好发过去。
+ *
+ * 为什么这么切：模板是产品里最值钱也最容易被抄走的部分，
+ * 数据是按用户变化的、必须由客户端提供。两者混在一起就只能整包泄露。
+ */
 
-【关于看图】用户发来图片时，图片内容会直接提供给你（题目截图、笔记、图表、照片都能看）。不要说「我看不到图片」或「请描述图片内容」，直接基于图片回答。只有图片确实没有传过来时，才说明没收到。`;
-
-export type AssistantContext = {
-  memories: Memory[];
-  courses: Course[];
-  tasks: Task[];
+export type PromptVariables = {
+  today: string;
+  companion: string;
+  identity: string;
+  soul: string;
+  memory: string;
+  profile: string;
+  memories: string[];
+  courses: string[];
+  tasks: string[];
+  insights: string;
+  web: string;
 };
 
 const weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
@@ -41,7 +52,6 @@ function todayLine(): string {
     minute: "2-digit",
     hour12: false,
   }).format(now);
-  // 星期按上海时区重新取，避免跨时区时和日期不匹配
   const weekdayIndex = new Date(
     Date.UTC(
       Number(pick("year")),
@@ -54,7 +64,6 @@ function todayLine(): string {
 
 function courseLine(course: Course): string {
   const place = course.place ? ` @${course.place}` : "";
-  // 带上周次，模型才不会把「单双周」的课当成每周都有
   const weeks =
     course.weeks && course.weeks.length
       ? `（第 ${course.weeks.join(",")} 周）`
@@ -78,7 +87,6 @@ function companionInstruction(profile: UserProfile): string {
         : "默认 1–3 段，先结论后理由，必要时用列表。";
 
   return [
-    "【陪伴方式】",
     `用户希望被称呼为「${profile.callName.trim() || "同学"}」。`,
     `请以「${profile.companionType}」的方式陪伴：${type}`,
     `语气：${profile.tone}。回复长度：${profile.responseLength}。${length}`,
@@ -86,7 +94,7 @@ function companionInstruction(profile: UserProfile): string {
     ...(profile.persona.trim()
       ? [`用户自定义的人格偏好：${profile.persona.trim()}`]
       : []),
-    "你是 AI 助理，不是真人：不要声称自己有真实身体、真实感情或线下生活；不要制造依赖；亲密表达保持克制，不涉及性内容。遇到心理、医疗、法律等高风险问题，建议用户寻求专业帮助。",
+
   ].join("\n");
 }
 
@@ -107,14 +115,20 @@ function profileSection(profile: UserProfile): string {
   return lines.join("\n");
 }
 
-export function buildSystemPrompt(
-  config: { useContext: boolean },
-  profile: UserProfile,
-  context: AssistantContext,
-  webContext = "",
-  userMessage = "",
-): string {
-  // 三份可编辑文件优先：它们就是用户认可的人格与记忆
+export type AssistantContext = {
+  memories: Memory[];
+  courses: Course[];
+  tasks: Task[];
+};
+
+export function buildPromptVariables(options: {
+  useContext: boolean;
+  profile: UserProfile;
+  context: AssistantContext;
+  webContext?: string;
+}): PromptVariables {
+  const { useContext, profile, context, webContext = "" } = options;
+
   const identity = readDoc("identity").trim();
   const soul = readDoc("soul").trim();
   const memoryDocRaw = readDoc("memory").trim();
@@ -125,67 +139,46 @@ export function buildSystemPrompt(
       ? memoryDocRaw
       : "";
 
-  const sections = [
-    DEFAULT_SYSTEM_PROMPT,
-    "",
-    todayLine(),
-    companionInstruction(profile),
-    identity ? `【IDENTITY.md】\n${identity}` : "",
-    soul ? `【SOUL.md】\n${soul}` : "",
-    memoryDoc ? `【MEMORY.md】\n${memoryDoc}` : "",
-    // 技能按需加载：命中才把正文塞进来，没命中就只花几十 token
-    skillsPrompt(userMessage),
+  const variables: PromptVariables = {
+    today: todayLine(),
+    companion: companionInstruction(profile),
+    identity,
+    soul,
+    memory: memoryDoc,
+    profile: "",
+    memories: [],
+    courses: [],
+    tasks: [],
     // 本机读到的状态（屏幕时间/步数），没有授权时返回空串
-    insightsPromptLine(),
-    PLAN_INSTRUCTION,
-  ].filter(Boolean);
-  if (!config.useContext) {
-    if (webContext) sections.push("", webContext);
-    return sections.join("\n");
-  }
+    insights: insightsPromptLine(),
+    web: webContext,
+  };
 
-  // 先按权重排序再截断：否则权重高但排在后面的记忆会被丢掉
+  if (!useContext) return variables;
+
+  const termWeek = academicWeek(readTermStart());
   const memories = context.memories
     .slice()
     .sort((a, b) => b.weight - a.weight || b.createdAt - a.createdAt)
     .slice(0, 12);
-  const termWeek = academicWeek(readTermStart());
   // 只把「这一周真的要上」的课给模型：单双周 / 前八周的课不该被当成今天有课
   const courses = context.courses
     .filter((course) => isCourseInWeek(course, termWeek))
     .slice(0, 24);
   const tasks = context.tasks.slice(0, 20);
-  const lines = [
-    "",
+
+  variables.profile = [
     profileSection(profile),
     `【教学周】第 ${termWeek} 周（开学 ${readTermStart()}）`,
-  ];
-
-  if (memories.length) {
-    // 重要的记忆排前面并标出来，让模型知道哪些是「这个人的底色」。
-    const ordered = memories
-      .slice()
-      .sort((a, b) => b.weight - a.weight || b.createdAt - a.createdAt);
-    lines.push(
-      `【记忆】${ordered
-        .map((m) => (m.weight === 3 ? `${m.text}（重要）` : m.text))
-        .join("；")}`,
-    );
-  }
-  if (courses.length) {
-    lines.push("【课程】");
-    courses.forEach((course) => lines.push(`- ${courseLine(course)}`));
-  }
-  if (tasks.length) {
-    lines.push(
-      `【任务】${tasks.map((task) => `${task.done ? "已完成" : "未完成"} ${task.category ? `[${task.category}] ` : ""}${task.text}`).join("；")}`,
-    );
-  }
-
-  lines.push(
-    "这些数据来自本机记录，不是完整用户档案。回答时不要假装知道未列出的信息，也不要声称已经连接学校系统。",
+  ].join("\n");
+  variables.memories = memories.map((memory) =>
+    memory.weight === 3 ? `${memory.text}（重要）` : memory.text,
   );
-  sections.push(lines.join("\n"));
-  if (webContext) sections.push("", webContext);
-  return sections.join("\n");
+  variables.courses = courses.map(courseLine);
+  variables.tasks = tasks.map(
+    (task) =>
+      `${task.done ? "已完成" : "未完成"} ${task.category ? `[${task.category}] ` : ""}${task.text}`,
+  );
+
+  return variables;
 }

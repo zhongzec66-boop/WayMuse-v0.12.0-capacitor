@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { ApiError, streamServerChat } from "../api";
 import { localSuggestions, parseReply, planTasks } from "../agent";
-import { matchSkills } from "../skills";
+
 import { parseCourseText, toCourses } from "../courseImport";
 import type { ParsedCourse } from "../courseImport";
 import { BRAND } from "../brand";
@@ -32,7 +32,7 @@ import { storage, createMemory } from "../storage";
 import { newId } from "../id";
 import { DeepSeekError, listDeepSeekModels } from "../deepseek/client";
 import { DEEPSEEK_MODELS } from "../deepseek/config";
-import { buildSystemPrompt } from "../deepseek/prompt";
+import { buildPromptVariables } from "../promptVariables";
 import MarkdownText from "../deepseek/Markdown";
 import { responseTokenBudget } from "../profile";
 import type { UserProfile } from "../profile";
@@ -285,8 +285,8 @@ export default function ChatPage({
     const content = text.trim() || (imageDataUrl ? "看看这张图" : "");
     if (!content || streaming) return;
 
-    // 技能命中：决定这一轮要不要加载专门的做事方法
-    setActiveSkills(matchSkills(content).map((skill) => skill.name));
+    // 技能命中改由服务端判断：这一轮先清空，等响应头回填名字
+    setActiveSkills([]);
 
     // 附件或直接粘贴的课表：先本地认一遍。
     // 认出来就问一句「要不要加进课表」，而不是替用户决定，也不是当普通消息忽略。
@@ -352,17 +352,14 @@ export default function ChatPage({
       try {
         let serverContent = "";
         await streamServerChat({
+          // system 由服务端按变量拼，模板不出客户端
+          variables: buildPromptVariables({
+            useContext: config.useContext,
+            profile,
+            context: { memories, courses, tasks },
+            webContext,
+          }),
           messages: [
-            {
-              role: "system",
-              content: buildSystemPrompt(
-                config,
-                profile,
-                { memories, courses, tasks },
-                webContext,
-                content,
-              ),
-            },
             ...history.map((message) => ({
               role: message.role,
               content: message.content,
@@ -391,6 +388,8 @@ export default function ChatPage({
           ),
           signal: controller.signal,
           onMeta: (meta) => {
+            // 服务端告诉我们这一轮命中了哪个技能，直接显示，不内置清单
+            if (meta.skillName) setActiveSkills([meta.skillName]);
             if (!meta.kbCount) return;
             setMessages((current) =>
               current.map((message) =>
@@ -494,16 +493,6 @@ export default function ChatPage({
     let firstTokenAt: number | null = null;
 
     const payload: ChatRequestMessage[] = [
-      {
-        role: "system",
-        content: buildSystemPrompt(
-          config,
-          profile,
-          { memories, courses, tasks },
-          webContext,
-          content,
-        ),
-      },
       ...history
         .filter((message) => message.content.trim())
         .slice(-30)
@@ -538,6 +527,8 @@ export default function ChatPage({
           maxTokens: requestConfig.maxTokens,
           signal: controller.signal,
           onMeta: (meta) => {
+            // 服务端告诉我们这一轮命中了哪个技能，直接显示，不内置清单
+            if (meta.skillName) setActiveSkills([meta.skillName]);
             if (!meta.kbCount) return;
             setMessages((current) =>
               current.map((message) =>

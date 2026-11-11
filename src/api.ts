@@ -303,13 +303,20 @@ export type ServerChatMessage = {
 };
 
 export async function streamServerChat(options: {
+  /** 只包含 user / assistant；system 由服务端按变量拼，客户端不再发模板 */
   messages: ServerChatMessage[];
+  /** 提示词变量：本机数据（档案、记忆、课程、任务…） */
+  variables?: Record<string, unknown>;
   temperature?: number;
   maxTokens?: number;
   signal?: AbortSignal;
   onDelta: (delta: string) => void;
-  /** 服务端透出的元信息：命中条数 + 参考方向摘要 */
-  onMeta?: (meta: { kbCount: number; kbTags?: string[] }) => void;
+  /** 服务端透出的元信息：经验命中、以及命中的技能名 */
+  onMeta?: (meta: {
+    kbCount: number;
+    kbTags?: string[];
+    skillName?: string;
+  }) => void;
 }): Promise<void> {
   let session = readSession();
   if (!session) session = await guestLogin();
@@ -322,6 +329,9 @@ export async function streamServerChat(options: {
         authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
+        // 提示词模板在服务端，这里只带开关和变量
+        ...(options.variables ? { useServerPrompt: true } : {}),
+        ...(options.variables ? { variables: options.variables } : {}),
         messages: options.messages,
         temperature: options.temperature,
         maxTokens: options.maxTokens,
@@ -352,6 +362,18 @@ export async function streamServerChat(options: {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+
+  // 服务端拼提示词时会把命中的技能名放在响应头里，客户端不需要内置清单
+  const skillHeader = response.headers.get("x-waymuse-skill-name");
+  if (skillHeader && options.onMeta) {
+    let skillName: string | undefined;
+    try {
+      skillName = decodeURIComponent(skillHeader).trim();
+    } catch {
+      skillName = skillHeader.trim();
+    }
+    if (skillName) options.onMeta({ kbCount: 0, skillName });
+  }
 
   // 命中条数通过响应头传过来（流开始前就能读到）
   const kbHeader = response.headers.get("x-waymuse-kb");
