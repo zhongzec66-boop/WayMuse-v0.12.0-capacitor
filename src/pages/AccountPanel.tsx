@@ -51,7 +51,10 @@ export default function AccountPanel({
   const monthlyUsed = quota?.monthlyUsed ?? 0;
   const monthlyLimit = quota?.monthlyLimit ?? 300_000;
   const percent = Math.min(100, Math.round((monthlyUsed / monthlyLimit) * 100));
-  const dailyLeft = Math.max(0, (quota?.dailyLimit ?? 30_000) - (quota?.dailyUsed ?? 0));
+  const dailyLeft = Math.max(
+    0,
+    (quota?.dailyLimit ?? 30_000) - (quota?.dailyUsed ?? 0),
+  );
 
   const save = async () => {
     setSaving(true);
@@ -134,10 +137,7 @@ export default function AccountPanel({
             </button>
           </div>
         ) : (
-          <button
-            className="wr-settings-row"
-            onClick={() => setEditing(true)}
-          >
+          <button className="wr-settings-row" onClick={() => setEditing(true)}>
             <span>
               <GraduationCap size={16} /> 学校 / 专业 / 年级
               <em className="wr-settings-sub">

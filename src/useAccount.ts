@@ -19,7 +19,9 @@ import type { AuthSession } from "./api";
  * 用户不需要注册就能用，配额按账号算。
  */
 export function useAccount() {
-  const [session, setSession] = useState<AuthSession | null>(() => readSession());
+  const [session, setSession] = useState<AuthSession | null>(() =>
+    readSession(),
+  );
   const [me, setMe] = useState<AccountInfo | null>(null);
   const [quota, setQuota] = useState<Quota | null>(null);
   const [error, setError] = useState("");

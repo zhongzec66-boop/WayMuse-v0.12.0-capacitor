@@ -94,7 +94,9 @@ export default function DeviceDataPanel() {
         <span>
           <Footprints size={16} /> 步数
           <em className="wr-settings-sub">
-            {stepsSupported ? "用系统计步传感器，不上传" : "这台设备没有计步传感器"}
+            {stepsSupported
+              ? "用系统计步传感器，不上传"
+              : "这台设备没有计步传感器"}
           </em>
         </span>
         <span className="wr-settings-chevron">{stepsLabel}</span>

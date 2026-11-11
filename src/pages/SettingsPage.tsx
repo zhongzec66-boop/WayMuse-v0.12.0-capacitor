@@ -326,9 +326,7 @@ export default function SettingsPage({
           <div className="wr-settings-row">
             <span>
               模型服务
-              <em className="wr-settings-sub">
-                Key 保存在服务器，App 不存储
-              </em>
+              <em className="wr-settings-sub">Key 保存在服务器，App 不存储</em>
             </span>
             <b
               className={

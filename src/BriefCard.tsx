@@ -60,9 +60,12 @@ export default function BriefCard({
 }) {
   const current = todayCourses.find(
     (course) =>
-      toMinutes(course.start) <= nowMinutes && toMinutes(course.end) > nowMinutes,
+      toMinutes(course.start) <= nowMinutes &&
+      toMinutes(course.end) > nowMinutes,
   );
-  const next = todayCourses.find((course) => toMinutes(course.start) > nowMinutes);
+  const next = todayCourses.find(
+    (course) => toMinutes(course.start) > nowMinutes,
+  );
 
   const open = tasks.filter((task) => !task.done);
   const overdue = open
@@ -84,7 +87,11 @@ export default function BriefCard({
     title = current.name;
     lead = `到 ${current.end} 下课${current.place ? ` · ${current.place}` : ""}`;
     steps = [
-      { text: "正在上课", meta: `${current.start}–${current.end}`, state: "live" },
+      {
+        text: "正在上课",
+        meta: `${current.start}–${current.end}`,
+        state: "live",
+      },
       ...(next
         ? [
             {
@@ -107,7 +114,9 @@ export default function BriefCard({
         ? [
             {
               text: top.text,
-              meta: top.deadline ? relative(top.deadline, todayKey) : "未设截止",
+              meta: top.deadline
+                ? relative(top.deadline, todayKey)
+                : "未设截止",
               state: "next" as const,
             },
           ]
@@ -115,7 +124,10 @@ export default function BriefCard({
     ];
     cta = { label: "看今天的时间轴", action: onOpenTimeline };
   } else if (top) {
-    chip = { icon: ListTodo, label: `最紧 · ${top.deadline ? relative(top.deadline, todayKey) : "无截止"}` };
+    chip = {
+      icon: ListTodo,
+      label: `最紧 · ${top.deadline ? relative(top.deadline, todayKey) : "无截止"}`,
+    };
     title = top.text;
     lead =
       open.length > 1

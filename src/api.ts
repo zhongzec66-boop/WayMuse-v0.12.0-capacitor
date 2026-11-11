@@ -60,7 +60,8 @@ export class ApiError extends Error {
 export function apiBase(): string {
   try {
     const override = localStorage.getItem("waymuse-api-base");
-    if (override && /^https?:\/\//.test(override)) return override.replace(/\/$/, "");
+    if (override && /^https?:\/\//.test(override))
+      return override.replace(/\/$/, "");
   } catch {
     // 忽略
   }
@@ -82,7 +83,11 @@ export function deviceId(): string {
 
 function deviceName(): string {
   const platform = Capacitor.getPlatform();
-  return platform === "ios" ? "iPhone" : platform === "android" ? "Android" : "浏览器";
+  return platform === "ios"
+    ? "iPhone"
+    : platform === "android"
+      ? "Android"
+      : "浏览器";
 }
 
 /* ── 会话存储 ─────────────────────────────────────────── */
@@ -199,7 +204,9 @@ export async function verifyCode(
   return session;
 }
 
-export async function refreshSession(session: AuthSession): Promise<AuthSession> {
+export async function refreshSession(
+  session: AuthSession,
+): Promise<AuthSession> {
   const payload = await request<{
     accessToken: string;
     refreshToken: string;
@@ -303,7 +310,9 @@ export async function streamServerChat(options: {
     let code = `HTTP ${response.status}`;
     try {
       const parsed = JSON.parse(text) as { error?: string; reason?: string };
-      code = parsed.reason ? `${parsed.error}:${parsed.reason}` : (parsed.error ?? code);
+      code = parsed.reason
+        ? `${parsed.error}:${parsed.reason}`
+        : (parsed.error ?? code);
     } catch {
       // 保持默认
     }
@@ -324,7 +333,9 @@ export async function streamServerChat(options: {
       try {
         const parsed: unknown = JSON.parse(decodeURIComponent(tagsHeader));
         if (Array.isArray(parsed)) {
-          kbTags = parsed.filter((item): item is string => typeof item === "string");
+          kbTags = parsed.filter(
+            (item): item is string => typeof item === "string",
+          );
         }
       } catch {
         // 头里的 JSON 坏了就当作没有

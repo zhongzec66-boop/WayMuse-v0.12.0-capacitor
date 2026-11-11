@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { parseCourseLine, parseCourseTableLine, parseCourseText } from "./courseImport";
+import {
+  parseCourseLine,
+  parseCourseTableLine,
+  parseCourseText,
+} from "./courseImport";
 
 describe("parseCourseLine（一行一门课）", () => {
   it("认得「周几 + 时间 + 课名 + @地点」", () => {
@@ -90,7 +94,9 @@ describe("parseCourseTableLine（一行一个节次的表格）", () => {
   });
 
   it("列数不足 7 时不硬猜", () => {
-    expect(parseCourseTableLine("5-6节 (14:00-15:40) 概率论 数据结构")).toEqual([]);
+    expect(parseCourseTableLine("5-6节 (14:00-15:40) 概率论 数据结构")).toEqual(
+      [],
+    );
   });
 });
 

@@ -51,11 +51,7 @@ export function writeTermStart(value: string): void {
 export function academicWeek(termStart: string, now = new Date()): number {
   const start = new Date(`${termStart}T00:00:00`);
   if (Number.isNaN(start.getTime())) return 1;
-  const today = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-  );
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const diff = Math.floor(
     (today.getTime() - start.getTime()) / (24 * 60 * 60 * 1000),
   );
@@ -74,8 +70,14 @@ export function expandWeeks(spec: string): number[] | null {
   const text = spec.replace(/\s+/g, "");
   if (!text) return null;
 
-  if (/单周/.test(text)) return Array.from({ length: 30 }, (_, i) => i + 1).filter((w) => w % 2 === 1);
-  if (/双周/.test(text)) return Array.from({ length: 30 }, (_, i) => i + 1).filter((w) => w % 2 === 0);
+  if (/单周/.test(text))
+    return Array.from({ length: 30 }, (_, i) => i + 1).filter(
+      (w) => w % 2 === 1,
+    );
+  if (/双周/.test(text))
+    return Array.from({ length: 30 }, (_, i) => i + 1).filter(
+      (w) => w % 2 === 0,
+    );
 
   const weeks = new Set<number>();
   for (const part of text.split(/[,，、]/)) {

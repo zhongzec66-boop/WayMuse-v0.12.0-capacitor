@@ -288,7 +288,7 @@ export function localSuggestions(input: string): Reply {
       ],
       memories: [],
       courses: [],
-    choices: [],
+      choices: [],
     };
   }
 
@@ -309,7 +309,7 @@ export function localSuggestions(input: string): Reply {
       ],
       memories: [],
       courses: [],
-    choices: [],
+      choices: [],
     };
   }
 
@@ -342,7 +342,7 @@ export function localSuggestions(input: string): Reply {
       ],
       memories: [],
       courses: [],
-    choices: [],
+      choices: [],
     };
   }
 
@@ -363,7 +363,7 @@ export function localSuggestions(input: string): Reply {
       ],
       memories: [],
       courses: [],
-    choices: [],
+      choices: [],
     };
   }
 

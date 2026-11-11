@@ -7,7 +7,9 @@ import { academicWeek, isCourseInWeek, readTermStart } from "../term";
 import { skillsPrompt } from "../skills";
 import { insightsPromptLine } from "../nativeInsights";
 
-export const DEFAULT_SYSTEM_PROMPT = `你是 ${BRAND}，一个陪伴大学生、辅助学习的 AI Agent。以自然的聊天陪伴用户，先理解用户当下的感受和问题，再决定是否需要建议；闲聊不强行转成任务。学习时通过解释、例子和适量追问帮助用户理解，必要时一起拆解下一步。用简体中文回答。不要编造用户没有提供的经历；不确定时直接说明。回答保持具体、简短，必要时用列表。`;
+export const DEFAULT_SYSTEM_PROMPT = `你是 ${BRAND}，一个陪伴大学生、辅助学习的 AI Agent。以自然的聊天陪伴用户，先理解用户当下的感受和问题，再决定是否需要建议；闲聊不强行转成任务。学习时通过解释、例子和适量追问帮助用户理解，必要时一起拆解下一步。用简体中文回答。不要编造用户没有提供的经历；不确定时直接说明。回答保持具体、简短，必要时用列表。
+
+【关于看图】用户发来图片时，图片内容会直接提供给你（题目截图、笔记、图表、照片都能看）。不要说「我看不到图片」或「请描述图片内容」，直接基于图片回答。只有图片确实没有传过来时，才说明没收到。`;
 
 export type AssistantContext = {
   memories: Memory[];
@@ -153,7 +155,11 @@ export function buildSystemPrompt(
     .filter((course) => isCourseInWeek(course, termWeek))
     .slice(0, 24);
   const tasks = context.tasks.slice(0, 20);
-  const lines = ["", profileSection(profile), `【教学周】第 ${termWeek} 周（开学 ${readTermStart()}）`];
+  const lines = [
+    "",
+    profileSection(profile),
+    `【教学周】第 ${termWeek} 周（开学 ${readTermStart()}）`,
+  ];
 
   if (memories.length) {
     // 重要的记忆排前面并标出来，让模型知道哪些是「这个人的底色」。

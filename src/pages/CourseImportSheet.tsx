@@ -27,7 +27,6 @@ const AI_PROMPT = `你是课表解析器。把用户粘贴的课表文字转成 
 
 如果整段文字里没有可识别的课程，输出 []。`;
 
-
 /** 从模型输出里抠出 JSON 数组，容忍 ```json 包裹和前后废话 */
 function extractJsonArray(raw: string): unknown[] {
   const cleaned = raw.replace(/```json/gi, "```").trim();
@@ -163,9 +162,9 @@ export default function CourseImportSheet({
         </div>
 
         <p className="wr-sheet-description">
-          把教务系统的课表文字复制进来，每行一门课。支持「周一
-          08:00-09:40 高等数学 教三-302」这种写法，也认「第 1-2 节」和
-          「1-16 周」「单周」「双周」。
+          把教务系统的课表文字复制进来，每行一门课。支持「周一 08:00-09:40
+          高等数学 教三-302」这种写法，也认「第 1-2 节」和 「1-16
+          周」「单周」「双周」。
         </p>
 
         <label className="wr-course-import-term">
@@ -230,8 +229,8 @@ export default function CourseImportSheet({
           <div className="wr-course-import-result">
             {parsed.length === 0 ? (
               <p className="wr-course-import-empty">
-                <TriangleAlert size={16} /> 没认出课程。检查一下每行是否包含「周几 +
-                时间 + 课程名」。
+                <TriangleAlert size={16} />{" "}
+                没认出课程。检查一下每行是否包含「周几 + 时间 + 课程名」。
               </p>
             ) : (
               <>
@@ -249,7 +248,9 @@ export default function CourseImportSheet({
                       <span className="wr-course-import-time">
                         {course.start}–{course.end}
                       </span>
-                      <span className="wr-course-import-name">{course.name}</span>
+                      <span className="wr-course-import-name">
+                        {course.name}
+                      </span>
                       {course.place && (
                         <span className="wr-course-import-place">
                           {course.place}

@@ -299,7 +299,7 @@ export default function WayMuseReference() {
     chromeHidden ? "通话" : overlay,
     nav,
   );
-    const exportDemoData = () => {
+  const exportDemoData = () => {
     try {
       // 导出全部键值快照（默认不含 API Key，避免备份文件被转发时泄露）
       const backup = createBackup({ includeSecrets: false });

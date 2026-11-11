@@ -7,7 +7,6 @@ import {
   EyeOff,
   FileText,
   Globe,
-
   KeyRound,
   Plus,
   RotateCcw,
@@ -295,7 +294,9 @@ export default function ChatPage({
 
     // 附件或直接粘贴的课表：先本地认一遍。
     // 认出来就问一句「要不要加进课表」，而不是替用户决定，也不是当普通消息忽略。
-    const fileMatch = content.match(/\[\[FILE:([^\]]*)\]\]([\s\S]*?)\[\[\/FILE\]\]/);
+    const fileMatch = content.match(
+      /\[\[FILE:([^\]]*)\]\]([\s\S]*?)\[\[\/FILE\]\]/,
+    );
     const attachMeta = fileMatch?.[1] ?? "";
     const attachBody = fileMatch ? fileMatch[2] : content;
     const isImage =
@@ -375,7 +376,10 @@ export default function ChatPage({
               content: imageDataUrl
                 ? [
                     { type: "text" as const, text: content },
-                    { type: "image_url" as const, image_url: { url: imageDataUrl } },
+                    {
+                      type: "image_url" as const,
+                      image_url: { url: imageDataUrl },
+                    },
                   ]
                 : content,
             },
@@ -826,7 +830,7 @@ export default function ChatPage({
             className="wr-sheet wr-titlemenu"
             onClick={(event) => event.stopPropagation()}
           >
-                        <button
+            <button
               onClick={() => {
                 const next = !searchOn;
                 setSearchOn(next);
@@ -1239,7 +1243,9 @@ export default function ChatPage({
                               ``` 配不上对，代码只能退化成 <pre>。
                               现在整段交给 MarkdownText，它自己会切出代码块。
                             */}
-                            <MarkdownText text={parseReply(message.content).text} />
+                            <MarkdownText
+                              text={parseReply(message.content).text}
+                            />
                           </div>
                         ) : (
                           <span className="wr-ai-typing">正在生成…</span>
@@ -1314,13 +1320,19 @@ export default function ChatPage({
                         const choices = parseReply(message.content).choices;
                         if (!choices.length) return null;
                         return (
-                          <div className="wr-choices" role="group" aria-label="可选回答">
+                          <div
+                            className="wr-choices"
+                            role="group"
+                            aria-label="可选回答"
+                          >
                             {choices.map((choice) => (
                               <button
                                 key={choice}
                                 type="button"
                                 className="wr-choice"
-                                onClick={() => void sendMessage(choice, messages)}
+                                onClick={() =>
+                                  void sendMessage(choice, messages)
+                                }
                               >
                                 {choice}
                               </button>
@@ -1514,8 +1526,8 @@ export default function ChatPage({
         {!showConfig && usage && (
           <div className="wr-ai-usage">
             <span>
-              上次：{usage.prompt_tokens} 输入 / {usage.completion_tokens}{" "}
-              输出 / {usage.total_tokens} tokens
+              上次：{usage.prompt_tokens} 输入 / {usage.completion_tokens} 输出
+              / {usage.total_tokens} tokens
             </span>
           </div>
         )}

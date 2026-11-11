@@ -98,7 +98,9 @@ function parseEntries(input: unknown): Record<string, string> | null {
   if (typeof entries !== "object" || entries === null) return null;
 
   const result: Record<string, string> = {};
-  for (const [key, value] of Object.entries(entries as Record<string, unknown>)) {
+  for (const [key, value] of Object.entries(
+    entries as Record<string, unknown>,
+  )) {
     if (typeof value !== "string") continue;
     // 只接受本项目自己的键，避免误写别人的数据
     if (!key.startsWith(PREFIX) && !EXTRA_KEYS.includes(key)) continue;

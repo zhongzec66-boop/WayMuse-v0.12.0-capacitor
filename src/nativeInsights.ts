@@ -34,8 +34,10 @@ export function hasNativeInsights(): boolean {
 }
 
 export const insightsStatus = () => NativeInsights.status();
-export const openUsageAccessSettings = () => NativeInsights.openUsageAccessSettings();
-export const requestActivityPermission = () => NativeInsights.requestActivityPermission();
+export const openUsageAccessSettings = () =>
+  NativeInsights.openUsageAccessSettings();
+export const requestActivityPermission = () =>
+  NativeInsights.requestActivityPermission();
 export const readUsage = () => NativeInsights.usage();
 export const readStepsSinceBoot = () => NativeInsights.steps();
 
@@ -54,7 +56,10 @@ export function todaySteps(sinceBoot: number): number {
       }
     }
     // 第一次取、跨天或手机重启（计数变小）：以当前值为基准
-    localStorage.setItem(STEPS_KEY, JSON.stringify({ date: today, base: sinceBoot }));
+    localStorage.setItem(
+      STEPS_KEY,
+      JSON.stringify({ date: today, base: sinceBoot }),
+    );
     return 0;
   } catch {
     return 0;
@@ -78,7 +83,8 @@ export function cachedInsights(): InsightsSnapshot | null {
     const raw = localStorage.getItem(CACHE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as InsightsSnapshot;
-    if (!parsed?.updatedAt || Date.now() - parsed.updatedAt > CACHE_TTL * 3) return null;
+    if (!parsed?.updatedAt || Date.now() - parsed.updatedAt > CACHE_TTL * 3)
+      return null;
     return parsed;
   } catch {
     return null;

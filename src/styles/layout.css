@@ -41,7 +41,6 @@
 /* 麦克风与发送分开：一个只负责「按住说话」，一个只负责发送。
    以前一个按钮三种行为，用户猜不到点下去会发生什么。 */
 
-
 .wr-compose-send {
   min-width: var(--space-40) !important;
   min-height: var(--space-40) !important;
@@ -107,7 +106,9 @@
    1) 把整个 Dock 抬到原生栏上方，2) 直接隐藏网页 Tab 行。 */
 .wr-dock-native {
   /* 原生栏高度已含安全区，用 max 避免重复叠加 */
-  bottom: calc(var(--space-8) + max(var(--safe-bottom), var(--native-tabbar, 0px)));
+  bottom: calc(
+    var(--space-8) + max(var(--safe-bottom), var(--native-tabbar, 0px))
+  );
   padding-bottom: 0;
   border-color: transparent;
   background: transparent;
@@ -458,9 +459,6 @@
 
 /* ── 语音输入状态 ─────────────────────────────────── */
 
-
-
-
 @keyframes wm-listening {
   0%,
   100% {
@@ -472,7 +470,6 @@
     transform: scale(1.1);
   }
 }
-
 
 @keyframes wm-mic-pulse {
   0%,
@@ -528,7 +525,9 @@ html[data-platform="android"] .wr-dock {
   right: var(--dock-inset);
   /* --native-tabbar 是原生栏整体高度（贴屏幕底，已含安全区）。
      取 max 而不是相加：插件没上报高度时退回 safe-bottom，不会顶穿。 */
-  bottom: calc(var(--space-8) + max(var(--safe-bottom), var(--native-tabbar, 0px)));
+  bottom: calc(
+    var(--space-8) + max(var(--safe-bottom), var(--native-tabbar, 0px))
+  );
   left: var(--dock-inset);
   z-index: var(--z-dock);
   pointer-events: none;
@@ -541,7 +540,6 @@ html[data-platform="android"] .wr-dock {
   border: 0;
   box-shadow: none;
 }
-
 
 /* 内容区底部留白要吃掉原生 Tab 栏 + 输入框的高度 */
 .wr-phone:has(.wr-dock-anchor) .wr-content {
@@ -575,7 +573,5 @@ html[data-platform="android"] .wr-dock {
 }
 
 html[data-kb="open"] .wr-dock {
-  bottom: calc(
-    var(--space-8) + var(--safe-bottom) + var(--kb-inset, 0px)
-  );
+  bottom: calc(var(--space-8) + var(--safe-bottom) + var(--kb-inset, 0px));
 }
