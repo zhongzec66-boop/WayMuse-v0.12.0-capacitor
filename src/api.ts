@@ -271,8 +271,8 @@ export async function streamServerChat(options: {
   maxTokens?: number;
   signal?: AbortSignal;
   onDelta: (delta: string) => void;
-  /** 服务端透出的元信息：命中了多少条学长经验 */
-  onMeta?: (meta: { kbCount: number }) => void;
+  /** 服务端透出的元信息：命中条数 + 参考方向摘要 */
+  onMeta?: (meta: { kbCount: number; kbTags?: string[] }) => void;
 }): Promise<void> {
   let session = readSession();
   if (!session) session = await guestLogin();
@@ -318,7 +318,19 @@ export async function streamServerChat(options: {
   const kbHeader = response.headers.get("x-waymuse-kb");
   if (kbHeader !== null && options.onMeta) {
     const count = Number(kbHeader);
-    if (Number.isFinite(count)) options.onMeta({ kbCount: count });
+    let kbTags: string[] | undefined;
+    const tagsHeader = response.headers.get("x-waymuse-kb-tags");
+    if (tagsHeader) {
+      try {
+        const parsed: unknown = JSON.parse(decodeURIComponent(tagsHeader));
+        if (Array.isArray(parsed)) {
+          kbTags = parsed.filter((item): item is string => typeof item === "string");
+        }
+      } catch {
+        // 头里的 JSON 坏了就当作没有
+      }
+    }
+    if (Number.isFinite(count)) options.onMeta({ kbCount: count, kbTags });
   }
 
   while (true) {

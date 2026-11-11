@@ -169,6 +169,7 @@ export default function ChatPage({
   const [showKey, setShowKey] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
   /** 用户发来的课表：等确认后再写进课表 */
+  const [expandedKb, setExpandedKb] = useState<string | null>(null);
   const [courseProposal, setCourseProposal] = useState<ParsedCourse[] | null>(
     null,
   );
@@ -393,7 +394,7 @@ export default function ChatPage({
             setMessages((current) =>
               current.map((message) =>
                 message.id === assistantId
-                  ? { ...message, kbCount: meta.kbCount }
+                  ? { ...message, kbCount: meta.kbCount, kbTags: meta.kbTags }
                   : message,
               ),
             );
@@ -540,7 +541,7 @@ export default function ChatPage({
             setMessages((current) =>
               current.map((message) =>
                 message.id === assistantId
-                  ? { ...message, kbCount: meta.kbCount }
+                  ? { ...message, kbCount: meta.kbCount, kbTags: meta.kbTags }
                   : message,
               ),
             );
@@ -758,11 +759,47 @@ export default function ChatPage({
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
-  const suggestions = [
-    "明天考试，我有点慌，陪我安排一下复习",
-    "我想准备第一份实习，有什么方案？",
-    "今天有点累，想聊一会儿",
-  ];
+  /**
+   * 开场建议：按时段 + 年级组合，每天轮换。
+   *
+   * 之前是 3 条写死的文案，所有人、所有时间看到的都一样；
+   * 现在至少让人感觉「它知道现在是晚上」「它知道我是大三」。
+   */
+  const suggestions = (() => {
+    const hour = new Date().getHours();
+    const timePool =
+      hour < 5
+        ? ["睡不着，明天还有早八，怎么办", "脑子很乱，陪我理一下明天要做什么"]
+        : hour < 11
+          ? ["今天课有点满，帮我排个优先级", "早八起不来，有什么办法吗"]
+          : hour < 18
+            ? ["下午没课，帮我安排两小时高效学习", "这道题不会，陪我拆一下思路"]
+            : ["今天有点累，想聊一会儿", "帮我复盘一下今天，顺便定明天的重点"];
+
+    const gradePool =
+      profile.grade === "大一"
+        ? ["想加个社团，怎么判断值不值得", "刚上大学，怎么安排学习和生活"]
+        : profile.grade === "大二"
+          ? ["专业方向还没定，怎么选", "想试试竞赛，从哪开始"]
+          : profile.grade === "大三"
+            ? ["保研和考研我该怎么选", "想准备第一份实习，有什么方案"]
+            : profile.grade === "大四"
+              ? ["找工作还是考研，怎么定", "毕业论文开题没思路，帮我拆一下"]
+              : ["怎么跟导师沟通进度", "科研和课程时间怎么平衡"];
+
+    const general = [
+      profile.major.trim()
+        ? `${profile.major.trim()}专业以后能做什么工作`
+        : "我这个专业以后能做什么工作",
+      "最近总是拖延，有什么办法",
+    ];
+
+    // 6 条：时段 3 + 年级 2 + 通用 1，按天错开起点，避免每次都一样
+    const pool = [...timePool, ...gradePool, ...general];
+    const offset = new Date().getDate() % pool.length;
+    const rotated = [...pool.slice(offset), ...pool.slice(0, offset)];
+    return rotated.slice(0, 6);
+  })();
 
   const statusLabel =
     connectState === "ok"
@@ -1211,13 +1248,43 @@ export default function ChatPage({
                           <span className="wr-ai-stopped">已停止生成</span>
                         )}
                         {message.kbCount ? (
-                          <span
+                          <button
+                            type="button"
                             className="wr-kb-chip"
                             title="这些回答参考了同专业学长学姐的真实经验，已做匿名处理"
+                            onClick={() => {
+                              setExpandedKb((current) =>
+                                current === message.id ? null : message.id,
+                              );
+                            }}
                           >
                             <BookOpen size={12} />
                             参考了 {message.kbCount} 位同专业学长
-                          </span>
+                            {message.kbTags?.length ? (
+                              <span className="wr-kb-more">
+                                {expandedKb === message.id ? "收起" : "看看"}
+                              </span>
+                            ) : null}
+                          </button>
+                        ) : null}
+                        {message.kbCount && expandedKb === message.id ? (
+                          <div className="wr-kb-detail">
+                            {message.kbTags?.length ? (
+                              <>
+                                <small>参考方向</small>
+                                <div className="wr-kb-tags">
+                                  {message.kbTags.map((tag) => (
+                                    <span key={tag}>{tag}</span>
+                                  ))}
+                                </div>
+                              </>
+                            ) : (
+                              <small>这次命中的经验没有可展示的标签</small>
+                            )}
+                            <small className="wr-kb-note">
+                              内容已匿名化改写，不含姓名、学校和联系方式。
+                            </small>
+                          </div>
                         ) : null}
                         <div className="wr-ai-meta">
                           {message.usage && (

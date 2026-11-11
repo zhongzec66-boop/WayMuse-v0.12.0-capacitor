@@ -18,6 +18,8 @@ export type DeepSeekMessage = {
   error?: boolean;
   /** 本条回答参考了几位学长（服务端命中经验库的条数） */
   kbCount?: number;
+  /** 参考到的专业/方向，用于展开「参考了什么」 */
+  kbTags?: string[];
   /** 用户这一条带的图片（dataURL），用于气泡里显示缩略图 */
   imageDataUrl?: string;
 };

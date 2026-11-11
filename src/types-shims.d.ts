@@ -22,3 +22,6 @@ declare module "mammoth" {
     arrayBuffer: ArrayBuffer;
   }): Promise<{ value: string; messages: unknown[] }>;
 }
+
+declare const __APP_VERSION__: string;
+declare const __BUILD_TIME__: string;
