@@ -1873,3 +1873,30 @@
   font-size: var(--text-12);
   line-height: 1.6;
 }
+
+/* ── 可点选选项 ─────────────────────────────────────────── */
+.wr-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  margin-top: var(--space-10, 10px);
+}
+
+.wr-choice {
+  min-height: var(--control-44);
+  padding: var(--space-8) var(--space-16);
+  border: var(--border-1) solid var(--primary);
+  border-radius: var(--radius-pill);
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: var(--text-15);
+  line-height: 1.4;
+  text-align: left;
+  transition: transform var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
+}
+
+.wr-choice:active {
+  transform: scale(0.97);
+  background: var(--primary);
+  color: var(--on-primary);
+}

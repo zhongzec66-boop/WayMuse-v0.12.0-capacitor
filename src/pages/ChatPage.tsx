@@ -194,7 +194,8 @@ export default function ChatPage({
   const [connectText, setConnectText] = useState("");
   const [models, setModels] = useState<string[]>([]);
   const [usage, setUsage] = useState<DeepSeekUsage | null>(null);
-  const [latency, setLatency] = useState<number | null>(null);
+  // 只用于历史兼容：现在耗时挂在消息上，不再单独维护
+  const [, setLatency] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const testAbortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -1200,6 +1201,29 @@ export default function ChatPage({
                           )}
                         </div>
                       </div>
+                      {(() => {
+                        // 只在最后一条、且不在生成中时给出可点选项，
+                        // 否则历史消息里的按钮还能点，会答非所问。
+                        const isLast =
+                          message.id === messages[messages.length - 1]?.id;
+                        if (!isLast || streaming) return null;
+                        const choices = parseReply(message.content).choices;
+                        if (!choices.length) return null;
+                        return (
+                          <div className="wr-choices" role="group" aria-label="可选回答">
+                            {choices.map((choice) => (
+                              <button
+                                key={choice}
+                                type="button"
+                                className="wr-choice"
+                                onClick={() => void sendMessage(choice, messages)}
+                              >
+                                {choice}
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })()}
                       {(!streaming ||
                         message.id !== messages[messages.length - 1]?.id) &&
                         parseReply(message.content).plans.map((plan, index) => {
@@ -1382,15 +1406,13 @@ export default function ChatPage({
           </div>
         )}
 
-        {!showConfig && (usage || latency) && (
+        {/* 每条消息自己带了耗时，这里只在有 token 用量时展示，避免同一个数字出现两次 */}
+        {!showConfig && usage && (
           <div className="wr-ai-usage">
-            {usage && (
-              <span>
-                上次：{usage.prompt_tokens} 输入 / {usage.completion_tokens}{" "}
-                输出 / {usage.total_tokens} tokens
-              </span>
-            )}
-            {latency && <span>{latency} ms</span>}
+            <span>
+              上次：{usage.prompt_tokens} 输入 / {usage.completion_tokens}{" "}
+              输出 / {usage.total_tokens} tokens
+            </span>
           </div>
         )}
       </div>

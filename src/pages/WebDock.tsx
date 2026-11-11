@@ -17,6 +17,7 @@ import type { Overlay, Page } from "../types";
 import { COMPOSE_SLOT_ID, useNativeCompose } from "../nativeCompose";
 import { buildFileBlock, describeFailure, extractFileText } from "../fileText";
 import { recognizeImageText } from "../ocr";
+import { capturePhoto, hasNativeCapture, photoToFile } from "../nativeCapture";
 
 export default function WebDock({
   nativeTabsActive,
@@ -66,12 +67,8 @@ export default function WebDock({
 
   // 统一走 extractFileText：文本 / PDF / Word / Excel 都抽正文，
   // 图片走原生 OCR；都提取不到才退回「只记文件名」。
-  const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
+  const processFile = async (file: File) => {
     setAttachmentMenu(false);
-
     const extracted = await extractFileText(file);
     const content =
       extracted.source === "image"
@@ -80,6 +77,24 @@ export default function WebDock({
     onAttach(
       buildFileBlock(file.name, file.size, content, describeFailure(extracted)),
     );
+  };
+
+  const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    await processFile(file);
+  };
+
+  // Android 上没有 <input> 相机链路的权限，走原生拍照（已降采样，避免 OOM 闪退）
+  const handleCapture = async () => {
+    setAttachmentMenu(false);
+    try {
+      const photo = await capturePhoto();
+      await processFile(await photoToFile(photo));
+    } catch {
+      // 用户取消或相机不可用：不弹错，保持安静
+    }
   };
 
   // iOS 上用原生输入框；其它环境（Web / 插件缺失）自动回退到下面的 <input>。
@@ -101,9 +116,15 @@ export default function WebDock({
     <div className={nativeTabsActive ? "wr-dock wr-dock-native" : "wr-dock"}>
       {attachmentMenu && (
         <div className="wr-attachment-menu">
+          {hasNativeCapture() && (
+            <button onClick={() => void handleCapture()}>
+              <Camera size={20} />
+              拍一张照片
+            </button>
+          )}
           <button onClick={() => imageRef.current?.click()}>
             <Camera size={20} />
-            选一张图片
+            从相册选图
           </button>
           <button onClick={() => fileRef.current?.click()}>
             <FilePlus2 size={20} />

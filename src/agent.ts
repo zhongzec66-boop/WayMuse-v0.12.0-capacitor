@@ -25,6 +25,8 @@ export type Reply = {
   memories: string[];
   /** 从课表文本里整理出的课程，等用户确认后写入 */
   courses: ParsedCourse[];
+  /** 可点选的选项：渲染成按钮，点了直接作为回答发出 */
+  choices: string[];
 };
 
 /**
@@ -62,7 +64,18 @@ export const PLAN_INSTRUCTION = `【回复协议】
 - weekday：1-7 表示周一到周日。
 - start / end 用 HH:mm；只有节次时按常见作息换算（1-2 节 08:00-09:40，3-4 节 10:00-11:40，5-6 节 14:00-15:40，7-8 节 16:00-17:40，9-10 节 19:00-20:40）。
 - weeks 是可选的周次数组；用户没说就不要猜。
-- 正文里只说明你整理出了几门课、哪几处不确定，不要列出全部课程。`;
+- 正文里只说明你整理出了几门课、哪几处不确定，不要列出全部课程。
+
+【什么时候给选项】
+当用户需要做选择、或者你在出题（刷题/自测/选择题），不要让他打字，
+在正文末尾附一个选项块，前端会渲染成可点的按钮：
+
+<choices>["A. 2_student","B. int","C. _name","D. my-var"]</choices>
+
+- 2–4 个选项，每个 ≤14 字，按 A/B/C/D 或「先做数学」「先背单词」这种顺序写。
+- 如果是在做题，正文里只问题目，**不要在正文里重复选项**。
+- 只在你确实需要用户选一个的时候给；普通聊天追问不要用。
+- 用户点了按钮，就等于把该选项作为回答发给你，所以选项要能独立成立。`;
 
 function parsePriority(value: unknown): Priority | undefined {
   return value === "high" || value === "medium" || value === "low"
@@ -137,7 +150,8 @@ export function parseReply(content: string): Reply {
   const plansBlock = extractBlock(content, "plans");
   const memoriesBlock = extractBlock(plansBlock.rest, "memories");
   const coursesBlock = extractBlock(memoriesBlock.rest, "courses");
-  const text = coursesBlock.rest.trim();
+  const choicesBlock = extractBlock(coursesBlock.rest, "choices");
+  const text = choicesBlock.rest.trim();
 
   let plans: Plan[] = [];
   if (plansBlock.body) {
@@ -185,7 +199,23 @@ export function parseReply(content: string): Reply {
     }
   }
 
-  return { text, plans, memories, courses };
+  let choices: string[] = [];
+  if (choicesBlock.body) {
+    try {
+      const raw: unknown = JSON.parse(choicesBlock.body);
+      if (Array.isArray(raw)) {
+        choices = raw
+          .filter((item): item is string => typeof item === "string")
+          .map((item) => item.trim().slice(0, 24))
+          .filter(Boolean)
+          .slice(0, 4);
+      }
+    } catch {
+      choices = [];
+    }
+  }
+
+  return { text, plans, memories, courses, choices };
 }
 
 export function planTasks(
@@ -258,6 +288,7 @@ export function localSuggestions(input: string): Reply {
       ],
       memories: [],
       courses: [],
+    choices: [],
     };
   }
 
@@ -278,6 +309,7 @@ export function localSuggestions(input: string): Reply {
       ],
       memories: [],
       courses: [],
+    choices: [],
     };
   }
 
@@ -310,6 +342,7 @@ export function localSuggestions(input: string): Reply {
       ],
       memories: [],
       courses: [],
+    choices: [],
     };
   }
 
@@ -330,6 +363,7 @@ export function localSuggestions(input: string): Reply {
       ],
       memories: [],
       courses: [],
+    choices: [],
     };
   }
 
@@ -349,5 +383,6 @@ export function localSuggestions(input: string): Reply {
     ],
     memories: [],
     courses: [],
+    choices: [],
   };
 }
