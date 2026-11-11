@@ -22,6 +22,7 @@ import MemoryPage from "./pages/MemoryPage";
 import OverlaySheet from "./pages/OverlaySheet";
 import PersonaPage from "./pages/PersonaPage";
 import PrivacyPage from "./pages/PrivacyPage";
+import LoginPage from "./pages/LoginPage";
 import SettingsPage from "./pages/SettingsPage";
 import TaskPage from "./pages/TaskPage";
 import CourseImportSheet from "./pages/CourseImportSheet";
@@ -30,6 +31,7 @@ import { DEFAULT_PROFILE } from "./profile";
 import type { UserProfile } from "./profile";
 import { storage, createMemory } from "./storage";
 import { backupFileName, createBackup, restoreBackup } from "./backup";
+import { useAccount } from "./useAccount";
 import { academicWeek, isCourseInWeek, readTermStart } from "./term";
 import type { Course, Memory, Overlay, Page, Task } from "./types";
 import { useNativeTabs } from "./useNativeTabs";
@@ -63,6 +65,8 @@ export default function WayMuseReference() {
   const [overlay, setOverlay] = useState<Overlay>("");
   const [attachmentMenu, setAttachmentMenu] = useState(false);
   const [courseImportOpen, setCourseImportOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const account = useAccount();
   // 导入层是我们自己的全屏 sheet，但原生输入框会浮在它上面：打开时一并隐藏
   useHideNativeChrome(courseImportOpen);
   const [taskMode, setTaskMode] = useState<"任务" | "课表">("任务");
@@ -453,10 +457,21 @@ export default function WayMuseReference() {
             setHasEntered={setHasEntered}
             onExport={exportDemoData}
             onImport={(file, mode) => void importDemoData(file, mode)}
+            account={account}
+            onLogin={() => setLoginOpen(true)}
           />
         )}
         {overlay === "隐私与数据" && (
           <PrivacyPage onClose={() => setOverlay("设置")} />
+        )}
+        {loginOpen && (
+          <LoginPage
+            onClose={() => setLoginOpen(false)}
+            onLogin={() => {
+              setLoginOpen(false);
+              void account.reload();
+            }}
+          />
         )}
         {courseImportOpen && (
           <CourseImportSheet

@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
 import { ArrowLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
+import AccountPanel from "./AccountPanel";
 import ConnectionsPanel from "./ConnectionsPanel";
+import type { useAccount } from "../useAccount";
 import BotAvatar from "../BotAvatar";
 import AvatarPicker from "../AvatarPicker";
 import { haptic } from "../nativeExtras";
@@ -31,6 +33,8 @@ export default function SettingsPage({
   setHasEntered,
   onExport,
   onImport,
+  account,
+  onLogin,
 }: {
   profile: UserProfile;
   onProfileChange: (profile: UserProfile) => void;
@@ -43,6 +47,8 @@ export default function SettingsPage({
   setHasEntered: Dispatch<SetStateAction<boolean>>;
   onExport: () => void;
   onImport: (file: File, mode: "merge" | "replace") => void;
+  account: ReturnType<typeof useAccount>;
+  onLogin: () => void;
 }) {
   const [apiKey, setApiKey] = useState(() => storage.getDeepSeekKey());
   const [rememberKey, setRememberKey] = useState(() =>
@@ -169,6 +175,7 @@ export default function SettingsPage({
         <span />
       </div>
       <div className="wr-settings-scroll">
+        <AccountPanel account={account} onLogin={onLogin} />
         <nav className="wr-settings-jump" aria-label="设置分区">
           {[
             "个人档案",

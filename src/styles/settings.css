@@ -613,3 +613,240 @@
 .wr-settings-note.error {
   color: var(--danger);
 }
+
+/* ── 账号 / 配额 / 资料 ─────────────────────────────────── */
+.wr-account-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--space-16);
+}
+
+.wr-account-avatar {
+  display: grid;
+  place-items: center;
+  width: var(--space-40);
+  height: var(--space-40);
+  border-radius: var(--radius-pill);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.wr-account-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.wr-account-main b {
+  display: block;
+  color: var(--ink);
+  font-size: var(--text-14);
+  font-weight: var(--weight-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wr-account-main small {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-3);
+  font-size: var(--text-12);
+}
+
+.wr-account-action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: var(--control-44);
+  padding: 0 var(--space-16);
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: var(--text-14);
+}
+
+.wr-quota {
+  padding: var(--space-12) var(--space-16) var(--space-16);
+}
+
+.wr-quota-head {
+  display: flex;
+  justify-content: space-between;
+  color: var(--ink-2);
+  font-size: var(--text-14);
+}
+
+.wr-quota-head em {
+  color: var(--ink-3);
+  font-style: normal;
+}
+
+.wr-quota-bar {
+  height: var(--space-8);
+  margin: var(--space-8) 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+  overflow: hidden;
+}
+
+.wr-quota-bar i {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  transition: width var(--dur-2) var(--ease);
+}
+
+.wr-quota-bar i[data-high="true"] {
+  background: var(--danger);
+}
+
+.wr-quota-foot {
+  display: flex;
+  justify-content: space-between;
+  color: var(--ink-3);
+  font-size: var(--text-12);
+}
+
+.wr-profile-edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-12) var(--space-16) var(--space-16);
+}
+
+.wr-profile-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  color: var(--ink-2);
+  font-size: var(--text-14);
+}
+
+.wr-profile-field span {
+  flex: 0 0 auto;
+  width: 4em;
+}
+
+.wr-profile-field input {
+  flex: 1;
+  min-height: var(--control-44);
+  padding: 0 var(--space-12);
+  border: var(--border-1) solid var(--divider);
+  border-radius: var(--radius-12);
+  background: var(--field-bg);
+  color: var(--ink);
+  font-size: var(--text-14);
+}
+
+.wr-profile-save {
+  min-height: var(--control-44);
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: var(--text-14);
+}
+
+/* ── 登录页 ─────────────────────────────────────────────── */
+.wr-login {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: calc(var(--safe-top) + var(--space-32)) var(--page-pad)
+    calc(var(--safe-bottom) + var(--space-32));
+}
+
+.wr-login-back {
+  align-self: flex-start;
+  display: grid;
+  place-items: center;
+  width: var(--control-44);
+  height: var(--control-44);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--ink-2);
+}
+
+.wr-login-title {
+  margin: var(--space-8) 0 0;
+  color: var(--ink);
+  font-size: var(--text-26);
+  font-weight: var(--weight-semibold);
+}
+
+.wr-login-sub {
+  margin: 0 0 var(--space-12);
+  color: var(--ink-2);
+  font-size: var(--text-14);
+  line-height: var(--leading-body);
+}
+
+.wr-login-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: var(--control-44);
+  padding: 0 var(--space-16);
+  border: var(--border-1) solid var(--divider);
+  border-radius: var(--radius-16);
+  background: var(--field-bg);
+  color: var(--ink-3);
+}
+
+.wr-login-field input {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--control-44);
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--text-17);
+  outline: 0;
+}
+
+.wr-login-primary {
+  min-height: var(--control-52, 52px);
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: var(--text-17);
+  font-weight: var(--weight-medium);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+}
+
+.wr-login-primary:disabled {
+  opacity: 0.6;
+}
+
+.wr-login-link {
+  min-height: var(--control-44);
+  color: var(--primary);
+  font-size: var(--text-14);
+}
+
+.wr-login-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--text-14);
+}
+
+.wr-login-note {
+  margin-top: auto;
+  color: var(--ink-3);
+  font-size: var(--text-12);
+  line-height: var(--leading-body);
+}
+
+.spin {
+  animation: wm-spin 900ms linear infinite;
+}
+
+@keyframes wm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

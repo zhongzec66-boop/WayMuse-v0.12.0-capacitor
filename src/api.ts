@@ -1,0 +1,336 @@
+/**
+ * 服务端 API 客户端。
+ *
+ * 目标：App 不再持有任何 API Key，聊天走后端代理；
+ * 游客态先能用，登录后跨设备同步（后续）。
+ */
+
+import { Capacitor } from "@capacitor/core";
+
+/** 线上地址；本地调试可用 localStorage 覆盖 */
+const DEFAULT_BASE = "https://api.101-32-101-117.sslip.io";
+
+const TOKEN_KEY = "waymuse-auth";
+const DEVICE_KEY = "waymuse-device-id";
+
+export type AuthUser = {
+  id: string;
+  email: string | null;
+  plan: "free" | "paid";
+  is_guest: boolean;
+};
+
+export type AuthSession = {
+  accessToken: string;
+  refreshToken: string;
+  accessExpiresAt: number;
+  deviceId: string;
+  user: AuthUser;
+};
+
+export type Quota = {
+  monthlyLimit: number;
+  monthlyUsed: number;
+  dailyLimit: number;
+  dailyUsed: number;
+  resetDailyAt: string;
+  resetMonthlyAt: string;
+  plan: string;
+};
+
+export type AccountInfo = {
+  user: AuthUser | null;
+  devices: Array<{ device_id: string; name: string; last_seen_at: string }>;
+  profile: {
+    school: string;
+    major: string;
+    grade: string;
+    direction: string;
+  } | null;
+};
+
+export class ApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
+export function apiBase(): string {
+  try {
+    const override = localStorage.getItem("waymuse-api-base");
+    if (override && /^https?:\/\//.test(override)) return override.replace(/\/$/, "");
+  } catch {
+    // 忽略
+  }
+  return DEFAULT_BASE;
+}
+
+/** 设备 id：首次生成后长期保存，卸载重装会变（符合「一台设备一个账号」的设计） */
+export function deviceId(): string {
+  try {
+    const existing = localStorage.getItem(DEVICE_KEY);
+    if (existing) return existing;
+    const created = `wm-${crypto.randomUUID()}`;
+    localStorage.setItem(DEVICE_KEY, created);
+    return created;
+  } catch {
+    return `wm-${crypto.randomUUID()}`;
+  }
+}
+
+function deviceName(): string {
+  const platform = Capacitor.getPlatform();
+  return platform === "ios" ? "iPhone" : platform === "android" ? "Android" : "浏览器";
+}
+
+/* ── 会话存储 ─────────────────────────────────────────── */
+
+export function readSession(): AuthSession | null {
+  try {
+    const raw = localStorage.getItem(TOKEN_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as AuthSession;
+    if (!parsed?.accessToken || !parsed?.refreshToken) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function writeSession(session: AuthSession | null): void {
+  try {
+    if (session) localStorage.setItem(TOKEN_KEY, JSON.stringify(session));
+    else localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    // 存储不可用时忽略
+  }
+}
+
+/* ── 请求封装 ─────────────────────────────────────────── */
+
+async function request<T>(
+  path: string,
+  options: {
+    method?: "GET" | "POST";
+    body?: unknown;
+    token?: string;
+    signal?: AbortSignal;
+  } = {},
+): Promise<T> {
+  const response = await fetch(apiBase() + path, {
+    method: options.method ?? "GET",
+    headers: {
+      "content-type": "application/json",
+      ...(options.token ? { authorization: `Bearer ${options.token}` } : {}),
+    },
+    body: options.body ? JSON.stringify(options.body) : undefined,
+    signal: options.signal,
+  });
+
+  const text = await response.text();
+  let data: unknown;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
+
+  if (!response.ok) {
+    const message =
+      typeof data === "object" && data && "error" in data
+        ? String((data as Record<string, unknown>).error)
+        : `HTTP ${response.status}`;
+    throw new ApiError(response.status, message);
+  }
+  return data as T;
+}
+
+/* ── 账号 ─────────────────────────────────────────────── */
+
+type TokenResponse = {
+  accessToken: string;
+  refreshToken: string;
+  accessTtlSec: number;
+  user: AuthUser;
+};
+
+function toSession(payload: TokenResponse): AuthSession {
+  return {
+    accessToken: payload.accessToken,
+    refreshToken: payload.refreshToken,
+    accessExpiresAt: Date.now() + payload.accessTtlSec * 1000,
+    deviceId: deviceId(),
+    user: payload.user,
+  };
+}
+
+export async function guestLogin(): Promise<AuthSession> {
+  const payload = await request<TokenResponse>("/api/auth/guest", {
+    method: "POST",
+    body: { deviceId: deviceId(), deviceName: deviceName() },
+  });
+  const session = toSession(payload);
+  writeSession(session);
+  return session;
+}
+
+export async function requestCode(
+  email: string,
+  turnstileToken: string,
+): Promise<void> {
+  await request("/api/auth/request-code", {
+    method: "POST",
+    body: { email, deviceId: deviceId(), turnstileToken },
+  });
+}
+
+export async function verifyCode(
+  email: string,
+  code: string,
+): Promise<AuthSession> {
+  const payload = await request<TokenResponse>("/api/auth/verify", {
+    method: "POST",
+    body: { email, code, deviceId: deviceId(), deviceName: deviceName() },
+  });
+  const session = toSession(payload);
+  writeSession(session);
+  return session;
+}
+
+export async function refreshSession(session: AuthSession): Promise<AuthSession> {
+  const payload = await request<{
+    accessToken: string;
+    refreshToken: string;
+    accessTtlSec: number;
+  }>("/api/auth/refresh", {
+    method: "POST",
+    body: { refreshToken: session.refreshToken, deviceId: session.deviceId },
+  });
+  const next: AuthSession = {
+    ...session,
+    accessToken: payload.accessToken,
+    refreshToken: payload.refreshToken,
+    accessExpiresAt: Date.now() + payload.accessTtlSec * 1000,
+  };
+  writeSession(next);
+  return next;
+}
+
+/** 带自动续期的请求：401 时刷新一次再重试 */
+export async function authedRequest<T>(
+  path: string,
+  options: { method?: "GET" | "POST"; body?: unknown } = {},
+): Promise<T> {
+  let session = readSession();
+  if (!session) session = await guestLogin();
+  try {
+    return await request<T>(path, { ...options, token: session.accessToken });
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      const next = await refreshSession(session);
+      return await request<T>(path, { ...options, token: next.accessToken });
+    }
+    throw error;
+  }
+}
+
+export async function fetchMe(): Promise<AccountInfo> {
+  return authedRequest<AccountInfo>("/api/me");
+}
+
+export async function fetchQuota(): Promise<Quota> {
+  return authedRequest<Quota>("/api/me/quota");
+}
+
+export async function saveProfile(profile: {
+  school: string;
+  major: string;
+  grade: string;
+  direction: string;
+}): Promise<void> {
+  await authedRequest("/api/me/profile", { method: "POST", body: profile });
+}
+
+/* ── 聊天（SSE 代理）───────────────────────────────────── */
+
+export type ServerChatMessage = {
+  role: "system" | "user" | "assistant";
+  content: string;
+};
+
+export async function streamServerChat(options: {
+  messages: ServerChatMessage[];
+  temperature?: number;
+  maxTokens?: number;
+  signal?: AbortSignal;
+  onDelta: (delta: string) => void;
+}): Promise<void> {
+  let session = readSession();
+  if (!session) session = await guestLogin();
+
+  const run = async (token: string) =>
+    fetch(apiBase() + "/api/ai/chat", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        messages: options.messages,
+        temperature: options.temperature,
+        maxTokens: options.maxTokens,
+      }),
+      signal: options.signal,
+    });
+
+  let response = await run(session.accessToken);
+  if (response.status === 401) {
+    const next = await refreshSession(session);
+    response = await run(next.accessToken);
+  }
+
+  if (!response.ok || !response.body) {
+    const text = await response.text().catch(() => "");
+    let code = `HTTP ${response.status}`;
+    try {
+      const parsed = JSON.parse(text) as { error?: string; reason?: string };
+      code = parsed.reason ? `${parsed.error}:${parsed.reason}` : (parsed.error ?? code);
+    } catch {
+      // 保持默认
+    }
+    throw new ApiError(response.status, code);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const events = buffer.split(/\r?\n\r?\n/);
+    buffer = events.pop() ?? "";
+
+    for (const event of events) {
+      const data = event
+        .split(/\r?\n/)
+        .filter((line) => line.startsWith("data:"))
+        .map((line) => line.slice(5).trim())
+        .join("\n");
+      if (!data || data === "[DONE]") continue;
+      try {
+        const parsed = JSON.parse(data) as {
+          choices?: Array<{ delta?: { content?: string } }>;
+        };
+        const delta = parsed.choices?.[0]?.delta?.content;
+        if (delta) options.onDelta(delta);
+      } catch {
+        // 分块不完整，跳过
+      }
+    }
+  }
+}
