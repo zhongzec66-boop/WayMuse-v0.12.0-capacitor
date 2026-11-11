@@ -741,7 +741,7 @@ export default function ChatPage({
   // 胶囊里的一行：默认报下一节课，回复中报「正在回复…」
   const upcoming = nextClass(courses, new Date(), academicWeek(readTermStart()));
   const nextClassLine = upcoming
-    ? `${upcoming.startsAt.getHours()}:${String(upcoming.startsAt.getMinutes()).padStart(2, "0")} ${upcoming.course.name}${upcoming.place ? " · " + upcoming.place : ""}`
+    ? `下一节 ${upcoming.course.name} ${String(upcoming.startsAt.getHours()).padStart(2, "0")}:${String(upcoming.startsAt.getMinutes()).padStart(2, "0")}`
     : "";
 
   const statusLabel =
@@ -813,12 +813,11 @@ export default function ChatPage({
             <BotAvatar source={agentAvatar} replying={streaming} />
           </span>
           <span className="wr-chat-cap-pill">
-            <b>{agentName}</b>
-            <small>
+            <b>
               {streaming
                 ? "正在回复…"
-                : nextClassLine || statusLabel}
-            </small>
+                : nextClassLine || agentName}
+            </b>
           </span>
         </button>
         {/* 右侧留白，保证标题严格居中 */}

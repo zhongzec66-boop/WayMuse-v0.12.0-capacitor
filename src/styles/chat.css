@@ -34,18 +34,6 @@
    只靠模糊一旦失效就会像截图那样「文字透过导航条」。
    这里用与页面背景完全一致的 --bg-top 铺底，再让底缘渐隐，
    所以没有模糊时也是「内容自然溶解」，模糊只是 iOS 上的额外质感。 */
-.wr-chat-head::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: rgba(255, 255, 255, 0.72);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
-  /* 0.5px 发丝线：底缘，内容滚过时有明显分界 */
-  border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
-  pointer-events: none;
-}
 
 .wr-chat-head > * {
   pointer-events: auto;
@@ -163,8 +151,10 @@
   overflow-y: auto;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
-  padding: calc(var(--safe-top) + 162px) var(--page-pad)
-    calc(var(--content-bottom) + var(--safe-bottom) + 48px);
+  /* 顶部给头像胶囊留位，底部给输入栏+标签栏留位：
+     靠 padding 让最后一条消息完整露出，不盖渐隐遮罩 */
+  padding: calc(var(--safe-top) + 168px) var(--page-pad)
+    calc(var(--dock-clear) + var(--safe-bottom) + 24px);
   scroll-padding-block: 132px 150px;
 }
 
@@ -2191,23 +2181,6 @@
   box-shadow: 0 6px 18px rgba(3, 111, 59, 0.22);
 }
 
-.wr-chat-cap-pill {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  /* 压住头像下缘 8px，做出「胶囊贴在头像上」的层次 */
-  margin-top: -8px;
-  padding: 5px 14px 6px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.65);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  backdrop-filter: blur(16px) saturate(180%);
-  border: 0.5px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 4px 14px rgba(16, 36, 56, 0.1);
-  max-width: 70vw;
-}
-
 .wr-chat-cap-pill b {
   font-size: var(--text-13);
   font-weight: 600;
@@ -2223,4 +2196,67 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ── 悬浮头像胶囊（无背板）────────────────────
+   顶栏不再垫任何色块，胶囊直接浮在聊天内容上。
+   .wr-chat-title 保持绝对居中，但必须透明。 */
+.wr-chat-title,
+.wr-chat-title:active {
+  background: transparent;
+}
+
+.wr-chat-title {
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding: 0;
+}
+
+.wr-chat-title > * {
+  pointer-events: auto;
+}
+
+.wr-chat-orb {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(3, 111, 59, 0.22);
+}
+
+.wr-chat-cap-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 压住头像下缘 8px */
+  margin-top: -8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.65);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  border: 0.5px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 14px rgba(16, 36, 56, 0.12);
+  max-width: 72vw;
+  overflow: hidden;
+}
+
+.wr-chat-cap-pill > b {
+  font-size: var(--text-13);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--ink);
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
