@@ -438,6 +438,7 @@ export default function WayMuseReference() {
               setShowTip={setShowTip}
               memories={memories}
               setMemories={setMemories}
+              tasks={tasks}
               nav={nav}
               setOverlay={setOverlay}
             />

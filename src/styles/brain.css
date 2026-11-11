@@ -1,0 +1,294 @@
+/* 大脑记忆图 —— 数值沿用 tokens.css：正文 16 / 次要 13 / 最小 12，间距 4 的倍数 */
+
+.wr-brain {
+  margin: 8px 0 0;
+}
+
+.wr-brain-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 2px 8px;
+}
+
+.wr-brain-head span {
+  font-size: var(--text-15);
+  font-weight: 600;
+}
+
+.wr-brain-head em {
+  font-size: var(--text-13);
+  color: var(--ink-3);
+  font-style: normal;
+}
+
+.wr-brain-stage {
+  position: relative;
+  border-radius: var(--radius-20);
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid var(--field-line);
+  padding: 8px;
+}
+
+.wr-brain-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* 轮廓：只描边 + 浅绿填充，不做解剖细节 */
+.wr-brain-outline {
+  fill: #dbe e2;
+  fill: #dbeee2;
+  fill-opacity: 0.55;
+  stroke: rgba(3, 111, 59, 0.28);
+  stroke-width: 1.4;
+}
+
+.wr-brain-region {
+  cursor: pointer;
+}
+
+.wr-brain-region.is-open > circle:first-of-type {
+  stroke-opacity: 0.6;
+  stroke-width: 1.6;
+}
+
+/* 呼吸：只动 transform / opacity，不逐帧重绘 */
+.wr-brain-node {
+  animation: wr-brain-breathe 4.4s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes wr-brain-breathe {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+}
+
+.wr-brain-svg.is-static .wr-brain-node {
+  animation: none;
+}
+
+/* 巩固动画：海马体节点整体向皮层方向移动，2 秒，只做位移+淡出 */
+.wr-brain-region.is-consolidating {
+  transition: transform 2s ease-in, opacity 2s ease-in;
+  transform: translate(68px, -30px);
+  opacity: 0.35;
+}
+
+.wr-brain-skip {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  min-height: 32px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--ink-2);
+  font-size: var(--text-13);
+  cursor: pointer;
+}
+
+.wr-brain-legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wr-brain-legend button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 36px;
+  padding: 4px 8px;
+  border: none;
+  border-radius: var(--radius-12);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wr-brain-legend button > span {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex: none;
+}
+
+.wr-brain-legend b {
+  font-size: var(--text-13);
+  font-weight: 600;
+}
+
+.wr-brain-legend em {
+  font-size: var(--text-12);
+  color: var(--ink-3);
+  font-style: normal;
+}
+
+.wr-brain-legend i {
+  margin-left: auto;
+  font-size: var(--text-12);
+  color: var(--ink-3);
+  font-style: normal;
+}
+
+.wr-brain-list {
+  margin-top: 8px;
+  padding: 12px;
+  border-radius: var(--radius-16);
+  background: var(--card-bg);
+  border: 1px solid var(--field-line);
+}
+
+.wr-brain-list header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.wr-brain-list header b {
+  font-size: var(--text-15);
+}
+
+.wr-brain-list header button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.wr-brain-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wr-brain-list li {
+  position: relative;
+}
+
+.wr-brain-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 0;
+  border: none;
+  border-bottom: 1px solid var(--field-line);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wr-brain-row b {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-15);
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+.wr-brain-row time {
+  flex: none;
+  font-size: var(--text-12);
+  color: var(--ink-3);
+}
+
+.wr-brain-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.wr-brain-menu {
+  position: absolute;
+  right: 0;
+  top: 40px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  min-width: 140px;
+  padding: 4px;
+  border-radius: var(--radius-12);
+  background: var(--card-bg);
+  box-shadow: 0 10px 28px rgba(16, 36, 56, 0.16);
+}
+
+.wr-brain-menu button {
+  min-height: 40px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  font-size: var(--text-15);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.wr-brain-order {
+  color: var(--danger, #b03a2e);
+}
+
+.wr-brain-empty {
+  margin: 0;
+  padding: 12px 0;
+  font-size: var(--text-13);
+  color: var(--ink-3);
+}
+
+.wr-brain-add {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.wr-brain-add input {
+  flex: 1;
+  min-height: var(--control-44);
+  padding: 0 var(--space-12);
+  border: var(--border-1) solid var(--field-line);
+  border-radius: var(--radius-16);
+  background: var(--field-bg);
+  /* 16px 是硬要求：小于 16 时 iOS 聚焦会自动放大页面 */
+  font-size: 16px;
+  color: var(--ink);
+}
+
+.wr-brain-add button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--on-primary);
+  cursor: pointer;
+}
+
+.wr-brain-add button:disabled {
+  opacity: 0.4;
+}

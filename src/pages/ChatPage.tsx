@@ -1358,7 +1358,8 @@ export default function ChatPage({
                           const proposed = parseReply(
                             message.content,
                           ).memories.filter(
-                            (item) => !memories.some((m) => m.text === item),
+                            (item) =>
+                              !memories.some((m) => m.text === item.text),
                           );
                           if (!proposed.length) return null;
                           return (
@@ -1369,15 +1370,24 @@ export default function ChatPage({
                               <small>想记住这些 · 等你确认</small>
                               <ul>
                                 {proposed.map((item) => (
-                                  <li key={item}>{item}</li>
+                                  <li key={item.text}>
+                                    {item.text}
+                                    {item.kind === "emotion" && (
+                                      <em className="wr-memory-kind">情绪</em>
+                                    )}
+                                  </li>
                                 ))}
                               </ul>
                               <button
                                 className="wr-ai-primary"
                                 onClick={() =>
                                   onMemoriesChange([
-                                    ...proposed.map((text) =>
-                                      createMemory(text),
+                                    ...proposed.map((item) =>
+                                      createMemory(
+                                        item.text,
+                                        item.kind === "emotion" ? 3 : 2,
+                                        item.kind ?? "normal",
+                                      ),
                                     ),
                                     ...memories,
                                   ])

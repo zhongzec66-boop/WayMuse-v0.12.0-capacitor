@@ -14,6 +14,8 @@ export type Task = {
   /** 可选：精确到期时刻（ISO8601）。有值时优先于 deadline + time。 */
   dueAt?: string;
   category?: string;
+  /** 完成时刻（ms）。习惯推断要用，勾选完成时写入；取消完成则清掉 */
+  completedAt?: number;
 };
 
 export type Course = {
@@ -36,9 +38,21 @@ export type Course = {
 /** 记忆的分量：1 = 小事，2 = 一般，3 = 重要（星空里会发光） */
 export type MemoryWeight = 1 | 2 | 3;
 
+/** 记忆的性质：普通事实 / 情绪 / 推断出来的习惯 */
+export type MemoryKind = "normal" | "emotion" | "habit";
+
+/** pending = 还在海马体待巩固；consolidated = 已沉淀进皮层 */
+export type MemoryStatus = "pending" | "consolidated";
+
 export type Memory = {
   id: string;
   text: string;
   weight: MemoryWeight;
   createdAt: number;
+  /** 旧数据迁移时默认 normal；weight === 3 的旧条目迁移为 emotion */
+  kind?: MemoryKind;
+  /** 旧数据迁移时默认 consolidated（存量本来就是长期记忆） */
+  status?: MemoryStatus;
+  /** inferred = 由任务完成记录推断出来的习惯，用户可以删 */
+  source?: "inferred";
 };

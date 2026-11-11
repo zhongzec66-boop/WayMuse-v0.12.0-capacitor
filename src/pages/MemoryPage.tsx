@@ -22,10 +22,13 @@ import {
   writeDoc,
 } from "../docs";
 import type { DocId } from "../docs";
-import type { Memory, Overlay, Page } from "../types";
+import type { Memory, Overlay, Page, Task } from "../types";
 import { formatFocus, formatSleep, useHealthSnapshot } from "../health";
 import { useHideNativeChrome } from "../chrome";
-import { useBubbleField } from "../useBubbleField";
+import BrainMap from "./BrainMap";
+import { inferHabits } from "../habits";
+import { applyConsolidation, planConsolidation } from "../consolidation";
+import { createMemory, storage } from "../storage";
 
 type Bubble = {
   id: string;
@@ -39,11 +42,13 @@ export default function MemoryPage({
   setShowTip,
   memories,
   setMemories,
+  tasks,
   nav,
   setOverlay,
 }: {
   showTip: boolean;
   setShowTip: Dispatch<SetStateAction<boolean>>;
+  tasks: Task[];
   memories: Memory[];
   setMemories: Dispatch<SetStateAction<Memory[]>>;
   nav: (page: Page) => void;
@@ -59,7 +64,6 @@ export default function MemoryPage({
   const [picked, setPicked] = useState<Bubble | null>(null);
   const health = useHealthSnapshot();
 
-  const fieldRef = useRef<HTMLDivElement>(null);
   const tapRef = useRef<(id: string) => void>(() => undefined);
 
   // MEMORY.md 里的条目 + 对话里确认过的记忆，合并成气泡
@@ -87,7 +91,6 @@ export default function MemoryPage({
     if (hit) setPicked(hit);
   };
 
-  useBubbleField(fieldRef, bubbles.length, tapRef);
 
   // 编辑器和单条详情都是铺满屏幕的，原生 Tab 栏必须让位
   useHideNativeChrome(Boolean(editing) || Boolean(picked));
@@ -108,6 +111,58 @@ export default function MemoryPage({
   const resetDoc = () => {
     if (!editing) return;
     setDraft(docDefault(editing));
+  };
+
+  // ── 记忆巩固 + 习惯推断（打开时算一次，不做定时器）──
+  const [consolidating, setConsolidating] = useState(false);
+  const bootstrapped = useRef(false);
+
+  useEffect(() => {
+    if (bootstrapped.current) return;
+    bootstrapped.current = true;
+
+    // 1) 习惯：纯规则推断，同签名被删过就不再生成
+    const dismissed = storage.getDismissedHabitKeys();
+    const habits = inferHabits(tasks, { dismissedKeys: dismissed });
+    const fresh = habits
+      .map((habit) => ({
+        ...createMemory(habit.text, 2, "habit"),
+        id: `habit-${habit.signature}`,
+        status: "consolidated" as const,
+        source: "inferred" as const,
+      }))
+      .filter((habit) => !memories.some((memory) => memory.id === habit.id));
+
+    // 2) 巩固：先把数据改对，再播动画；动画失败也不回滚数据
+    const plan = planConsolidation(memories, {
+      lastConsolidatedAt: storage.getLastConsolidatedAt(),
+    });
+    const next = applyConsolidation([...memories, ...fresh], plan.promote);
+    if (next !== memories && (fresh.length || plan.promote.length)) {
+      setMemories(next);
+    }
+    if (plan.shouldAnimate) {
+      storage.setLastConsolidatedAt(Date.now());
+      setConsolidating(true);
+      const timer = window.setTimeout(() => setConsolidating(false), 2000);
+      return () => window.clearTimeout(timer);
+    }
+    return undefined;
+    // 只在进入页面时算一次
+  }, []);
+
+  // 删掉推断出来的习惯时，把签名记下来，之后不再重复生成
+  const updateMemories = (next: Memory[]) => {
+    const removedHabits = memories.filter(
+      (memory) =>
+        memory.kind === "habit" && !next.some((item) => item.id === memory.id),
+    );
+    if (removedHabits.length) {
+      const keys = storage.getDismissedHabitKeys();
+      const added = removedHabits.map((memory) => memory.id.replace("habit-", ""));
+      storage.setDismissedHabitKeys([...new Set([...keys, ...added])]);
+    }
+    setMemories(next);
   };
 
   const removeBubble = (bubble: Bubble) => {
@@ -218,38 +273,14 @@ export default function MemoryPage({
         })}
       </section>
 
-      {/* ── 记忆气泡场 ───────────────────────────── */}
+      {/* ── 大脑记忆图 ───────────────────────────── */}
       <h2 className="wr-section-title">记忆</h2>
-      <section className="wr-bubblewrap" aria-label="记忆">
-        <header className="wr-bubblewrap-head">
-          <span>全部</span>
-          <em>
-            {bubbles.length} 条{bubbles.length > 0 && " · 可以拖"}
-          </em>
-        </header>
-
-        {bubbles.length === 0 ? (
-          <p className="wr-bubblewrap-empty">
-            还没有记忆。聊天里出现值得记住的细节时，我会先问你；你也可以直接编辑
-            MEMORY.md。
-          </p>
-        ) : (
-          <div className="wr-bubblefield" ref={fieldRef}>
-            {bubbles.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                data-bubble={item.id}
-                data-weight={item.weight}
-                className="wr-membubble"
-                aria-label={`查看记忆：${item.text}`}
-              >
-                {item.text}
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
+      <BrainMap
+        memories={memories}
+        onMemoriesChange={updateMemories}
+        consolidating={consolidating}
+        onSkipConsolidation={() => setConsolidating(false)}
+      />
 
       {/* ── 编辑器 ───────────────────────────────── */}
       {editing && (

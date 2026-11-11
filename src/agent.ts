@@ -22,7 +22,7 @@ export type Reply = {
   text: string;
   plans: Plan[];
   /** 值得写入“记忆”的事实，最多 3 条 */
-  memories: string[];
+  memories: { text: string; kind?: "emotion" | "normal" }[];
   /** 从课表文本里整理出的课程，等用户确认后写入 */
   courses: ParsedCourse[];
   /** 可点选的选项：渲染成按钮，点了直接作为回答发出 */
@@ -143,16 +143,33 @@ export function parseReply(content: string): Reply {
     }
   }
 
-  let memories: string[] = [];
+  let memories: { text: string; kind?: "emotion" | "normal" }[] = [];
   if (memoriesBlock.body) {
     try {
       const raw: unknown = JSON.parse(memoriesBlock.body);
       if (Array.isArray(raw)) {
-        memories = raw
-          .filter((item): item is string => typeof item === "string")
-          .map((item) => item.trim().slice(0, 60))
-          .filter(Boolean)
-          .slice(0, 3);
+        // 兼容两种形状：纯字符串（老协议）和 {text, kind}（新协议）
+      memories = raw
+        .map((item) => {
+          if (typeof item === "string") return { text: item.trim().slice(0, 60) };
+          if (item && typeof item === "object") {
+            const record = item as Record<string, unknown>;
+            if (typeof record.text !== "string") return null;
+            return {
+              text: record.text.trim().slice(0, 60),
+              kind:
+                record.kind === "emotion"
+                  ? ("emotion" as const)
+                  : ("normal" as const),
+            };
+          }
+          return null;
+        })
+        .filter(
+          (item): item is { text: string; kind?: "emotion" | "normal" } =>
+            !!item && !!item.text,
+        )
+        .slice(0, 3);
       }
     } catch {
       memories = [];
@@ -276,7 +293,7 @@ export function localSuggestions(input: string): Reply {
           priority: "high",
         },
       ],
-      memories: [],
+      memories: [] as { text: string }[],
       courses: [],
       choices: [],
     };
@@ -297,7 +314,7 @@ export function localSuggestions(input: string): Reply {
           priority: "high",
         },
       ],
-      memories: [],
+      memories: [] as { text: string }[],
       courses: [],
       choices: [],
     };
@@ -330,7 +347,7 @@ export function localSuggestions(input: string): Reply {
           priority: "low",
         },
       ],
-      memories: [],
+      memories: [] as { text: string }[],
       courses: [],
       choices: [],
     };
@@ -351,7 +368,7 @@ export function localSuggestions(input: string): Reply {
           priority: "medium",
         },
       ],
-      memories: [],
+      memories: [] as { text: string }[],
       courses: [],
       choices: [],
     };
@@ -371,7 +388,7 @@ export function localSuggestions(input: string): Reply {
         priority: "medium",
       },
     ],
-    memories: [],
+    memories: [] as { text: string }[],
     courses: [],
     choices: [],
   };

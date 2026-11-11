@@ -32,7 +32,7 @@ class FakeStorage {
 const store = new FakeStorage();
 vi.stubGlobal("localStorage", store);
 
-const { storage } = await import("./storage");
+const { storage, createMemory } = await import("./storage");
 
 const KEY = (name: string) => `waymuse-demo-${name}`;
 
@@ -181,5 +181,55 @@ describe("互不干扰", () => {
   it("坏 JSON 不会抛异常，读成空", () => {
     store.setItem(KEY("assignments"), "{不是 json");
     expect(storage.getAssignments()).toEqual([]);
+  });
+});
+
+describe("记忆迁移（kind / status 一次加完）", () => {
+  it("旧条目默认普通且已巩固，一条不丢", () => {
+    put("memories", [
+      { id: "m1", text: "旧记忆一", weight: 2, createdAt: 1700000000000 },
+      { id: "m2", text: "旧记忆二", weight: 1, createdAt: 1700000001000 },
+    ]);
+    const list = storage.getMemories();
+    expect(list).toHaveLength(2);
+    expect(list.map((m) => m.kind)).toEqual(["normal", "normal"]);
+    expect(list.map((m) => m.status)).toEqual(["consolidated", "consolidated"]);
+  });
+
+  it("weight === 3 的旧条目记为情绪", () => {
+    put("memories", [
+      { id: "m1", text: "旧的重点记忆", weight: 3, createdAt: 1700000000000 },
+    ]);
+    expect(storage.getMemories()[0].kind).toBe("emotion");
+  });
+
+  it("旧字符串数组也迁移成已巩固的普通记忆", () => {
+    put("memories", ["纯文本记忆一", "纯文本记忆二"]);
+    const list = storage.getMemories();
+    expect(list).toHaveLength(2);
+    expect(list.every((m) => m.kind === "normal")).toBe(true);
+    expect(list.every((m) => m.status === "consolidated")).toBe(true);
+  });
+
+  it("新建的记忆默认待巩固", () => {
+    storage.setMemories([createMemory("刚记住的事")]);
+    const list = storage.getMemories();
+    expect(list[0].status).toBe("pending");
+    expect(list[0].kind).toBe("normal");
+  });
+
+  it("情绪记忆能存住 kind", () => {
+    storage.setMemories([createMemory("被夸了很开心", 3, "emotion")]);
+    expect(storage.getMemories()[0].kind).toBe("emotion");
+  });
+
+  it("习惯签名的忽略列表能存能读", () => {
+    storage.setDismissedHabitKeys(["背单词#6", "跑步#18"]);
+    expect(storage.getDismissedHabitKeys()).toEqual(["背单词#6", "跑步#18"]);
+  });
+
+  it("上次巩固时间能存能读", () => {
+    storage.setLastConsolidatedAt(1794398005000);
+    expect(storage.getLastConsolidatedAt()).toBe(1794398005000);
   });
 });

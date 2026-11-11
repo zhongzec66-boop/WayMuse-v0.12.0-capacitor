@@ -4,7 +4,14 @@ import type { DeepSeekConfig, DeepSeekMessage } from "./deepseek/types";
 import { normalizeProfile } from "./profile";
 import type { UserProfile } from "./profile";
 import type { Assignment, AssignmentStep, Exam, ReviewItem } from "./semester";
-import type { Course, Memory, MemoryWeight, Task } from "./types";
+import type {
+  Course,
+  Memory,
+  MemoryKind,
+  MemoryStatus,
+  MemoryWeight,
+  Task,
+} from "./types";
 import { newId } from "./id";
 
 const PREFIX = "waymuse-demo-";
@@ -67,6 +74,10 @@ function sanitizeTask(value: unknown): Task | null {
     typeof value.deadline === "string" && value.deadline.trim()
       ? value.deadline.trim()
       : undefined;
+  const completedAt =
+    typeof value.completedAt === "number" && value.completedAt > 0
+      ? value.completedAt
+      : undefined;
   const category =
     typeof value.category === "string" && value.category.trim()
       ? value.category.trim()
@@ -80,6 +91,7 @@ function sanitizeTask(value: unknown): Task | null {
     deadline,
     time,
     category,
+    ...(completedAt ? { completedAt } : {})
   };
 }
 
@@ -253,6 +265,8 @@ function sanitizeMemory(value: unknown, index: number): Memory | null {
           text: text.slice(0, 120),
           weight: 2,
           createdAt: LEGACY_MEMORY_BASE + index,
+          kind: "normal" as const,
+          status: "consolidated" as const,
         }
       : null;
   }
@@ -261,12 +275,26 @@ function sanitizeMemory(value: unknown, index: number): Memory | null {
   if (!text) return null;
   const weight: MemoryWeight =
     value.weight === 1 || value.weight === 3 ? value.weight : 2;
+  // 迁移只做一次：kind 与 status 在同一处补齐，旧数据不分两次搬。
+  // 旧条目没有 kind：按 weight 判定（3 = 重要的情绪类），否则算普通事实。
+  // 旧条目没有 status：存量本来就是长期记忆，直接算已巩固。
+  const kind: MemoryKind =
+    value.kind === "emotion" || value.kind === "habit"
+      ? value.kind
+      : weight === 3
+        ? "emotion"
+        : "normal";
+  const status: MemoryStatus =
+    value.status === "pending" ? "pending" : "consolidated";
   return {
     id: typeof value.id === "string" && value.id ? value.id : newId(),
     text: text.slice(0, 120),
     weight,
     createdAt:
       typeof value.createdAt === "number" ? value.createdAt : Date.now(),
+    kind,
+    status,
+    ...(value.source === "inferred" ? { source: "inferred" as const } : {}),
   };
 }
 
@@ -299,12 +327,19 @@ function readMemories(): Memory[] {
   return current;
 }
 
-export function createMemory(text: string, weight: MemoryWeight = 2): Memory {
+export function createMemory(
+  text: string,
+  weight: MemoryWeight = 2,
+  kind: MemoryKind = "normal",
+): Memory {
   return {
     id: newId(),
     text: text.trim().slice(0, 120),
     weight,
     createdAt: Date.now(),
+    // 新记的事先进海马体，等复盘或下次打开再沉淀
+    kind,
+    status: "pending",
   };
 }
 
@@ -412,6 +447,19 @@ export const storage = {
   setCourses: (courses: Course[]) => writeJson("courses", courses),
   getMemories: readMemories,
   setMemories: (memories: Memory[]) => writeJson("memories", memories),
+  getDismissedHabitKeys: (): string[] => {
+    const value = readJson("dismissed-habit-keys");
+    return Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === "string").slice(-200)
+      : [];
+  },
+  setDismissedHabitKeys: (keys: string[]) =>
+    writeJson("dismissed-habit-keys", keys.slice(-200)),
+  getLastConsolidatedAt: (): number => {
+    const value = readJson("last-consolidated-at");
+    return typeof value === "number" ? value : 0;
+  },
+  setLastConsolidatedAt: (at: number) => writeJson("last-consolidated-at", at),
   getTasks: readTasks,
   setTasks: (tasks: Task[]) => writeJson("tasks", tasks),
   getAssignments: readAssignments,

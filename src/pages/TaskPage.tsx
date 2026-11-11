@@ -195,7 +195,14 @@ export default function TaskPage({
   const toggle = (id: string) =>
     setTasks(
       tasks.map((item) =>
-        item.id === id ? { ...item, done: !item.done } : item,
+        item.id === id
+          ? {
+              ...item,
+              done: !item.done,
+              // 习惯推断要用完成时刻；取消完成就清掉，避免算进去
+              completedAt: item.done ? undefined : Date.now(),
+            }
+          : item,
       ),
     );
   const remove = (id: string) =>
