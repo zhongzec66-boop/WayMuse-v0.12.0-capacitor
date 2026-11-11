@@ -25,6 +25,12 @@ export type Course = {
   place: string;
   /** 这门课在第几周上。空/缺省 = 每周都上（兼容旧数据） */
   weeks?: number[];
+  /** 以下都是学期结构化数据，缺省不影响旧数据 */
+  teacher?: string;
+  /** 学分 */
+  credits?: number;
+  /** 考核方式，如「期末开卷 70% + 平时 30%」 */
+  assessment?: string;
 };
 
 /** 记忆的分量：1 = 小事，2 = 一般，3 = 重要（星空里会发光） */
