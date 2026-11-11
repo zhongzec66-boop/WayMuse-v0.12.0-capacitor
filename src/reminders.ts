@@ -1,6 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
-import { taskDueAt } from "./taskTime";
+import { planTaskReminders } from "./deadlines";
 import type { Task } from "./types";
 
 /**
@@ -9,15 +9,12 @@ import type { Task } from "./types";
  * 为什么要有这一层：灵动岛只在 App 活着的时候管用，App 被杀掉就什么都
  * 不会发生。所以真正的提醒是「本地通知」打底，「上岛」做增强。
  *
- * 结构上刻意把「算」和「发」分开：
- * - planReminders() 是纯函数，给定任务和时间就返回要排的通知，好测；
- * - syncTaskReminders() 负责和系统打交道，失败了静默降级。
+ * 分几档、什么时候响，全部交给 deadlines.ts 决定（纯函数、可测）；
+ * 这里只负责和系统打交道，失败静默降级。
  */
 
 /** 最多提前排多少条：iOS 单 App 有 64 条上限，留点余量 */
 export const MAX_SCHEDULED = 24;
-/** 提前多久提醒 */
-export const LEAD_MINUTES = 10;
 
 export type PlannedReminder = {
   id: number;
@@ -30,11 +27,11 @@ export function isReminderSupported(): boolean {
   return Capacitor.isNativePlatform();
 }
 
-/** 把任务 id 换成稳定的整数通知 id（同一个任务每次都算同一个值） */
-export function notificationId(taskId: string): number {
+/** 把字符串换成稳定的整数通知 id（同样的输入每次算同一个值） */
+export function notificationId(key: string): number {
   let hash = 0;
-  for (let i = 0; i < taskId.length; i += 1) {
-    hash = (hash * 31 + taskId.charCodeAt(i)) % 1_000_000;
+  for (let i = 0; i < key.length; i += 1) {
+    hash = (hash * 31 + key.charCodeAt(i)) % 1_000_000;
   }
   return hash + 1000;
 }
@@ -42,44 +39,29 @@ export function notificationId(taskId: string): number {
 /**
  * 纯函数：算出应该排哪些提醒。
  *
- * 规则：
- * - 跳过已完成的、没有截止日期的、以及已经过期的（过期的叫不醒人，
- *   逾期由灵动岛那条负责显摆）
- * - 按到期时间升序，最多 MAX_SCHEDULED 条
- * - 通知时间取「到期前 LEAD_MINUTES 分钟」，如果那个点已经过了就取到期时刻
+ * 同一条任务的分级档位各占一条通知，所以 id 用「任务 id + 档位」生成，
+ * 否则三个档位会互相覆盖，最后只剩一条。
  */
 export function planReminders(
   tasks: Task[],
   now: Date = new Date(),
 ): PlannedReminder[] {
-  const nowMs = now.getTime();
   const planned: PlannedReminder[] = [];
 
   for (const task of tasks) {
-    if (task.done) continue;
-    const due = taskDueAt(task);
-    if (!due) continue;
-
-    const dueMs = due.getTime();
-    // 逾期超过一分钟的就不再补通知了（上岛那条负责显示逾期）
-    if (dueMs <= nowMs - 60_000) continue;
-
-    const leadMs = dueMs - LEAD_MINUTES * 60_000;
-    // 提前量已经过了（比如「5 秒后提醒我」），就按到期时刻发；
-    // 要是连到期时刻都过了，就立刻发一条，别静默丢掉。
-    const atMs = leadMs > nowMs ? leadMs : Math.max(dueMs, nowMs + 1000);
-    planned.push({
-      id: notificationId(task.id),
-      title: task.text.slice(0, 60),
-      body: atMs - nowMs <= 60_000 ? "现在提醒" : `${LEAD_MINUTES} 分钟后到期`,
-      at: new Date(atMs),
-    });
+    for (const reminder of planTaskReminders(task, now)) {
+      planned.push({
+        id: notificationId(`${reminder.taskId}#${reminder.slot}`),
+        title: reminder.title,
+        body: reminder.reason,
+        at: reminder.at,
+      });
+    }
   }
 
   planned.sort((a, b) => a.at.getTime() - b.at.getTime());
   return planned.slice(0, MAX_SCHEDULED);
 }
-
 /** 和系统打交道：先全撤再按最新计划重排 */
 export async function syncTaskReminders(tasks: Task[]): Promise<void> {
   if (!isReminderSupported()) return;
