@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { ArrowLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
 import AccountPanel from "./AccountPanel";
+import DeviceDataPanel from "./DeviceDataPanel";
 import type { useAccount } from "../useAccount";
 import AvatarPicker from "../AvatarPicker";
 import { haptic } from "../nativeExtras";
@@ -524,6 +525,7 @@ export default function SettingsPage({
           数据与关于
         </div>
         <div className="wr-settings-group">
+          <DeviceDataPanel />
           <button
             className="wr-settings-row"
             onClick={() => {

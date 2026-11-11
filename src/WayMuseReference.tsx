@@ -32,6 +32,7 @@ import type { UserProfile } from "./profile";
 import { storage, createMemory } from "./storage";
 import { backupFileName, createBackup, restoreBackup } from "./backup";
 import { useAccount } from "./useAccount";
+import { refreshInsights } from "./nativeInsights";
 import { academicWeek, isCourseInWeek, readTermStart } from "./term";
 import type { Course, Memory, Overlay, Page, Task } from "./types";
 import { useNativeTabs } from "./useNativeTabs";
@@ -106,6 +107,8 @@ export default function WayMuseReference() {
 
   useEffect(() => {
     document.title = `${BRAND} · 学业助理`;
+    // 启动时读一次本机状态（屏幕时间/步数）；没授权会自动跳过
+    void refreshInsights();
   }, []);
 
   /**
