@@ -1972,3 +1972,110 @@
   object-fit: cover;
   background: var(--surface-muted);
 }
+
+/* ── 代码卡 ─────────────────────────────────────────────── */
+.wr-code-card {
+  margin: var(--space-8) 0;
+  border: var(--border-1) solid var(--glass-line);
+  border-radius: var(--radius-16);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.wr-code-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  border-bottom: var(--border-1) solid var(--divider);
+  background: var(--surface-muted);
+}
+
+.wr-code-lang {
+  color: var(--ink-2);
+  font-size: var(--text-12);
+  font-weight: var(--weight-medium);
+  text-transform: lowercase;
+}
+
+.wr-code-lines {
+  flex: 1;
+  color: var(--ink-3);
+  font-size: var(--text-11);
+}
+
+.wr-code-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: var(--control-32, 32px);
+  padding: 0 var(--space-8);
+  border-radius: var(--radius-pill);
+  background: var(--glass-strong);
+  color: var(--ink-2);
+  font-size: var(--text-12);
+}
+
+.wr-code-body,
+.wr-code-full-body {
+  margin: 0;
+  padding: var(--space-12);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: var(--text-13);
+  line-height: 1.6;
+  tab-size: 2;
+}
+
+.wr-code-body {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.wr-code-full {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+  background: var(--bg-gradient);
+  isolation: isolate;
+}
+
+.wr-code-full-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  border-bottom: var(--border-1) solid var(--divider);
+}
+
+.wr-code-full-head span {
+  flex: 1;
+  color: var(--ink-2);
+  font-size: var(--text-13);
+}
+
+.wr-code-full-body {
+  flex: 1;
+  font-size: var(--text-14);
+}
+
+.wr-code-full-body code {
+  white-space: pre;
+}
+
+/* 语法着色 */
+.tok-comment { color: var(--ink-3); font-style: italic; }
+.tok-string { color: #0a7d4f; }
+.tok-number { color: #a35200; }
+.tok-keyword { color: #1c56b8; font-weight: var(--weight-medium); }
+
+@media (prefers-color-scheme: dark) {
+  .tok-string { color: #6ee7a8; }
+  .tok-number { color: #f0b072; }
+  .tok-keyword { color: #8ab4ff; }
+}

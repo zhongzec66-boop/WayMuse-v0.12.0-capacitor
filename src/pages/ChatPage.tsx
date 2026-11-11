@@ -1197,14 +1197,12 @@ export default function ChatPage({
                         )}
                         {message.content ? (
                           <div className="wr-reply-parts">
-                            {parseReply(message.content)
-                              .text.split(/\n\s*\n/)
-                              .filter(Boolean)
-                              .map((part, i) => (
-                                <div className="wr-reply-part" key={i}>
-                                  <MarkdownText text={part} />
-                                </div>
-                              ))}
+                            {/*
+                              以前是按空行切成多段分别渲染，结果围栏代码块被切断，
+                              ``` 配不上对，代码只能退化成 <pre>。
+                              现在整段交给 MarkdownText，它自己会切出代码块。
+                            */}
+                            <MarkdownText text={parseReply(message.content).text} />
                           </div>
                         ) : (
                           <span className="wr-ai-typing">正在生成…</span>
