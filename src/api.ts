@@ -266,6 +266,8 @@ export async function streamServerChat(options: {
   maxTokens?: number;
   signal?: AbortSignal;
   onDelta: (delta: string) => void;
+  /** 服务端透出的元信息：命中了多少条学长经验 */
+  onMeta?: (meta: { kbCount: number }) => void;
 }): Promise<void> {
   let session = readSession();
   if (!session) session = await guestLogin();
@@ -306,6 +308,13 @@ export async function streamServerChat(options: {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+
+  // 命中条数通过响应头传过来（流开始前就能读到）
+  const kbHeader = response.headers.get("x-waymuse-kb");
+  if (kbHeader !== null && options.onMeta) {
+    const count = Number(kbHeader);
+    if (Number.isFinite(count)) options.onMeta({ kbCount: count });
+  }
 
   while (true) {
     const { done, value } = await reader.read();

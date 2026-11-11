@@ -16,6 +16,8 @@ export type DeepSeekMessage = {
   finishReason?: string;
   stopped?: boolean;
   error?: boolean;
+  /** 本条回答参考了几位学长（服务端命中经验库的条数） */
+  kbCount?: number;
 };
 
 export type DeepSeekConfig = {

@@ -1859,3 +1859,17 @@
   overflow-x: auto;
   overflow-y: hidden;
 }
+/* ── 经验引用条 ─────────────────────────────────────────── */
+.wr-kb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  align-self: flex-start;
+  margin-top: var(--space-8);
+  padding: 2px var(--space-8);
+  border-radius: var(--radius-pill);
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: var(--text-12);
+  line-height: 1.6;
+}

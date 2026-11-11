@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  BookOpen,
   CheckCircle2,
   Download,
   Eye,
@@ -366,6 +367,16 @@ export default function ChatPage({
             config.thinking ? 4096 : 0,
           ),
           signal: controller.signal,
+          onMeta: (meta) => {
+            if (!meta.kbCount) return;
+            setMessages((current) =>
+              current.map((message) =>
+                message.id === assistantId
+                  ? { ...message, kbCount: meta.kbCount }
+                  : message,
+              ),
+            );
+          },
           onDelta: (delta) => {
             serverContent += delta;
             setMessages((current) =>
@@ -503,6 +514,16 @@ export default function ChatPage({
           temperature: requestConfig.temperature,
           maxTokens: requestConfig.maxTokens,
           signal: controller.signal,
+          onMeta: (meta) => {
+            if (!meta.kbCount) return;
+            setMessages((current) =>
+              current.map((message) =>
+                message.id === assistantId
+                  ? { ...message, kbCount: meta.kbCount }
+                  : message,
+              ),
+            );
+          },
           onDelta: (delta) => {
             firstTokenAt ??= performance.now();
             serverContent += delta;
@@ -1151,6 +1172,15 @@ export default function ChatPage({
                         {message.stopped && (
                           <span className="wr-ai-stopped">已停止生成</span>
                         )}
+                        {message.kbCount ? (
+                          <span
+                            className="wr-kb-chip"
+                            title="这些回答参考了同专业学长学姐的真实经验，已做匿名处理"
+                          >
+                            <BookOpen size={12} />
+                            参考了 {message.kbCount} 位同专业学长
+                          </span>
+                        ) : null}
                         <div className="wr-ai-meta">
                           {message.usage && (
                             <span>{message.usage.total_tokens} tokens</span>
