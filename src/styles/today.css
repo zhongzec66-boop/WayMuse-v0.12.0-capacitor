@@ -628,3 +628,52 @@
 .wr-course-import-shot:disabled {
   opacity: 0.6;
 }
+
+/* 输入框与主按钮统一：原生 textarea 的边框和浅灰底太"网页感" */
+.wr-course-import-input,
+.wr-sheet textarea {
+  width: 100%;
+  padding: 16px;
+  border: 0;
+  border-radius: 12px;
+  background: #f2f2f7;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-15);
+  line-height: var(--leading-body);
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none;
+  resize: none;
+}
+
+.wr-course-import-input:focus,
+.wr-sheet textarea:focus {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
+/* 主按钮：不贴边，实心品牌蓝，高度 50 */
+.wr-course-import-save {
+  width: auto;
+  height: 50px;
+  min-height: 50px;
+  margin: 0 20px;
+  border-radius: 12px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: var(--text-16);
+}
+
+.wr-course-import-save:disabled {
+  background: var(--primary);
+  opacity: 0.45;
+}
+
+/* 底部的次级按钮不再被裁掉：留出安全区和呼吸空间 */
+.wr-course-import {
+  padding-bottom: calc(var(--space-32) + var(--safe-bottom));
+}
+
+.wr-course-import .wr-course-import-ai {
+  margin-bottom: 0;
+}

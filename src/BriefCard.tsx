@@ -126,12 +126,12 @@ export default function BriefCard({
   } else if (top) {
     chip = {
       icon: ListTodo,
-      label: `最紧 · ${top.deadline ? relative(top.deadline, todayKey) : "无截止"}`,
+      label: `最高优先级 · ${top.deadline ? relative(top.deadline, todayKey) : "这周内"}`,
     };
     title = top.text;
     lead =
       open.length > 1
-        ? `还有 ${open.length - 1} 件要处理，先把这一件做完。`
+        ? `还剩 ${open.length - 1} 个任务，咱们先专注搞定这件。`
         : "只剩这一件，做完就清空。";
     steps = [
       { text: top.text, meta: "最优先", state: "live" },

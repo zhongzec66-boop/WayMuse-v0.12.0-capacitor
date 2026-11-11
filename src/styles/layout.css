@@ -1,5 +1,24 @@
 /* Dock, sheets, menus and shared rows. */
 
+/*
+ * 底部安全间距：内容区必须让开「输入框 + 原生 Tab 栏 + 安全区」。
+ *
+ * 以前只写了 84px 固定值，原生 Tab 栏一出现，最后一张卡片就被
+ * 输入框和 Tab 栏盖住（截图里任务行滚到输入框下面，行尾删除图标
+ * 看起来像是"粘在输入框上"）。
+ */
+:root {
+  /* 输入框 50 + 上下各 8 的内边距 */
+  --composer-h: 66px;
+  --dock-gap: 8px;
+  /* 默认（浏览器模式）：只让安全区 */
+  --dock-safe: var(--safe-bottom);
+  /* 内容区需要让开的总高度 */
+  --dock-clear: calc(
+    var(--composer-h) + var(--dock-gap) * 2 + var(--dock-safe)
+  );
+}
+
 .wr-dock {
   position: absolute;
   z-index: var(--z-dock);
@@ -104,6 +123,12 @@
 /* 原生模式下 Tab 栏由 UITabBar 自己绘制玻璃，容器不再叠一层玻璃背景。
    注意：原生栏是**贴底自由排布**的（不再被 DOM 槽位框住），所以这里
    1) 把整个 Dock 抬到原生栏上方，2) 直接隐藏网页 Tab 行。 */
+/* 原生模式下 Tab 栏是原生绘制的，高度由插件写入 --native-tabbar；
+   插件还没就绪时用 78px 兜底，否则内容会钻到 Tab 栏底下。 */
+.wr-phone:has(.wr-dock-native) {
+  --dock-safe: max(var(--safe-bottom), var(--native-tabbar, 78px));
+}
+
 .wr-dock-native {
   /* 原生栏高度已含安全区，用 max 避免重复叠加 */
   bottom: calc(
@@ -127,13 +152,17 @@
 
 /* 内容区底部留白要跟着原生栏高度走，否则最后一条消息会被挡住。 */
 .wr-phone:has(.wr-dock-native) .wr-content {
-  padding-bottom: calc(var(--native-tabbar, 0px) + var(--space-84));
+  padding-bottom: calc(var(--dock-clear) + var(--space-24));
 }
 
 .wr-phone:has(.wr-dock-native) .wr-chat-scroll {
-  padding-bottom: calc(
-    var(--native-tabbar, 0px) + var(--space-84) + var(--space-16)
-  );
+  padding-bottom: calc(var(--dock-clear) + var(--space-24));
+}
+
+/* 浏览器模式：网页 Tab 栏也在 Dock 里，还要再多让出一行 */
+.wr-phone:not(:has(.wr-dock-native)) .wr-content,
+.wr-phone:not(:has(.wr-dock-native)) .wr-chat-scroll {
+  padding-bottom: calc(var(--dock-clear) + 76px + var(--space-16));
 }
 
 .wr-tab-highlight {
@@ -574,4 +603,34 @@ html[data-platform="android"] .wr-dock {
 
 html[data-kb="open"] .wr-dock {
   bottom: calc(var(--space-8) + var(--safe-bottom) + var(--kb-inset, 0px));
+}
+
+/* ── 底部让位：唯一真相 ────────────────────────────────────
+   之前有三套规则互相覆盖（dock-anchor / dock-native / android），
+   其中两套写死了 84px，原生 Tab 栏一出现就把最后一张卡片盖住。
+   这里统一收口：内容区底部 = 输入框 + Tab 栏 + 安全区 + 呼吸空间。 */
+
+.wr-phone:has(.wr-dock-anchor),
+.wr-phone:has(.wr-dock-native) {
+  /* 插件没上报高度时用 78px 兜底，宁可多留也不能盖住内容 */
+  --dock-safe: max(var(--safe-bottom), var(--native-tabbar, 78px));
+}
+
+.wr-phone:has(.wr-dock-anchor) .wr-content,
+.wr-phone:has(.wr-dock-native) .wr-content,
+html[data-platform="android"] .wr-content {
+  padding-bottom: calc(var(--dock-clear) + var(--space-24));
+}
+
+.wr-phone:has(.wr-dock-anchor) .wr-chat-scroll,
+.wr-phone:has(.wr-dock-native) .wr-chat-scroll,
+html[data-platform="android"] .wr-chat-scroll {
+  padding-bottom: calc(var(--dock-clear) + var(--space-24));
+}
+
+/* 浏览器模式：网页 Tab 栏也在 Dock 里，再让出一行 */
+.wr-phone:not(:has(.wr-dock-anchor)):not(:has(.wr-dock-native)) .wr-content,
+.wr-phone:not(:has(.wr-dock-anchor)):not(:has(.wr-dock-native))
+  .wr-chat-scroll {
+  padding-bottom: calc(var(--dock-clear) + 76px + var(--space-16));
 }
