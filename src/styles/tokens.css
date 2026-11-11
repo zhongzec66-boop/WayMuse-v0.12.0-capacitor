@@ -75,22 +75,26 @@
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
 
-  --bg-top: #cddceb;
-  --bg-mid: #eef2f7;
-  --bg-bottom: #f7f0e7;
+  /* 纸质奶白：不是纯白，带一点暖；三层渐变模拟纸张受光不均 */
+  --bg-top: #f8f3e8;
+  --bg-mid: #fbf7ee;
+  --bg-bottom: #fdfaf3;
   --bg-gradient: linear-gradient(
     180deg,
     var(--bg-top) 0%,
     var(--bg-mid) 52%,
     var(--bg-bottom) 100%
   );
+  /* 纸纹：内联 SVG 噪点，不额外带图片资源，重复平铺看不出接缝 */
+  --paper-texture: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScyMDAnIGhlaWdodD0nMjAwJz48ZmlsdGVyIGlkPSduJz48ZmVUdXJidWxlbmNlIHR5cGU9J2ZyYWN0YWxOb2lzZScgYmFzZUZyZXF1ZW5jeT0nMS4yJyBudW1PY3RhdmVzPScyJyBzdGl0Y2hUaWxlcz0nc3RpdGNoJy8+PGZlQ29sb3JNYXRyaXggdHlwZT0nc2F0dXJhdGUnIHZhbHVlcz0nMCcvPjwvZmlsdGVyPjxyZWN0IHdpZHRoPScyMDAnIGhlaWdodD0nMjAwJyBmaWx0ZXI9J3VybCgjbiknIG9wYWNpdHk9JzAuMTYnLz48L3N2Zz4=");
+  --bg-layer: var(--paper-texture), var(--bg-gradient);
 
   --glass-bg: rgba(255, 255, 255, 0.58);
   --glass-strong: rgba(255, 255, 255, 0.78);
   --glass-line: rgba(255, 255, 255, 0.7);
   --glass-shadow: 0 8px 28px rgba(16, 36, 56, 0.1);
   --glass-blur: blur(24px) saturate(1.5);
-  --glass-fallback: #f2f5f9;
+  --glass-fallback: #faf6ec;
   /* 冷白蓝主题：卡片改成纯白无边框 + 柔和投影，取代原来的半透明玻璃卡。 */
   --card-bg: #ffffff;
   --card-line: transparent;

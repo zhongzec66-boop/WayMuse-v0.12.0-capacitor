@@ -20,7 +20,11 @@ body,
   width: 100%;
   min-height: 100dvh;
   margin: 0;
-  background: var(--bg-gradient);
+  /* 纸纹平铺 + 渐变；固定背景，滚动时纸不动像真的纸 */
+  background-color: var(--bg-mid);
+  background-image: var(--bg-layer);
+  background-repeat: repeat, no-repeat;
+  background-size: 160px 160px, 100% 100%;
   background-attachment: fixed;
   color: var(--ink);
   font-family: var(--font-sans);
