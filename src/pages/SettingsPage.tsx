@@ -452,7 +452,7 @@ export default function SettingsPage({
             <span>
               版本
               <em className="wr-settings-sub">
-                安全区 {safeTop}px · 服务端 api.101-32-101-117.sslip.io
+                安全区 {safeTop}px
               </em>
             </span>
             <b>{APP_VERSION}</b>
