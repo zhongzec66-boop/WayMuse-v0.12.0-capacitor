@@ -23,6 +23,8 @@ import type { Assignment, Exam } from "../semester";
 import DeadlineProposalCard from "./DeadlineProposalCard";
 
 import { parseCourseText, toCourses } from "../courseImport";
+import { nextClass } from "../semester";
+import { academicWeek, readTermStart } from "../term";
 import type { ParsedCourse } from "../courseImport";
 import { BRAND } from "../brand";
 import BotAvatar from "../BotAvatar";
@@ -736,6 +738,12 @@ export default function ChatPage({
     return rotated.slice(0, 6);
   })();
 
+  // 胶囊里的一行：默认报下一节课，回复中报「正在回复…」
+  const upcoming = nextClass(courses, new Date(), academicWeek(readTermStart()));
+  const nextClassLine = upcoming
+    ? `${upcoming.startsAt.getHours()}:${String(upcoming.startsAt.getMinutes()).padStart(2, "0")} ${upcoming.course.name}${upcoming.place ? " · " + upcoming.place : ""}`
+    : "";
+
   const statusLabel =
     connectState === "ok"
       ? "已连接"
@@ -804,9 +812,13 @@ export default function ChatPage({
           <span className="wr-chat-orb">
             <BotAvatar source={agentAvatar} replying={streaming} />
           </span>
-          <b>{agentName}</b>
-          <span className={`wr-chat-sub ${connectState}`}>
-            {streaming ? "正在回复…" : statusLabel}
+          <span className="wr-chat-cap-pill">
+            <b>{agentName}</b>
+            <small>
+              {streaming
+                ? "正在回复…"
+                : nextClassLine || statusLabel}
+            </small>
           </span>
         </button>
         {/* 右侧留白，保证标题严格居中 */}
