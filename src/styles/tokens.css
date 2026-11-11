@@ -117,16 +117,16 @@
   --on-primary: #ffffff;
   --on-accent: #241a0d;
 
-  --primary: #2563a8;
-  --primary-soft: rgba(37, 99, 168, 0.1);
-  --primary-line: rgba(37, 99, 168, 0.22);
+  --primary: #036f3b;
+  --primary-soft: rgba(3, 111, 59, 0.1);
+  --primary-line: rgba(3, 111, 59, 0.22);
   --accent: #d8823a;
   --accent-ink: #96551a;
   --accent-soft: rgba(216, 130, 58, 0.16);
   --danger: #a33a2c;
   --danger-soft: rgba(163, 58, 44, 0.1);
-  --success: #2563a8;
-  --success-soft: rgba(37, 99, 168, 0.1);
+  --success: #036f3b;
+  --success-soft: rgba(3, 111, 59, 0.1);
 
   --surface: rgba(255, 255, 255, 0.8);
   --surface-muted: rgba(255, 255, 255, 0.5);
@@ -195,15 +195,15 @@
     --on-primary: #08131f;
     --on-accent: #241a0d;
 
-    --primary: #7fb6e8;
-    --primary-soft: rgba(127, 182, 232, 0.14);
-    --primary-line: rgba(127, 182, 232, 0.26);
+    --primary: #6fbf8f;
+    --primary-soft: rgba(111, 191, 143, 0.16);
+    --primary-line: rgba(111, 191, 143, 0.3);
     --accent: #e0a25c;
     --accent-ink: #e0a25c;
     --accent-soft: rgba(224, 162, 92, 0.16);
     --danger-soft: rgba(224, 122, 106, 0.14);
-    --success: #7fb6e8;
-    --success-soft: rgba(127, 182, 232, 0.14);
+    --success: #6fbf8f;
+    --success-soft: rgba(111, 191, 143, 0.16);
 
     --surface: rgba(255, 255, 255, 0.08);
     --surface-muted: rgba(255, 255, 255, 0.05);

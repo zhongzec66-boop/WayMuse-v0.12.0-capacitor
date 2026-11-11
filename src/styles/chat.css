@@ -1414,7 +1414,7 @@
   border-radius: 50%;
   background: var(--primary);
   color: var(--on-primary);
-  box-shadow: 0 10px 24px rgba(37, 99, 168, 0.28);
+  box-shadow: 0 10px 24px rgba(3, 111, 59, 0.28);
 }
 
 .wr-call-mic:disabled {
