@@ -3,6 +3,7 @@ import { normalizeConfig } from "./deepseek/config";
 import type { DeepSeekConfig, DeepSeekMessage } from "./deepseek/types";
 import { normalizeProfile } from "./profile";
 import type { UserProfile } from "./profile";
+import type { Assignment, AssignmentStep, Exam, ReviewItem } from "./semester";
 import type { Course, Memory, MemoryWeight, Task } from "./types";
 import { newId } from "./id";
 
@@ -118,6 +119,102 @@ function sanitizeCourse(value: unknown): Course | null {
     place: typeof value.place === "string" ? value.place : "",
     ...(weeks.length ? { weeks } : {}),
   };
+}
+
+function sanitizeAssignment(value: unknown): Assignment | null {
+  if (!isRecord(value)) return null;
+  const title = typeof value.title === "string" ? value.title.trim() : "";
+  if (!title) return null;
+  const dueAt =
+    typeof value.dueAt === "string" && !Number.isNaN(Date.parse(value.dueAt))
+      ? value.dueAt
+      : "";
+  if (!dueAt) return null;
+  const weight =
+    typeof value.weightPercent === "number" &&
+    Number.isFinite(value.weightPercent)
+      ? Math.min(100, Math.max(0, Math.round(value.weightPercent)))
+      : undefined;
+  const status =
+    value.status === "doing" || value.status === "done" ? value.status : "todo";
+  const steps = Array.isArray(value.steps)
+    ? value.steps.reduce<AssignmentStep[]>((items, entry) => {
+        if (!isRecord(entry)) return items;
+        const label = typeof entry.label === "string" ? entry.label.trim() : "";
+        if (!label) return items;
+        items.push({
+          label: label.slice(0, 80),
+          minutes:
+            typeof entry.minutes === "number" &&
+            Number.isFinite(entry.minutes) &&
+            entry.minutes >= 0
+              ? Math.round(entry.minutes)
+              : 0,
+          done: entry.done === true,
+        });
+        return items;
+      }, [])
+    : undefined;
+  return {
+    id: typeof value.id === "string" && value.id ? value.id : newId(),
+    title: title.slice(0, 120),
+    ...(typeof value.courseId === "string" && value.courseId
+      ? { courseId: value.courseId }
+      : {}),
+    dueAt,
+    ...(weight !== undefined ? { weightPercent: weight } : {}),
+    status,
+    ...(steps && steps.length ? { steps } : {}),
+  };
+}
+
+function sanitizeReviewItem(value: unknown): ReviewItem | null {
+  if (!isRecord(value)) return null;
+  const topic = typeof value.topic === "string" ? value.topic.trim() : "";
+  const date = typeof value.date === "string" ? value.date.trim() : "";
+  if (!topic || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  return { date, topic: topic.slice(0, 120), done: value.done === true };
+}
+
+function sanitizeExam(value: unknown): Exam | null {
+  if (!isRecord(value)) return null;
+  const at =
+    typeof value.at === "string" && !Number.isNaN(Date.parse(value.at))
+      ? value.at
+      : "";
+  if (!at) return null;
+  const progress =
+    typeof value.progressPercent === "number" &&
+    Number.isFinite(value.progressPercent)
+      ? Math.min(100, Math.max(0, Math.round(value.progressPercent)))
+      : undefined;
+  const reviewPlan = Array.isArray(value.reviewPlan)
+    ? value.reviewPlan.reduce<ReviewItem[]>((items, entry) => {
+        const item = sanitizeReviewItem(entry);
+        if (item) items.push(item);
+        return items;
+      }, [])
+    : undefined;
+  return {
+    id: typeof value.id === "string" && value.id ? value.id : newId(),
+    ...(typeof value.courseId === "string" && value.courseId
+      ? { courseId: value.courseId }
+      : {}),
+    at,
+    ...(typeof value.scope === "string" && value.scope.trim()
+      ? { scope: value.scope.trim().slice(0, 300) }
+      : {}),
+    ...(progress !== undefined ? { progressPercent: progress } : {}),
+    ...(reviewPlan && reviewPlan.length ? { reviewPlan } : {}),
+  };
+}
+
+function readAssignments(): Assignment[] {
+  return readList("assignments", sanitizeAssignment, []);
+}
+
+function readExams(): Exam[] {
+  return readList("exams", sanitizeExam, []);
 }
 
 function readList<T>(
@@ -317,6 +414,11 @@ export const storage = {
   setMemories: (memories: Memory[]) => writeJson("memories", memories),
   getTasks: readTasks,
   setTasks: (tasks: Task[]) => writeJson("tasks", tasks),
+  getAssignments: readAssignments,
+  setAssignments: (assignments: Assignment[]) =>
+    writeJson("assignments", assignments),
+  getExams: readExams,
+  setExams: (exams: Exam[]) => writeJson("exams", exams),
   getProfile: (): UserProfile => {
     const profile = normalizeProfile(readJson("profile"));
     if (!profile.callName) {
