@@ -24,7 +24,7 @@
   --text-28: 28px;
   --text-34: 34px;
   --leading-tight: 1.2;
-  --leading-chat: 1.38;
+  --leading-chat: 1.55;
   --leading-body: 1.5;
   --leading-relaxed: 1.7;
   --weight-regular: 400;
@@ -102,9 +102,11 @@
   --topbar-blur: blur(22px) saturate(1.7);
   --chat-surface: rgba(255, 255, 255, 0.66);
   --chat-surface-line: rgba(255, 255, 255, 0.72);
-  --chat-user-bg: var(--primary);
-  --chat-user-ink: var(--on-primary);
-  --chat-max-user: 74%;
+  /* 用户气泡用品牌绿（头像取色），--primary 仍留给按钮与链接 */
+  --chat-brand: #036f3b;
+  --chat-user-bg: var(--chat-brand);
+  --chat-user-ink: #ffffff;
+  --chat-max-user: 78%;
   --chat-max-ai: 84%;
 
   --ink: #16202a;

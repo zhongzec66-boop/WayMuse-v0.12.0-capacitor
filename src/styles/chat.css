@@ -904,14 +904,14 @@
 .wr-ai-bubble.user {
   background: var(--chat-user-bg);
   color: var(--chat-user-ink);
-  border-bottom-right-radius: 5px;
+  border-bottom-right-radius: 6px;
 }
 
 .wr-ai-bubble.assistant {
   width: auto;
   max-width: 100%;
   border: var(--border-1) solid var(--chat-surface-line);
-  border-bottom-left-radius: 5px;
+  border-bottom-left-radius: 6px;
   background: var(--chat-surface);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
@@ -1148,7 +1148,7 @@
   padding: 9px 13px;
   border: 1px solid var(--chat-surface-line);
   border-radius: var(--radius-18);
-  border-bottom-left-radius: 5px;
+  border-bottom-left-radius: 6px;
   background: var(--chat-surface);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
@@ -1274,7 +1274,7 @@
   padding: 8px 10px;
   border: 1px solid var(--chat-surface-line);
   border-radius: var(--radius-18);
-  border-bottom-right-radius: 5px;
+  border-bottom-right-radius: 6px;
   background: var(--chat-surface);
 }
 
