@@ -98,8 +98,10 @@ export default function BrainMap({
     <>
       <section className="wr-brain" aria-label="记忆分布">
         <header className="wr-brain-head">
-          <span>这是它的大脑</span>
-          <em>{graph.totalMemories} 条 · 点一个区域看它记了什么</em>
+          <span>这是 WayMuse 的抽象大脑</span>
+          <em>
+            {graph.totalMemories} 条 · 不进解剖，只看它把事记在哪儿
+          </em>
         </header>
 
         <div className="wr-brain-stage">
@@ -107,7 +109,7 @@ export default function BrainMap({
             viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
             className={"wr-brain-svg" + (reduceMotion ? " is-static" : "")}
             role="img"
-            aria-label="记忆区域分布图"
+            aria-label="WayMuse 的抽象大脑：记忆分布在五个区域"
           >
             {/* 大脑轮廓：只描边 + 浅填充，不画沟回 */}
             <path className="wr-brain-outline" d={outline.cerebrum} />
