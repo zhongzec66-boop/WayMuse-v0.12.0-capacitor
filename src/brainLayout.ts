@@ -41,80 +41,124 @@ export const REGIONS: RegionSpec[] = [
     name: "前额叶",
     hint: "身份与目标",
     color: "#036F3B",
-    cx: 96,
-    cy: 96,
-    radius: 34,
+    cx: 92,
+    cy: 116,
+    radius: 28,
   },
   {
     id: "hippocampus",
     name: "海马体",
     hint: "新记忆",
     color: "#386CB2",
-    cx: 168,
+    cx: 166,
     cy: 150,
-    radius: 30,
+    radius: 26,
   },
   {
     id: "cortex",
     name: "皮层",
     hint: "长期记忆",
     color: "#109480",
-    cx: 236,
-    cy: 120,
-    radius: 36,
+    cx: 212,
+    cy: 112,
+    radius: 32,
   },
   {
     id: "amygdala",
     name: "杏仁核",
     hint: "情绪",
     color: "#D88A1C",
-    cx: 168,
-    cy: 214,
-    radius: 24,
+    cx: 126,
+    cy: 172,
+    radius: 20,
   },
   {
     id: "cerebellum",
     name: "小脑",
     hint: "习惯",
     color: "#7A6EAC",
-    cx: 232,
-    cy: 214,
-    radius: 26,
+    cx: 224,
+    cy: 202,
+    radius: 22,
   },
 ];
 
 
 /**
- * 大脑轮廓：用角度调制生成一条闭合的有机曲线。
+ * 侧视大脑的外形。
  *
- * 手写 path 容易画成土豆，这样按 sin 调制半径既圆润又有一点起伏，
- * 而且完全确定——同样的参数每次画出同一条线。
+ * 用「手挑轮廓点 + Catmull-Rom 平滑」，而不是按角度调制半径：
+ * 调制半径出来的永远是土豆，只有控制点能画出额叶、颞叶、枕叶的高低关系。
  */
-export function brainOutlinePath(): string {
-  const cx = 160;
-  const cy = 150;
-  const rx = 104;
-  const ry = 88;
-  const steps = 56;
-  const points: { x: number; y: number }[] = [];
-  for (let i = 0; i < steps; i += 1) {
-    const angle = (i / steps) * Math.PI * 2;
-    const wobble = 1 + 0.06 * Math.sin(3 * angle) + 0.04 * Math.cos(5 * angle);
-    points.push({
-      x: Number((cx + Math.cos(angle) * rx * wobble).toFixed(2)),
-      y: Number((cy + Math.sin(angle) * ry * wobble).toFixed(2)),
-    });
-  }
-  // 用二次曲线穿过各点中点，得到平滑闭合线
-  let d = `M ${(points[0].x + points[steps - 1].x) / 2} ${(points[0].y + points[steps - 1].y) / 2}`;
-  for (let i = 0; i < steps; i += 1) {
-    const current = points[i];
-    const next = points[(i + 1) % steps];
-    const midX = (current.x + next.x) / 2;
-    const midY = (current.y + next.y) / 2;
-    d += ` Q ${current.x} ${current.y} ${midX} ${midY}`;
+function catmullRom(points: { x: number; y: number }[]): string {
+  const n = points.length;
+  const at = (i: number) => points[((i % n) + n) % n];
+  let d = `M ${at(0).x} ${at(0).y}`;
+  for (let i = 0; i < n; i += 1) {
+    const p0 = at(i - 1);
+    const p1 = at(i);
+    const p2 = at(i + 1);
+    const p3 = at(i + 2);
+    const c1x = p1.x + (p2.x - p0.x) / 6;
+    const c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6;
+    const c2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C ${c1x.toFixed(1)} ${c1y.toFixed(1)} ${c2x.toFixed(1)} ${c2y.toFixed(1)} ${p2.x} ${p2.y}`;
   }
   return `${d} Z`;
+}
+
+export type BrainOutline = { cerebrum: string; cerebellum: string; brainstem: string };
+
+export function brainOutlinePaths(): BrainOutline {
+  // 半球：前额（左）略高、顶部有起伏、枕部（右）圆、底下有颞叶的凹口
+  const cerebrum = catmullRom([
+    { x: 66, y: 178 },
+    { x: 58, y: 150 },
+    { x: 64, y: 122 },
+    { x: 84, y: 100 },
+    { x: 108, y: 88 },
+    { x: 126, y: 74 },
+    { x: 150, y: 80 },
+    { x: 172, y: 70 },
+    { x: 196, y: 82 },
+    { x: 220, y: 88 },
+    { x: 244, y: 106 },
+    { x: 254, y: 132 },
+    { x: 250, y: 156 },
+    { x: 236, y: 172 },
+    { x: 214, y: 180 },
+    { x: 190, y: 188 },
+    { x: 166, y: 182 },
+    { x: 146, y: 190 },
+    { x: 122, y: 196 },
+    { x: 92, y: 196 },
+  ]);
+
+  // 小脑：塞在枕叶下方，比半球小而扁
+  const cerebellum = catmullRom([
+    { x: 196, y: 196 },
+    { x: 220, y: 192 },
+    { x: 242, y: 200 },
+    { x: 248, y: 218 },
+    { x: 236, y: 232 },
+    { x: 212, y: 234 },
+    { x: 194, y: 226 },
+    { x: 188, y: 210 },
+  ]);
+
+  // 脑干：从半球底部偏后往下收窄，略向右倾
+  // 上端要比半球底边再往上一点，否则看着像挂在外面的一根棍
+  const brainstem = catmullRom([
+    { x: 164, y: 180 },
+    { x: 192, y: 186 },
+    { x: 196, y: 216 },
+    { x: 188, y: 244 },
+    { x: 174, y: 246 },
+    { x: 168, y: 212 },
+  ]);
+
+  return { cerebrum, cerebellum, brainstem };
 }
 
 export function regionSpec(id: RegionId): RegionSpec {

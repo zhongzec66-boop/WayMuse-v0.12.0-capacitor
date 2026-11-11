@@ -54,6 +54,8 @@ export default function MemoryPage({
   nav: (page: Page) => void;
   setOverlay: Dispatch<SetStateAction<Overlay>>;
 }) {
+  // 记忆页分两个子页：大脑（图）与文件（三份明文 + 健康）
+  const [tab, setTab] = useState<"brain" | "files">("brain");
   const [docs, setDocs] = useState<Record<DocId, string>>(() => ({
     identity: readDoc("identity"),
     soul: readDoc("soul"),
@@ -199,6 +201,21 @@ export default function MemoryPage({
         </button>
       </div>
 
+      <div className="wr-segment">
+        <button
+          className={tab === "brain" ? "selected" : ""}
+          onClick={() => setTab("brain")}
+        >
+          大脑
+        </button>
+        <button
+          className={tab === "files" ? "selected" : ""}
+          onClick={() => setTab("files")}
+        >
+          文件
+        </button>
+      </div>
+
       {showTip && (
         <div className="wr-memory-tip">
           <button aria-label="关闭提示" onClick={() => setShowTip(false)}>
@@ -215,7 +232,21 @@ export default function MemoryPage({
         </div>
       )}
 
-      {/* ── 健康 ─────────────────────────────────── */}
+      {tab === "brain" && (
+        <>
+          <h2 className="wr-section-title">记忆</h2>
+          <BrainMap
+            memories={memories}
+            onMemoriesChange={updateMemories}
+            consolidating={consolidating}
+            onSkipConsolidation={() => setConsolidating(false)}
+          />
+        </>
+      )}
+
+      {tab === "files" && (
+        <>
+          {/* ── 健康 ─────────────────────────────────── */}
       <section className="wr-health" aria-label="健康">
         <header className="wr-health-head">
           <span className="wr-health-mark">
@@ -273,14 +304,8 @@ export default function MemoryPage({
         })}
       </section>
 
-      {/* ── 大脑记忆图 ───────────────────────────── */}
-      <h2 className="wr-section-title">记忆</h2>
-      <BrainMap
-        memories={memories}
-        onMemoriesChange={updateMemories}
-        consolidating={consolidating}
-        onSkipConsolidation={() => setConsolidating(false)}
-      />
+        </>
+      )}
 
       {/* ── 编辑器 ───────────────────────────────── */}
       {editing && (

@@ -4,7 +4,7 @@ import {
   REGIONS,
   VIEW_H,
   VIEW_W,
-  brainOutlinePath,
+  brainOutlinePaths,
   buildBrainGraph,
   regionOf,
 } from "../brainLayout";
@@ -43,7 +43,7 @@ export default function BrainMap({
   const pressTimer = useRef<number | null>(null);
 
   const graph = useMemo(() => buildBrainGraph(memories), [memories]);
-  const outline = useMemo(() => brainOutlinePath(), []);
+  const outline = useMemo(() => brainOutlinePaths(), []);
 
   // 低端机降级：帧率不足就把呼吸动画关掉
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -110,10 +110,9 @@ export default function BrainMap({
             aria-label="记忆区域分布图"
           >
             {/* 大脑轮廓：只描边 + 浅填充，不画沟回 */}
-            <path
-              className="wr-brain-outline"
-              d={outline}
-            />
+            <path className="wr-brain-outline" d={outline.cerebrum} />
+            <path className="wr-brain-outline is-cerebellum" d={outline.cerebellum} />
+            <path className="wr-brain-outline is-stem" d={outline.brainstem} />
             {graph.regions.map((region) => (
               <g
                 key={region.id}

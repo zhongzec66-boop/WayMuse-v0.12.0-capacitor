@@ -38,11 +38,20 @@
 
 /* 轮廓：只描边 + 浅绿填充，不做解剖细节 */
 .wr-brain-outline {
-  fill: #dbe e2;
   fill: #dbeee2;
-  fill-opacity: 0.55;
-  stroke: rgba(3, 111, 59, 0.28);
+  fill-opacity: 0.6;
+  stroke: rgba(3, 111, 59, 0.3);
   stroke-width: 1.4;
+  stroke-linejoin: round;
+}
+
+.wr-brain-outline.is-cerebellum {
+  fill-opacity: 0.42;
+  stroke-opacity: 0.7;
+}
+
+.wr-brain-outline.is-stem {
+  fill-opacity: 0.3;
 }
 
 .wr-brain-region {
