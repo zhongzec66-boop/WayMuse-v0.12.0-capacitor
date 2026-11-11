@@ -29,6 +29,7 @@ import TodayPage from "./pages/TodayPage";
 import { DEFAULT_PROFILE } from "./profile";
 import type { UserProfile } from "./profile";
 import { storage, createMemory } from "./storage";
+import { backupFileName, createBackup, restoreBackup } from "./backup";
 import { academicWeek, isCourseInWeek, readTermStart } from "./term";
 import type { Course, Memory, Overlay, Page, Task } from "./types";
 import { useNativeTabs } from "./useNativeTabs";
@@ -267,20 +268,39 @@ export default function WayMuseReference() {
     chromeHidden ? "通话" : overlay,
     nav,
   );
-  const exportDemoData = () => {
+    const exportDemoData = () => {
     try {
-      const payload = JSON.stringify(storage.exportData(), null, 2);
+      // 导出全部键值快照（默认不含 API Key，避免备份文件被转发时泄露）
+      const backup = createBackup({ includeSecrets: false });
+      const payload = JSON.stringify(backup, null, 2);
       const blob = new Blob([payload], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `waymuse-data-${new Date().toISOString().slice(0, 10)}.json`;
+      link.download = backupFileName();
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch {
       window.alert("当前环境不支持导出，请稍后重试。");
+    }
+  };
+
+  const importDemoData = async (file: File, mode: "merge" | "replace") => {
+    try {
+      const text = await file.text();
+      const parsed: unknown = JSON.parse(text);
+      const result = restoreBackup(parsed, mode);
+      window.alert(result.message);
+      // 导入直接改 localStorage，重载一次让所有模块读到新值
+      if (result.ok) window.location.reload();
+    } catch (error) {
+      window.alert(
+        error instanceof Error
+          ? `文件读取失败：${error.message.slice(0, 80)}`
+          : "文件读取失败",
+      );
     }
   };
   const clearDemoData = () => {
@@ -432,6 +452,7 @@ export default function WayMuseReference() {
             nav={nav}
             setHasEntered={setHasEntered}
             onExport={exportDemoData}
+            onImport={(file, mode) => void importDemoData(file, mode)}
           />
         )}
         {overlay === "隐私与数据" && (

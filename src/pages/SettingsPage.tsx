@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
 import ConnectionsPanel from "./ConnectionsPanel";
 import BotAvatar from "../BotAvatar";
@@ -30,6 +30,7 @@ export default function SettingsPage({
   nav,
   setHasEntered,
   onExport,
+  onImport,
 }: {
   profile: UserProfile;
   onProfileChange: (profile: UserProfile) => void;
@@ -41,12 +42,15 @@ export default function SettingsPage({
   nav: (page: Page) => void;
   setHasEntered: Dispatch<SetStateAction<boolean>>;
   onExport: () => void;
+  onImport: (file: File, mode: "merge" | "replace") => void;
 }) {
   const [apiKey, setApiKey] = useState(() => storage.getDeepSeekKey());
   const [rememberKey, setRememberKey] = useState(() =>
     storage.getDeepSeekRemember(),
   );
   const [showKey, setShowKey] = useState(false);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
+  const [importMode, setImportMode] = useState<"merge" | "replace">("merge");
   const [deepSeek, setDeepSeek] = useState<DeepSeekConfig>(() =>
     storage.getDeepSeekConfig(),
   );
@@ -594,9 +598,48 @@ export default function SettingsPage({
             <ChevronRight />
           </button>
           <button className="wr-settings-row" onClick={onExport}>
-            <span>导出本机数据</span>
+            <span>导出备份文件</span>
             <ChevronRight />
           </button>
+          <button
+            className="wr-settings-row"
+            onClick={() => importInputRef.current?.click()}
+          >
+            <span>
+              从备份恢复
+              <em className="wr-settings-sub">
+                {importMode === "merge" ? "合并（推荐）" : "覆盖"}
+              </em>
+            </span>
+            <ChevronRight />
+          </button>
+          <button
+            className="wr-settings-row"
+            onClick={() =>
+              setImportMode((mode) => (mode === "merge" ? "replace" : "merge"))
+            }
+          >
+            <span>
+              导入方式
+              <em className="wr-settings-sub">
+                {importMode === "merge"
+                  ? "保留现有，补齐缺失"
+                  : "用备份替换现有"}
+              </em>
+            </span>
+            <ChevronRight />
+          </button>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="wr-visually-hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (file) onImport(file, importMode);
+            }}
+          />
           <button
             className="wr-settings-row wr-settings-danger"
             onClick={() => setOverlay("清除数据")}
