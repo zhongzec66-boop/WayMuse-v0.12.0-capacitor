@@ -130,7 +130,9 @@ export default function ChatPage({
   agentName,
   agentAvatar,
   pendingMessage,
+  pendingImage,
   onPendingConsumed,
+  onPendingImageConsumed,
   profile,
   memories,
   courses,
@@ -144,7 +146,9 @@ export default function ChatPage({
   agentName: string;
   agentAvatar: string;
   pendingMessage: { id: number; text: string } | null;
+  pendingImage: { id: number; dataUrl: string } | null;
   onPendingConsumed: () => void;
+  onPendingImageConsumed: () => void;
   profile: UserProfile;
   memories: Memory[];
   courses: Course[];
@@ -277,8 +281,12 @@ export default function ChatPage({
     setConnectText("已清除本机保存的 API Key。");
   };
 
-  const sendMessage = async (text: string, history: DeepSeekMessage[]) => {
-    const content = text.trim();
+  const sendMessage = async (
+    text: string,
+    history: DeepSeekMessage[],
+    imageDataUrl?: string,
+  ) => {
+    const content = text.trim() || (imageDataUrl ? "看看这张图" : "");
     if (!content || streaming) return;
 
     // 技能命中：决定这一轮要不要加载专门的做事方法
@@ -311,13 +319,14 @@ export default function ChatPage({
       webContext = formatSearchContext(content, hits);
     }
 
-    // 没有本地 Key：优先走服务端代理（Key 在服务器，客户端只带令牌）
-    if (!apiKey.trim()) {
+    // 没有本地 Key 或带图片：走服务端代理（Key 在服务器，客户端只带令牌）
+    if (!apiKey.trim() || imageDataUrl) {
       const userMessage: DeepSeekMessage = {
         id: newId(),
         role: "user",
         content,
         createdAt: Date.now(),
+        imageDataUrl,
       };
       const assistantId = newId();
       const createdAt = Date.now();
@@ -359,13 +368,24 @@ export default function ChatPage({
               role: message.role,
               content: message.content,
             })),
-            { role: "user", content },
+            {
+              role: "user",
+              // 带图时用 OpenAI 兼容的块数组；flash 的视觉能力靠这个入口
+              content: imageDataUrl
+                ? [
+                    { type: "text" as const, text: content },
+                    { type: "image_url" as const, image_url: { url: imageDataUrl } },
+                  ]
+                : content,
+            },
           ],
           temperature: profile.temperature,
           maxTokens: Math.max(
             config.maxTokens,
             responseTokenBudget(profile.responseLength),
             config.thinking ? 4096 : 0,
+            // flash 会先吐 reasoning，识图给少了正文会空
+            imageDataUrl ? 1500 : 0,
           ),
           signal: controller.signal,
           onMeta: (meta) => {
@@ -678,6 +698,17 @@ export default function ChatPage({
     }
     void sendMessage(pendingMessage.text, messages);
   }, [pendingMessage]);
+
+  // 图片走视觉模型：直接发，省掉「先 OCR 再问」这一步
+  useEffect(() => {
+    if (!pendingImage) return;
+    onPendingImageConsumed();
+    if (streaming) {
+      setError("正在生成，请稍候再发送。");
+      return;
+    }
+    void sendMessage("", messages, pendingImage.dataUrl);
+  }, [pendingImage]);
 
   const stop = () => abortRef.current?.abort();
 
@@ -1133,6 +1164,14 @@ export default function ChatPage({
                                   </button>
                                 )}
                             </div>
+                          )}
+                          {message.imageDataUrl && (
+                            <img
+                              className="wr-msg-image"
+                              src={message.imageDataUrl}
+                              alt="我发的图片"
+                              loading="lazy"
+                            />
                           )}
                           {parsed.rest && (
                             <div className="wr-ai-bubble user">

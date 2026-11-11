@@ -67,6 +67,11 @@ export default function WayMuseReference() {
   const [attachmentMenu, setAttachmentMenu] = useState(false);
   const [courseImportOpen, setCourseImportOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
+  // 图片走视觉模型：选完直接发，先落到这里
+  const [pendingImage, setPendingImage] = useState<{
+    id: number;
+    dataUrl: string;
+  } | null>(null);
   const account = useAccount();
   // 导入层是我们自己的全屏 sheet，但原生输入框会浮在它上面：打开时一并隐藏
   useHideNativeChrome(courseImportOpen);
@@ -421,7 +426,9 @@ export default function WayMuseReference() {
               agentName={agentName}
               agentAvatar={agentAvatar}
               pendingMessage={pendingChat}
+              pendingImage={pendingImage}
               onPendingConsumed={() => setPendingChat(null)}
+              onPendingImageConsumed={() => setPendingImage(null)}
               profile={profile}
               memories={memories}
               courses={courses}
@@ -451,6 +458,10 @@ export default function WayMuseReference() {
           setDraft={setDraft}
           overlay={chromeHidden ? "通话" : overlay}
           submit={submit}
+          onImage={(dataUrl) => {
+            setPendingImage({ id: Date.now(), dataUrl });
+            setPage("聊天");
+          }}
           onAttach={(payload) => {
             setPendingChat({ id: Date.now(), text: payload });
             setPage("聊天");

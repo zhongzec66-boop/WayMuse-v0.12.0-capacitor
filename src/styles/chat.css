@@ -1961,3 +1961,14 @@
     color: var(--ink-3);
   }
 }
+
+/* ── 用户发送的图片 ─────────────────────────────────────── */
+.wr-msg-image {
+  display: block;
+  max-width: min(62vw, 240px);
+  max-height: 240px;
+  margin: 0 0 var(--space-8) auto;
+  border-radius: var(--radius-16);
+  object-fit: cover;
+  background: var(--surface-muted);
+}

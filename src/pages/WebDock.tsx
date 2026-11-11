@@ -19,6 +19,38 @@ import { buildFileBlock, describeFailure, extractFileText } from "../fileText";
 import { recognizeImageText } from "../ocr";
 import { capturePhoto, hasNativeCapture, photoToFile } from "../nativeCapture";
 
+/** 读成 dataURL 并限制长边，避免把几十 MB 的原图塞进请求体 */
+async function fileToDataUrl(file: File, maxSide = 1600): Promise<string> {
+  const raw = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(new Error("read_failed"));
+    reader.readAsDataURL(file);
+  });
+
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error("decode_failed"));
+      element.src = raw;
+    });
+    const longSide = Math.max(image.width, image.height);
+    if (longSide <= maxSide) return raw;
+
+    const scale = maxSide / longSide;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(image.width * scale);
+    canvas.height = Math.round(image.height * scale);
+    const context = canvas.getContext("2d");
+    if (!context) return raw;
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.82);
+  } catch {
+    return raw;
+  }
+}
+
 export default function WebDock({
   nativeTabsActive,
   attachmentMenu,
@@ -28,6 +60,7 @@ export default function WebDock({
   overlay,
   submit,
   onAttach,
+  onImage,
   page,
   nav,
   agentName,
@@ -42,6 +75,8 @@ export default function WebDock({
   overlay: Overlay | "通话";
   submit: () => void;
   onAttach: (payload: string) => void;
+  /** 图片走视觉模型：直接传 dataURL，不再只做 OCR */
+  onImage?: (dataUrl: string) => void;
   page: Page;
   nav: (page: Page) => void;
   agentName: string;
@@ -83,6 +118,16 @@ export default function WebDock({
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
+    // 图片优先交给视觉模型；没有视觉通道时退回 OCR / 文本抽取
+    if (onImage && file.type.startsWith("image/")) {
+      setAttachmentMenu(false);
+      try {
+        onImage(await fileToDataUrl(file));
+      } catch {
+        await processFile(file);
+      }
+      return;
+    }
     await processFile(file);
   };
 

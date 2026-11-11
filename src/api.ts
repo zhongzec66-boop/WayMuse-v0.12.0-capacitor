@@ -255,9 +255,14 @@ export async function saveProfile(profile: {
 
 /* ── 聊天（SSE 代理）───────────────────────────────────── */
 
+export type ServerContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
 export type ServerChatMessage = {
   role: "system" | "user" | "assistant";
-  content: string;
+  /** 纯文本用字符串；带图片时用 OpenAI 兼容的块数组 */
+  content: string | ServerContentPart[];
 };
 
 export async function streamServerChat(options: {
