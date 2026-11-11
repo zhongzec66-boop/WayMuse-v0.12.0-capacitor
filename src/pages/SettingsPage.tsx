@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { ArrowLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, ChevronRight } from "lucide-react";
 import AccountPanel from "./AccountPanel";
 import DeviceDataPanel from "./DeviceDataPanel";
 import type { useAccount } from "../useAccount";
@@ -7,7 +7,6 @@ import AvatarPicker from "../AvatarPicker";
 import { haptic } from "../nativeExtras";
 import { storage } from "../storage";
 import { APP_VERSION } from "../version";
-import { DeepSeekError, listDeepSeekModels } from "../deepseek/client";
 import type { DeepSeekConfig } from "../deepseek/types";
 import {
   COMPANION_PRESETS,
@@ -48,21 +47,11 @@ export default function SettingsPage({
   account: ReturnType<typeof useAccount>;
   onLogin: () => void;
 }) {
-  const [apiKey, setApiKey] = useState(() => storage.getDeepSeekKey());
-  const [rememberKey, setRememberKey] = useState(() =>
-    storage.getDeepSeekRemember(),
-  );
-  const [showKey, setShowKey] = useState(false);
-  const [showAdvancedKey, setShowAdvancedKey] = useState(false);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [importMode, setImportMode] = useState<"merge" | "replace">("merge");
   const [deepSeek, setDeepSeek] = useState<DeepSeekConfig>(() =>
     storage.getDeepSeekConfig(),
   );
-  const [deepSeekStatus, setDeepSeekStatus] = useState<
-    "idle" | "testing" | "ok" | "error"
-  >("idle");
-  const [deepSeekMessage, setDeepSeekMessage] = useState("");
 
   /* ── 联网搜索 ── */
   const [searchProvider, setSearchProvider] = useState(() =>
@@ -100,58 +89,6 @@ export default function SettingsPage({
     key: K,
     value: DeepSeekConfig[K],
   ) => setDeepSeek((current) => ({ ...current, [key]: value }));
-
-  const deepSeekErrorText = (caught: unknown): string => {
-    if (caught instanceof DeepSeekError) {
-      if (caught.status === 401) return "API Key 无效或已过期（401）。";
-      if (caught.status === 402) return "账户余额不足（402）。";
-      if (caught.status === 429) return "请求过于频繁（429）。";
-      return caught.message;
-    }
-    return "连接失败，请检查网络、Base URL 或 Key。";
-  };
-
-  const testDeepSeek = async () => {
-    if (!apiKey.trim()) {
-      setDeepSeekStatus("error");
-      setDeepSeekMessage("先填写 API Key。");
-      return;
-    }
-    setDeepSeekStatus("testing");
-    setDeepSeekMessage("正在请求 /models…");
-    try {
-      const ids = await listDeepSeekModels({
-        baseUrl: deepSeek.baseUrl,
-        apiKey,
-      });
-      setDeepSeekStatus("ok");
-      setDeepSeekMessage(
-        ids.length
-          ? `连接成功：${ids.join("、")}`
-          : "连接成功，但没有返回模型。",
-      );
-    } catch (caught) {
-      setDeepSeekStatus("error");
-      setDeepSeekMessage(deepSeekErrorText(caught));
-    }
-  };
-
-  const saveDeepSeek = () => {
-    storage.setDeepSeekConfig(deepSeek);
-    storage.setDeepSeekKey(apiKey, rememberKey);
-    setDeepSeekStatus("ok");
-    setDeepSeekMessage(
-      apiKey.trim() ? "已保存，聊天页会使用这个 Key。" : "已保存；Key 为空。",
-    );
-  };
-
-  const clearDeepSeekKey = () => {
-    storage.setDeepSeekKey("", false);
-    setApiKey("");
-    setRememberKey(false);
-    setDeepSeekStatus("idle");
-    setDeepSeekMessage("已清除本机保存的 API Key。");
-  };
 
   return (
     <div
@@ -328,121 +265,16 @@ export default function SettingsPage({
               模型服务
               <em className="wr-settings-sub">Key 保存在服务器，App 不存储</em>
             </span>
-            <b
-              className={
-                deepSeekStatus === "error"
-                  ? "wr-settings-status error"
-                  : "wr-settings-status ok"
-              }
-            >
-              {deepSeekStatus === "error"
-                ? "服务端异常"
-                : apiKey
-                  ? "自带 Key"
-                  : "服务端托管"}
-            </b>
+            <b className="wr-settings-status ok">已接入</b>
           </div>
-          <button
-            type="button"
-            className="wr-settings-row"
-            onClick={() => setShowAdvancedKey((value) => !value)}
-          >
+          <div className="wr-settings-row">
             <span>
-              使用自己的 API Key
+              用量
               <em className="wr-settings-sub">
-                {apiKey ? "已填写，失败时优先用它" : "可选，一般不用填"}
+                按账号配额计算，额度不够找我们充值
               </em>
             </span>
-            <span className="wr-settings-chevron">
-              {showAdvancedKey ? "收起" : "展开"}
-            </span>
-          </button>
-          {showAdvancedKey && (
-            <>
-              <label className="wr-settings-field">
-                <span>API Key</span>
-                <div className="wr-settings-key">
-                  <input
-                    type={showKey ? "text" : "password"}
-                    value={apiKey}
-                    onChange={(event) => setApiKey(event.target.value)}
-                    placeholder="sk-…"
-                    autoComplete="off"
-                    spellCheck={false}
-                  />
-                  <button
-                    type="button"
-                    aria-label={showKey ? "隐藏密钥" : "显示密钥"}
-                    onClick={() => setShowKey((value) => !value)}
-                  >
-                    {showKey ? <EyeOff size={17} /> : <Eye size={17} />}
-                  </button>
-                </div>
-              </label>
-              <label className="wr-settings-check">
-                <input
-                  type="checkbox"
-                  checked={rememberKey}
-                  onChange={(event) => setRememberKey(event.target.checked)}
-                />
-                记住密钥（写入本机 localStorage）
-              </label>
-              <label className="wr-settings-field">
-                <span>Base URL</span>
-                <input
-                  value={deepSeek.baseUrl}
-                  onChange={(event) =>
-                    updateDeepSeek("baseUrl", event.target.value)
-                  }
-                  placeholder="https://api.deepseek.com"
-                  spellCheck={false}
-                />
-              </label>
-              <label className="wr-settings-field">
-                <span>模型</span>
-                <input
-                  value={deepSeek.model}
-                  onChange={(event) =>
-                    updateDeepSeek("model", event.target.value)
-                  }
-                  placeholder="deepseek-chat"
-                  spellCheck={false}
-                />
-              </label>
-              <div className="wr-settings-actions">
-                <button
-                  type="button"
-                  className="wr-settings-action primary"
-                  onClick={() => void testDeepSeek()}
-                  disabled={deepSeekStatus === "testing"}
-                >
-                  {deepSeekStatus === "testing" ? "测试中…" : "测试连接"}
-                </button>
-                <button
-                  type="button"
-                  className="wr-settings-action"
-                  onClick={saveDeepSeek}
-                >
-                  保存
-                </button>
-              </div>
-              <button
-                type="button"
-                className="wr-settings-clear"
-                onClick={clearDeepSeekKey}
-              >
-                清除本机密钥
-              </button>
-              {deepSeekMessage && (
-                <p
-                  className={`wr-settings-connect-note ${deepSeekStatus}`}
-                  role={deepSeekStatus === "error" ? "alert" : "status"}
-                >
-                  {deepSeekMessage}
-                </p>
-              )}
-            </>
-          )}
+          </div>
           <label className="wr-settings-check">
             <input
               type="checkbox"

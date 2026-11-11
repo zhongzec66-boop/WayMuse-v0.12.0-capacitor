@@ -30,11 +30,7 @@ import { formatSearchContext, webSearch } from "../search";
 import type { SearchProvider } from "../search";
 import { storage, createMemory } from "../storage";
 import { newId } from "../id";
-import {
-  DeepSeekError,
-  listDeepSeekModels,
-  streamDeepSeekChat,
-} from "../deepseek/client";
+import { DeepSeekError, listDeepSeekModels } from "../deepseek/client";
 import { DEEPSEEK_MODELS } from "../deepseek/config";
 import { buildSystemPrompt } from "../deepseek/prompt";
 import MarkdownText from "../deepseek/Markdown";
@@ -322,7 +318,8 @@ export default function ChatPage({
     }
 
     // 没有本地 Key 或带图片：走服务端代理（Key 在服务器，客户端只带令牌）
-    if (!apiKey.trim() || imageDataUrl) {
+    // 全量走服务端：客户端不再持有任何 Key
+    {
       const userMessage: DeepSeekMessage = {
         id: newId(),
         role: "user",
@@ -435,7 +432,7 @@ export default function ChatPage({
         setLatency(Math.round(performance.now() - startedAt));
       } catch (serverError) {
         if (serverError instanceof ApiError && serverError.status === 429) {
-          setError("今天的额度用完了，明天再来，或到设置里换成自己的 Key");
+          setError("今天的额度用完了，明天再来；需要更多额度可以找我们充值");
           setMessages((current) =>
             current.filter((message) => message.id !== assistantId),
           );
@@ -586,8 +583,9 @@ export default function ChatPage({
         return;
       } catch (serverError) {
         // 配额用完：明确告诉用户，不要静默失败
-        if (serverError instanceof ApiError && serverError.status === 429) {
-          setError("今天的额度用完了，明天再来，或到设置里换成自己的 Key");
+        const status = (serverError as { status?: number } | null)?.status;
+        if (status === 429) {
+          setError("今天的额度用完了，明天再来；需要更多额度可以找我们充值");
           setMessages((current) =>
             current.filter(
               (message) =>
@@ -596,75 +594,7 @@ export default function ChatPage({
           );
           return;
         }
-        // 没有自带 Key 时，服务端失败就是失败
-        if (!apiKey.trim()) throw serverError;
-        // 有自带 Key：继续往下走直连模式
-      }
-
-      const result = await streamDeepSeekChat({
-        config: requestConfig,
-        apiKey,
-        messages: payload,
-        signal: controller.signal,
-        onDelta: (delta) => {
-          firstTokenAt ??= performance.now();
-          setMessages((current) =>
-            current.map((message) =>
-              message.id === assistantId
-                ? { ...message, content: message.content + delta }
-                : message,
-            ),
-          );
-        },
-        onReasoning: (delta) => {
-          firstTokenAt ??= performance.now();
-          setMessages((current) =>
-            current.map((message) =>
-              message.id === assistantId
-                ? {
-                    ...message,
-                    reasoning: `${message.reasoning ?? ""}${delta}`,
-                  }
-                : message,
-            ),
-          );
-        },
-      });
-
-      if (!result.content && !result.reasoning) {
-        setMessages((current) =>
-          current.filter((message) => message.id !== assistantId),
-        );
-        setError("模型没有返回内容，请检查模型名称或稍后重试。");
-      } else {
-        setMessages((current) =>
-          current.map((message) =>
-            message.id === assistantId
-              ? {
-                  ...message,
-                  content: result.content || "（模型只返回了思考过程）",
-                  reasoning: result.reasoning || undefined,
-                  model: result.model,
-                  usage: result.usage ?? undefined,
-                  latencyMs: Math.round(performance.now() - startedAt),
-                  finishReason: result.finishReason ?? undefined,
-                }
-              : message,
-          ),
-        );
-        setUsage(result.usage);
-        setLatency(Math.round(performance.now() - startedAt));
-        // 模型用 <courses> 块整理了课表 → 直接弹确认卡，不让它说「我没有工具」
-        const parsedCourses = parseReply(result.content || "").courses;
-        if (parsedCourses.length) setCourseProposal(parsedCourses);
-        if (firstTokenAt) {
-          setConnectState("ok");
-          setConnectText(
-            `首字 ${Math.round(firstTokenAt - startedAt)} ms · 完成 ${Math.round(
-              performance.now() - startedAt,
-            )} ms`,
-          );
-        }
+        throw serverError;
       }
     } catch (caught) {
       if (controller.signal.aborted) {
@@ -901,18 +831,14 @@ export default function ChatPage({
             <small>{statusLabel}</small>
           </button>
           <div className="wr-ai-empty">
-            <p>
-              {apiKey
-                ? "直接说事，或者从下面挑一个"
-                : "连接 DeepSeek 后开始聊天。"}
-            </p>
-            {!apiKey && (
+            <p>直接说事，或者从下面挑一个</p>
+            {connectState === "error" && (
               <button
                 type="button"
                 className="wr-ai-primary"
                 onClick={onSettings}
               >
-                连接 DeepSeek
+                检查连接设置
               </button>
             )}
             <div className="wr-ai-suggestions">
