@@ -607,3 +607,24 @@
   font-size: var(--text-14);
   font-weight: var(--weight-medium);
 }
+
+/* 截图识别：主入口，放在文字导入之前 */
+.wr-course-import-shot {
+  width: 100%;
+  min-height: var(--control-44);
+  margin-bottom: var(--space-8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: var(--text-15);
+  font-weight: var(--weight-medium);
+}
+
+.wr-course-import-shot:disabled {
+  opacity: 0.6;
+}

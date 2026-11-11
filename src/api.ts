@@ -260,6 +260,36 @@ export async function saveProfile(profile: {
   await authedRequest("/api/me/profile", { method: "POST", body: profile });
 }
 
+/* ── 课表截图识别 ──────────────────────────────────────── */
+
+export type ParsedCourseFromImage = {
+  name: string;
+  weekday: number;
+  start: string;
+  end: string;
+  place?: string;
+  weeks?: number[];
+};
+
+/**
+ * 课表截图 → 结构化课程。
+ *
+ * 和服务端聊天不同：这里要的是 JSON，不是聊天回复，
+ * 所以单独走 /api/course/parse-image（服务端用视觉模型抽字段）。
+ */
+export async function parseCourseImage(
+  imageDataUrl: string,
+): Promise<ParsedCourseFromImage[]> {
+  const result = await authedRequest<{
+    courses: ParsedCourseFromImage[];
+    usage?: number;
+  }>("/api/course/parse-image", {
+    method: "POST",
+    body: { imageDataUrl },
+  });
+  return result.courses ?? [];
+}
+
 /* ── 聊天（SSE 代理）───────────────────────────────────── */
 
 export type ServerContentPart =

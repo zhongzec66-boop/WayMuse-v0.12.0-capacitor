@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowLeft, Check, Sparkles, TriangleAlert, X } from "lucide-react";
 import { parseCourseRecord, parseCourseText, toCourses } from "../courseImport";
+import { parseCourseImage } from "../api";
 import type { ParsedCourse } from "../courseImport";
 import { streamDeepSeekChat } from "../deepseek/client";
 import { newId } from "../id";
@@ -50,6 +51,37 @@ function extractJsonArray(raw: string): unknown[] {
  *
  * 结果先给用户确认，再写课表；认不出的行会列出来，不会静默丢弃。
  */
+/** 读成 dataURL 并压到长边 1600px，避免把原图整个塞进请求体 */
+async function fileToDataUrl(file: File, maxSide = 1600): Promise<string> {
+  const raw = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(new Error("read_failed"));
+    reader.readAsDataURL(file);
+  });
+
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error("decode_failed"));
+      element.src = raw;
+    });
+    const longSide = Math.max(image.width, image.height);
+    if (longSide <= maxSide) return raw;
+    const scale = maxSide / longSide;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(image.width * scale);
+    canvas.height = Math.round(image.height * scale);
+    const context = canvas.getContext("2d");
+    if (!context) return raw;
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.85);
+  } catch {
+    return raw;
+  }
+}
+
 export default function CourseImportSheet({
   existing,
   onClose,
@@ -69,6 +101,48 @@ export default function CourseImportSheet({
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState("");
   const [termStart, setTermStart] = useState(() => readTermStart());
+  const [shotBusy, setShotBusy] = useState(false);
+  const [shotError, setShotError] = useState("");
+  const shotRef = useRef<HTMLInputElement | null>(null);
+
+  /**
+   * 课表截图识别：图片直接交给服务端的视觉模型，返回结构化课程。
+   * 不再走「先 OCR 再解析」那条链，保留原文给用户核对。
+   */
+  const runShotParse = async (file: File) => {
+    setShotBusy(true);
+    setShotError("");
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const courses = await parseCourseImage(dataUrl);
+      if (!courses.length) {
+        setShotError(
+          "没从截图里认出课程，换一张更清晰的，或者用下面的文字导入",
+        );
+        return;
+      }
+      setParsed(
+        courses.map((course) => ({
+          name: course.name,
+          weekday: course.weekday,
+          start: course.start,
+          end: course.end,
+          place: course.place ?? "",
+          weeks: course.weeks,
+        })),
+      );
+      setFailed([]);
+      setSource("ai");
+    } catch (error) {
+      setShotError(
+        error instanceof Error && error.message.includes("429")
+          ? "今天的识图次数用完了，明天再试，或者用文字导入"
+          : "识别失败，检查网络后重试",
+      );
+    } finally {
+      setShotBusy(false);
+    }
+  };
 
   const hasKey = Boolean(storage.getDeepSeekKey().trim());
 
@@ -167,6 +241,28 @@ export default function CourseImportSheet({
           周」「单周」「双周」。
         </p>
 
+        <button
+          type="button"
+          className="wr-course-import-shot"
+          onClick={() => shotRef.current?.click()}
+          disabled={shotBusy}
+        >
+          <Sparkles size={16} />
+          {shotBusy ? "正在识别截图…" : "上传课表截图，自动识别"}
+        </button>
+        <input
+          ref={shotRef}
+          type="file"
+          accept="image/*"
+          className="wr-visually-hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (file) void runShotParse(file);
+          }}
+        />
+        {shotError && <p className="wr-course-import-ai-error">{shotError}</p>}
+
         <label className="wr-course-import-term">
           <span>开学日期（用来算教学周）</span>
           <input
@@ -213,15 +309,22 @@ export default function CourseImportSheet({
         <button
           type="button"
           className="wr-course-import-ai"
-          onClick={() => void runAiParse()}
-          disabled={!text.trim() || aiBusy}
+          onClick={() => {
+            // 没有本地 Key 时，文字解析走不通；直接引导去上传截图（服务端有视觉）
+            if (!hasKey) {
+              shotRef.current?.click();
+              return;
+            }
+            void runAiParse();
+          }}
+          disabled={aiBusy || (hasKey && !text.trim())}
         >
           <Sparkles size={16} />
           {aiBusy
             ? "AI 正在解析…"
             : hasKey
-              ? "格式太乱？让 AI 解析"
-              : "格式太乱？先连接 DeepSeek"}
+              ? "格式太乱？让 AI 解析这段文字"
+              : "格式太乱？直接上传截图更快"}
         </button>
         {aiError && <p className="wr-course-import-ai-error">{aiError}</p>}
 
