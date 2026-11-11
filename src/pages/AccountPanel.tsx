@@ -89,14 +89,10 @@ export default function AccountPanel({
             </button>
           )}
         </div>
-      </div>
-
-      <div className="wr-settings-label">本月配额</div>
-      <div className="wr-settings-group">
         <div className="wr-quota">
           <div className="wr-quota-head">
             <span>
-              {formatTokens(monthlyUsed)} / {formatTokens(monthlyLimit)} token
+              本月 {formatTokens(monthlyUsed)} / {formatTokens(monthlyLimit)}
             </span>
             <em>{loading ? "同步中…" : `${percent}%`}</em>
           </div>

@@ -850,3 +850,62 @@
     transform: rotate(360deg);
   }
 }
+
+/* 紧凑化：设置页密度（字体偏大/行距偏松，挤占一屏可见内容） */
+.wr-settings-label {
+  margin: 0 0 var(--space-6, 6px) var(--space-12);
+  font-size: var(--text-13);
+}
+
+.wr-settings-group {
+  margin-bottom: var(--space-14, 14px);
+}
+
+.wr-settings-row {
+  min-height: 48px;
+  padding: 0 var(--space-14, 14px);
+  font-size: var(--text-15);
+}
+
+.wr-settings-field {
+  padding: var(--space-10, 10px) var(--space-14, 14px);
+}
+
+.wr-settings-field span {
+  font-size: var(--text-12);
+}
+
+.wr-settings-field input,
+.wr-settings-field select,
+.wr-settings-field textarea {
+  font-size: var(--text-15);
+}
+
+.wr-settings-jump {
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.wr-settings-jump button {
+  padding: 6px 10px;
+  font-size: var(--text-13);
+}
+
+.wr-settings-scroll {
+  padding: var(--space-14, 14px);
+}
+
+.wr-settings-chevron {
+  flex: 0 0 auto;
+  color: var(--ink-3);
+  font-size: var(--text-13);
+}
+
+.wr-settings-sub {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-3);
+  font-size: var(--text-12);
+  font-style: normal;
+  font-weight: var(--weight-regular);
+}

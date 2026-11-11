@@ -107,6 +107,25 @@ export default function WayMuseReference() {
   useEffect(() => {
     document.title = `${BRAND} · 学业助理`;
   }, []);
+
+  /**
+   * 服务端资料 → 本地画像的单向补齐。
+   *
+   * 只有本地为空时才填，不覆盖用户手填的内容；
+   * 否则「我的信息」里改了学校，聊天里的 system prompt 还是「学校未填写」。
+   */
+  useEffect(() => {
+    const remote = account.me?.profile;
+    if (!remote) return;
+    setProfile((current) => {
+      const patch: Partial<UserProfile> = {};
+      if (!current.school.trim() && remote.school) patch.school = remote.school;
+      if (!current.major.trim() && remote.major) patch.major = remote.major;
+      if (!current.grade.trim() && remote.grade) patch.grade = remote.grade;
+      if (Object.keys(patch).length === 0) return current;
+      return { ...current, ...patch };
+    });
+  }, [account.me?.profile]);
   useEffect(() => {
     if (!hasEntered) return;
     storage.setCourses(courses);

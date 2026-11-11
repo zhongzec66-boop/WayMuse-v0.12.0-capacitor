@@ -1,9 +1,7 @@
 import { useRef, useState } from "react";
 import { ArrowLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
 import AccountPanel from "./AccountPanel";
-import ConnectionsPanel from "./ConnectionsPanel";
 import type { useAccount } from "../useAccount";
-import BotAvatar from "../BotAvatar";
 import AvatarPicker from "../AvatarPicker";
 import { haptic } from "../nativeExtras";
 import { storage } from "../storage";
@@ -13,7 +11,6 @@ import type { DeepSeekConfig } from "../deepseek/types";
 import {
   COMPANION_PRESETS,
   COMPANION_TYPES,
-  GRADES,
   RESPONSE_LENGTHS,
   TONES,
 } from "../profile";
@@ -154,8 +151,6 @@ export default function SettingsPage({
     setDeepSeekMessage("已清除本机保存的 API Key。");
   };
 
-  const displayName = profile.callName.trim() || "同学";
-
   return (
     <div
       className="wr-settings-page"
@@ -175,71 +170,33 @@ export default function SettingsPage({
         <span />
       </div>
       <div className="wr-settings-scroll">
-        <AccountPanel account={account} onLogin={onLogin} />
         <nav className="wr-settings-jump" aria-label="设置分区">
           {[
-            "个人档案",
-            "陪伴风格",
-            "模型连接",
-            "语音",
-            "App 连接",
-            "隐私与数据",
-          ].map((name) => (
+            { name: "账号与配额", id: "setting-账号" },
+            { name: "助理与风格", id: "setting-陪伴风格" },
+            { name: "模型与连接", id: "setting-模型连接" },
+            { name: "数据与关于", id: "setting-隐私与数据" },
+          ].map((item) => (
             <button
-              key={name}
+              key={item.id}
               onClick={() =>
                 document
-                  .getElementById(`setting-${name}`)
+                  .getElementById(item.id)
                   ?.scrollIntoView({ behavior: "smooth", block: "start" })
               }
             >
-              {name}
+              {item.name}
             </button>
           ))}
         </nav>
-        <div className="wr-settings-profile">
-          <div className="wr-settings-profile-head">
-            <div className="wr-settings-avatar">
-              <BotAvatar source={agentAvatar} />
-            </div>
-            <div>
-              <div className="wr-settings-brand">{agentName}</div>
-              <div className="wr-settings-name">
-                {displayName}
-                <span>{profile.companionType}</span>
-              </div>
-            </div>
-          </div>
-          <p>
-            {profile.school.trim() || "学校未填写"} ·{" "}
-            {profile.major.trim() || "专业未填写"} · {profile.grade}
-          </p>
-        </div>
-
-        <div className="wr-settings-label">助理名字与头像</div>
-        <div className="wr-settings-group">
-          <label className="wr-settings-field">
-            <span>助理名字</span>
-            <input
-              value={agentName}
-              maxLength={24}
-              onChange={(e) => onAgentNameChange(e.target.value)}
-              placeholder="WayMuse"
-            />
-          </label>
-        </div>
-        <div className="wr-settings-group">
-          <div className="wr-settings-avatar-row">
-            <AvatarPicker value={agentAvatar} onChange={onAgentAvatarChange} />
-          </div>
-        </div>
+        <AccountPanel account={account} onLogin={onLogin} />
 
         <div className="wr-settings-label" id="setting-个人档案">
           个人档案
         </div>
         <div className="wr-settings-group">
           <label className="wr-settings-field">
-            <span>WayMuse 该怎么称呼你</span>
+            <span>怎么称呼你</span>
             <input
               value={profile.callName}
               onChange={(event) =>
@@ -248,37 +205,6 @@ export default function SettingsPage({
               placeholder="你的称呼"
               maxLength={24}
             />
-          </label>
-          <label className="wr-settings-field">
-            <span>学校</span>
-            <input
-              value={profile.school}
-              onChange={(event) => updateProfile("school", event.target.value)}
-              placeholder="例如：江南大学"
-              maxLength={80}
-            />
-          </label>
-          <label className="wr-settings-field">
-            <span>专业</span>
-            <input
-              value={profile.major}
-              onChange={(event) => updateProfile("major", event.target.value)}
-              placeholder="例如：计算机科学"
-              maxLength={80}
-            />
-          </label>
-          <label className="wr-settings-field">
-            <span>年级</span>
-            <select
-              value={profile.grade}
-              onChange={(event) => updateProfile("grade", event.target.value)}
-            >
-              {GRADES.map((grade) => (
-                <option value={grade} key={grade}>
-                  {grade}
-                </option>
-              ))}
-            </select>
           </label>
           <label className="wr-settings-field">
             <span>主要课程</span>
@@ -290,12 +216,28 @@ export default function SettingsPage({
               maxLength={600}
             />
           </label>
+          <p className="wr-settings-note">
+            学校 / 专业 / 年级在顶部「我的信息」里统一管理，会同步到服务器，
+            用于匹配同专业的学长经验。
+          </p>
         </div>
 
         <div className="wr-settings-label" id="setting-陪伴风格">
-          陪伴风格
+          助理与风格
         </div>
         <div className="wr-settings-group">
+          <label className="wr-settings-field">
+            <span>助理名字</span>
+            <input
+              value={agentName}
+              maxLength={24}
+              onChange={(e) => onAgentNameChange(e.target.value)}
+              placeholder="WayMuse"
+            />
+          </label>
+          <div className="wr-settings-avatar-row">
+            <AvatarPicker value={agentAvatar} onChange={onAgentAvatarChange} />
+          </div>
           <div className="wr-settings-choice-grid">
             {COMPANION_TYPES.map((type) => (
               <button
@@ -555,31 +497,9 @@ export default function SettingsPage({
           </p>
         </div>
 
-        <div className="wr-settings-label" id="setting-触感">
-          触感
+        <div className="wr-settings-label" id="setting-隐私与数据">
+          数据与关于
         </div>
-        <div className="wr-settings-group">
-          <button
-            type="button"
-            className="wr-settings-test"
-            onClick={() => void haptic("medium")}
-          >
-            试一下震动
-          </button>
-          <p className="wr-settings-note">
-            没反应的话，先检查系统是否开了「低电量模式」。
-            <br />
-            顶部安全区：{safeTop}px
-          </p>
-        </div>
-
-        <div className="wr-settings-label" id="setting-App 连接">
-          App 连接
-        </div>
-        <div className="wr-settings-group">
-          <ConnectionsPanel />
-        </div>
-        <div className="wr-settings-label">通用</div>
         <div className="wr-settings-group">
           <button
             className="wr-settings-row"
@@ -591,12 +511,6 @@ export default function SettingsPage({
             <span>管理记忆</span>
             <ChevronRight />
           </button>
-        </div>
-
-        <div className="wr-settings-label" id="setting-隐私与数据">
-          隐私与数据
-        </div>
-        <div className="wr-settings-group">
           <button
             className="wr-settings-row"
             onClick={() => setOverlay("隐私与数据")}
@@ -656,8 +570,18 @@ export default function SettingsPage({
           </button>
         </div>
 
-        <div className="wr-settings-label">首次进入</div>
         <div className="wr-settings-group">
+          <button
+            type="button"
+            className="wr-settings-row"
+            onClick={() => void haptic("medium")}
+          >
+            <span>
+              触感测试
+              <em className="wr-settings-sub">点一下应该会震</em>
+            </span>
+            <span className="wr-settings-chevron">试</span>
+          </button>
           <button
             className="wr-settings-row"
             onClick={() => {
@@ -669,12 +593,13 @@ export default function SettingsPage({
             <span>重新体验首次进入</span>
             <ChevronRight />
           </button>
-        </div>
-
-        <div className="wr-settings-label">关于</div>
-        <div className="wr-settings-group">
           <div className="wr-settings-row">
-            <span>版本</span>
+            <span>
+              版本
+              <em className="wr-settings-sub">
+                安全区 {safeTop}px · 服务端 api.101-32-101-117.sslip.io
+              </em>
+            </span>
             <b>{APP_VERSION}</b>
           </div>
         </div>
