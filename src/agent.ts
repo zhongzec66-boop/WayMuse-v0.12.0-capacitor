@@ -27,6 +27,24 @@ export type Reply = {
   courses: ParsedCourse[];
   /** 可点选的选项：渲染成按钮，点了直接作为回答发出 */
   choices: string[];
+  /** 提议的作业 / 考试：渲染成确认卡，点「对」才写入 */
+  deadlines?: DeadlineProposal[];
+};
+
+/** 模型提议的一条作业或考试。日期必须是 YYYY-MM-DD，时间 HH:mm。 */
+export type DeadlineProposal = {
+  kind: "assignment" | "exam";
+  title: string;
+  /** YYYY-MM-DD */
+  date: string;
+  /** HH:mm，可省略（作业默认 23:59，考试默认 09:00） */
+  time?: string;
+  /** 课程名（文本匹配，不要求 id） */
+  course?: string;
+  /** 作业占总成绩比例 */
+  weight?: number;
+  /** 考试范围 */
+  scope?: string;
 };
 
 /**
@@ -107,7 +125,8 @@ export function parseReply(content: string): Reply {
   const memoriesBlock = extractBlock(plansBlock.rest, "memories");
   const coursesBlock = extractBlock(memoriesBlock.rest, "courses");
   const choicesBlock = extractBlock(coursesBlock.rest, "choices");
-  const text = choicesBlock.rest.trim();
+  const deadlinesBlock = extractBlock(choicesBlock.rest, "deadlines");
+  const text = deadlinesBlock.rest.trim();
 
   let plans: Plan[] = [];
   if (plansBlock.body) {
@@ -171,7 +190,22 @@ export function parseReply(content: string): Reply {
     }
   }
 
-  return { text, plans, memories, courses, choices };
+  let deadlines: DeadlineProposal[] = [];
+  if (deadlinesBlock.body) {
+    try {
+      const raw: unknown = JSON.parse(deadlinesBlock.body);
+      if (Array.isArray(raw)) {
+        deadlines = raw
+          .slice(0, 5)
+          .map(parseDeadlineProposal)
+          .filter((item): item is DeadlineProposal => item !== null);
+      }
+    } catch {
+      deadlines = [];
+    }
+  }
+
+  return { text, plans, memories, courses, choices, deadlines };
 }
 
 export function planTasks(
@@ -341,4 +375,57 @@ export function localSuggestions(input: string): Reply {
     courses: [],
     choices: [],
   };
+}
+
+/**
+ * 解析一条作业/考试提议。
+ *
+ * 只认显式日期：模型给「下周三」这种相对说法时，解析层没有「今天」的上下文，
+ * 硬猜一定会错。宁可丢掉，让正文去问。
+ */
+function parseDeadlineProposal(value: unknown): DeadlineProposal | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  const title = typeof record.title === "string" ? record.title.trim() : "";
+  const kind =
+    record.kind === "exam" || record.kind === "考试"
+      ? "exam"
+      : record.kind === "assignment" || record.kind === "作业"
+        ? "assignment"
+        : null;
+  if (!title || !kind) return null;
+  const date =
+    typeof record.date === "string" ? record.date.trim() : "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const time =
+    typeof record.time === "string" && /^\d{1,2}:\d{2}$/.test(record.time.trim())
+      ? record.time.trim().padStart(5, "0")
+      : undefined;
+  const weightRaw = Number(record.weight);
+  const weight =
+    kind === "assignment" && Number.isFinite(weightRaw) && weightRaw > 0
+      ? Math.min(100, Math.round(weightRaw))
+      : undefined;
+  return {
+    kind,
+    title: title.slice(0, 80),
+    date,
+    ...(time ? { time } : {}),
+    ...(typeof record.course === "string" && record.course.trim()
+      ? { course: record.course.trim().slice(0, 40) }
+      : {}),
+    ...(weight !== undefined ? { weight } : {}),
+    ...(kind === "exam" &&
+    typeof record.scope === "string" &&
+    record.scope.trim()
+      ? { scope: record.scope.trim().slice(0, 100) }
+      : {}),
+  };
+}
+
+/** 把提议换成精确时刻；作业默认当天 23:59，考试默认 09:00 */
+export function proposalDueAt(proposal: DeadlineProposal): string {
+  const time =
+    proposal.time ?? (proposal.kind === "exam" ? "09:00" : "23:59");
+  return new Date(`${proposal.date}T${time}:00`).toISOString();
 }

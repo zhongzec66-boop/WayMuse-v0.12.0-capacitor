@@ -406,6 +406,8 @@ export default function WayMuseReference() {
               tasks={tasks}
               todayCourses={todayCourses}
               calendarEvents={calendarEvents}
+              assignments={assignments}
+              exams={exams}
               courses={courses}
               setCourses={setCourses}
               setOverlay={setOverlay}
@@ -453,6 +455,10 @@ export default function WayMuseReference() {
               tasks={tasks}
               onSettings={() => setOverlay("设置")}
               onTasksChange={setTasks}
+              assignments={assignments}
+              onAssignmentsChange={setAssignments}
+              exams={exams}
+              onExamsChange={setExams}
               onMemoriesChange={setMemories}
               onCoursesChange={setCourses}
               onViewPlans={() => nav("任务")}

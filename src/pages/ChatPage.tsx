@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import { ApiError, streamServerChat } from "../api";
 import { localSuggestions, parseReply, planTasks } from "../agent";
+import type { Assignment, Exam } from "../semester";
+import DeadlineProposalCard from "./DeadlineProposalCard";
 
 import { parseCourseText, toCourses } from "../courseImport";
 import type { ParsedCourse } from "../courseImport";
@@ -134,6 +136,10 @@ export default function ChatPage({
   tasks,
   onSettings,
   onTasksChange,
+  assignments,
+  onAssignmentsChange,
+  exams,
+  onExamsChange,
   onMemoriesChange,
   onCoursesChange,
   onViewPlans,
@@ -150,6 +156,10 @@ export default function ChatPage({
   tasks: Task[];
   onSettings: () => void;
   onTasksChange: (tasks: Task[]) => void;
+  assignments: Assignment[];
+  onAssignmentsChange: (assignments: Assignment[]) => void;
+  exams: Exam[];
+  onExamsChange: (exams: Exam[]) => void;
   onMemoriesChange: (memories: Memory[]) => void;
   onCoursesChange: (courses: Course[]) => void;
   onViewPlans: () => void;
@@ -1323,6 +1333,25 @@ export default function ChatPage({
                             </section>
                           );
                         })}
+                      {(!streaming ||
+                        message.id !== messages[messages.length - 1]?.id) &&
+                        (() => {
+                          const proposals =
+                            parseReply(message.content).deadlines ?? [];
+                          if (!proposals.length) return null;
+                          return (
+                            <DeadlineProposalCard
+                              proposals={proposals}
+                              onAssignmentsChange={(items) =>
+                                onAssignmentsChange([...assignments, ...items] as Assignment[])
+                              }
+                              onExamsChange={(items) =>
+                                onExamsChange([...exams, ...items] as Exam[])
+                              }
+                              onDismiss={() => undefined}
+                            />
+                          );
+                        })()}
                       {(!streaming ||
                         message.id !== messages[messages.length - 1]?.id) &&
                         (() => {

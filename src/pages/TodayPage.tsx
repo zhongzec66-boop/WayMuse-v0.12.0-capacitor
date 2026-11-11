@@ -2,6 +2,7 @@ import { CalendarPlus, Plus, SlidersHorizontal } from "lucide-react";
 import { addEventToCalendar, haptic } from "../nativeExtras";
 import type { CalendarEvent } from "../nativeExtras";
 import type { Dispatch, SetStateAction } from "react";
+import type { Assignment, Exam } from "../semester";
 import type { Course, Overlay, Page, Task } from "../types";
 import { academicWeek, readTermStart } from "../term";
 import BriefCard from "../BriefCard";
@@ -74,6 +75,8 @@ export default function TodayPage({
   setOverlay,
   nav,
   onImportCourses,
+  assignments,
+  exams,
 }: {
   profileName: string;
   date: string;
@@ -85,8 +88,32 @@ export default function TodayPage({
   setOverlay: Dispatch<SetStateAction<Overlay>>;
   nav: (page: Page) => void;
   onImportCourses: () => void;
+  assignments: Assignment[];
+  exams: Exam[];
 }) {
   const { ymd: todayKey, minutes: now, clock } = shanghaiParts();
+
+  // 截止概览：只看还没做完的作业，逾期单独算
+  const dayKey = (offset: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  const pendingAssignments = assignments.filter((item) => item.status !== "done");
+  const countOn = (offset: number) =>
+    pendingAssignments.filter((item) => item.dueAt.slice(0, 10) === dayKey(offset))
+      .length;
+  const overdueCount = pendingAssignments.filter(
+    (item) => item.dueAt.slice(0, 10) < todayKey,
+  ).length;
+  const todayDue = countOn(0);
+  const tomorrowDue = countOn(1);
+  const nextExam = exams
+    .filter((exam) => Date.parse(exam.at) > Date.now())
+    .sort((a, b) => Date.parse(a.at) - Date.parse(b.at))[0];
+  const examInDays = nextExam
+    ? Math.ceil((Date.parse(nextExam.at) - Date.now()) / 86_400_000)
+    : null;
 
   const active = tasks.filter((t) => !t.done);
   const dueTasks = active.filter((t) => t.deadline && t.deadline <= todayKey);
@@ -181,6 +208,19 @@ export default function TodayPage({
         {greeting(now)}，{profileName} · {date} · 第{" "}
         {academicWeek(readTermStart())} 周
       </p>
+
+      {(overdueCount > 0 || todayDue > 0 || tomorrowDue > 0 || examInDays !== null) && (
+        <p className="wr-today-deadline">
+          {overdueCount > 0 && <span className="is-overdue">{overdueCount} 个已逾期</span>}
+          {todayDue > 0 && <span>{todayDue} 个今天到期</span>}
+          {tomorrowDue > 0 && <span>{tomorrowDue} 个明天到期</span>}
+          {examInDays !== null && examInDays <= 14 && (
+            <span className="is-exam">
+              {examInDays <= 1 ? "明天考试" : `${examInDays} 天后考试`}
+            </span>
+          )}
+        </p>
+      )}
 
       <BriefCard
         todayCourses={todayCourses}
