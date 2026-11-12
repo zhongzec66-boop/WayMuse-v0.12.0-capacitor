@@ -44,6 +44,11 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
     private var task: SFSpeechRecognitionTask?
     private var recognizing = false
     private var tapInstalled = false
+    /// 本次识别是否真的在用端上模型
+    private var onDeviceActive = false
+    /// 是否已经因为端上不可用降级过（只降一次，避免死循环）
+    private var didFallback = false
+    private var currentLocale = "zh-CN"
     /// 通话中打开：用 .voiceChat 换回声消除，代价是音质偏「电话音」
     private var inCall = false
     private var callAudioMode: AVAudioSession.Mode {
@@ -99,6 +104,9 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
         if recognizing {
             stopInternal()
         }
+        // 每次开新的一轮都重新允许降级一次
+        didFallback = false
+        currentLocale = localeId
 
         SFSpeechRecognizer.requestAuthorization { status in
             guard status == .authorized else {
@@ -146,10 +154,10 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    private func begin(localeId: String, preferOnDevice: Bool, call: CAPPluginCall) {
+    private func begin(localeId: String, preferOnDevice: Bool, call: CAPPluginCall?) {
         guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: localeId)),
               recognizer.isAvailable else {
-            call.reject("speech-unavailable")
+            call?.reject("speech-unavailable")
             return
         }
 
@@ -164,6 +172,9 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
             request.shouldReportPartialResults = true
             if preferOnDevice && recognizer.supportsOnDeviceRecognition {
                 request.requiresOnDeviceRecognition = true
+                self.onDeviceActive = true
+            } else {
+                self.onDeviceActive = false
             }
             self.request = request
 
@@ -195,6 +206,16 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
                     }
                 }
                 if let error {
+                    // 端上模型不可用（老机型 / 语言未下载）时自动降级一次：
+                    // 关掉 requiresOnDeviceRecognition 重新开始，不把错误抛给用户。
+                    if self.onDeviceActive && !self.didFallback {
+                        self.didFallback = true
+                        self.stopInternal()
+                        DispatchQueue.main.async {
+                            self.begin(localeId: self.currentLocale, preferOnDevice: false, call: nil)
+                        }
+                        return
+                    }
                     let message = error.localizedDescription
                     DispatchQueue.main.async {
                         self.notifyListeners("speechError", data: ["message": message])
@@ -203,10 +224,16 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
                 }
             }
 
-            call.resolve()
+            call?.resolve()
         } catch {
             stopInternal()
-            call.reject("speech-start-failed: \(error.localizedDescription)")
+            if onDeviceActive && !didFallback {
+                didFallback = true
+                currentLocale = localeId
+                begin(localeId: localeId, preferOnDevice: false, call: call)
+                return
+            }
+            call?.reject("speech-start-failed: \(error.localizedDescription)")
         }
     }
 
@@ -365,6 +392,7 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func stopInternal() {
+        onDeviceActive = false
         if engine.isRunning {
             engine.stop()
         }

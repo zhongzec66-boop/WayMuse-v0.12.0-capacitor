@@ -909,3 +909,27 @@
   font-style: normal;
   font-weight: var(--weight-regular);
 }
+
+/* ── 语音自检 ───────────────────────────────────────────── */
+.wr-voice-selftest-log {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: var(--space-8) 0;
+  padding: var(--space-10, 10px);
+  border-radius: var(--radius-12);
+  background: var(--surface-muted);
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: var(--text-11);
+  line-height: 1.6;
+}
+
+.wr-voice-selftest-log .ok {
+  color: #0a7d4f;
+}
+.wr-voice-selftest-log .warn {
+  color: #a35200;
+}
+.wr-voice-selftest-log .bad {
+  color: var(--danger);
+}

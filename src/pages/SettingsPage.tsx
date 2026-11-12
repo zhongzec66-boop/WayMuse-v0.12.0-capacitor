@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import AccountPanel from "./AccountPanel";
 import DeviceDataPanel from "./DeviceDataPanel";
+import VoiceSelfTest from "./VoiceSelfTest";
 import type { useAccount } from "../useAccount";
 import AvatarPicker from "../AvatarPicker";
 import { haptic } from "../nativeExtras";
@@ -370,6 +371,7 @@ export default function SettingsPage({
         </div>
         <div className="wr-settings-group">
           <DeviceDataPanel />
+          <VoiceSelfTest />
           <button
             className="wr-settings-row"
             onClick={() => {
