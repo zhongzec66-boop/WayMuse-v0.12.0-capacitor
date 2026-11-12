@@ -16,8 +16,6 @@ import { newId } from "./id";
 
 const PREFIX = "waymuse-demo-";
 const SCHEMA_VERSION = 2;
-const DEEPSEEK_KEY_NAME = "deepseek-key";
-const DEEPSEEK_REMEMBER_NAME = "deepseek-remember";
 
 function readText(name: string, fallback: string): string {
   try {
@@ -347,31 +345,6 @@ function readTasks(fallback: Task[]): Task[] {
   return readList("tasks", sanitizeTask, fallback);
 }
 
-function readSessionText(name: string): string {
-  try {
-    return sessionStorage.getItem(PREFIX + name) || "";
-  } catch {
-    return "";
-  }
-}
-
-function writeKey(key: string, remember: boolean): void {
-  try {
-    localStorage.removeItem(PREFIX + DEEPSEEK_KEY_NAME);
-    sessionStorage.removeItem(PREFIX + DEEPSEEK_KEY_NAME);
-    if (!key) {
-      localStorage.removeItem(PREFIX + DEEPSEEK_REMEMBER_NAME);
-      return;
-    }
-    const target = remember ? localStorage : sessionStorage;
-    target.setItem(PREFIX + DEEPSEEK_KEY_NAME, key);
-    if (remember) localStorage.setItem(PREFIX + DEEPSEEK_REMEMBER_NAME, "1");
-    else localStorage.removeItem(PREFIX + DEEPSEEK_REMEMBER_NAME);
-  } catch {
-    // Keep the key in component state if storage is blocked.
-  }
-}
-
 function sanitizeDeepSeekUsage(value: unknown) {
   if (!isRecord(value)) return undefined;
   if (
@@ -491,10 +464,6 @@ export const storage = {
     normalizeConfig(readJson("deepseek-config")),
   setDeepSeekConfig: (config: DeepSeekConfig) =>
     writeJson("deepseek-config", config),
-  getDeepSeekKey: () =>
-    readSessionText(DEEPSEEK_KEY_NAME) || readText(DEEPSEEK_KEY_NAME, ""),
-  getDeepSeekRemember: () => readText(DEEPSEEK_REMEMBER_NAME, "") === "1",
-  setDeepSeekKey: writeKey,
   /* ── 三份可编辑的人格/记忆文件 ── */
   getDoc: (id: string) => readText(`doc-${id}`, ""),
   setDoc: (id: string, text: string) => writeText(`doc-${id}`, text),
@@ -514,7 +483,6 @@ export const storage = {
     try {
       localStorage.removeItem(PREFIX + "deepseek-config");
       localStorage.removeItem(PREFIX + "deepseek-messages");
-      writeKey("", false);
     } catch {
       // Nothing else to clear when storage is unavailable.
     }

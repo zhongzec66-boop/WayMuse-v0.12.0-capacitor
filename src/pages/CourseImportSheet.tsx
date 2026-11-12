@@ -1,11 +1,9 @@
 import { useRef, useState } from "react";
 import { ArrowLeft, Check, Sparkles, TriangleAlert, X } from "lucide-react";
-import { parseCourseRecord, parseCourseText, toCourses } from "../courseImport";
+import { parseCourseText, toCourses } from "../courseImport";
 import { parseCourseImage } from "../api";
 import type { ParsedCourse } from "../courseImport";
-import { streamDeepSeekChat } from "../deepseek/client";
 import { newId } from "../id";
-import { storage } from "../storage";
 import { readTermStart, writeTermStart } from "../term";
 import type { Course } from "../types";
 
@@ -15,33 +13,7 @@ const SAMPLE = `高等数学 周一 08:00-09:40 教三-302
 大学英语 周一 10:00-11:40 外语楼204
 数据结构 周二 14:00-15:40 @A302`;
 
-const AI_PROMPT = `你是课表解析器。把用户粘贴的课表文字转成 JSON 数组，不要输出任何解释。
-
-每个元素字段：
-- name: 课程名，去掉周次、学分、教师等杂项
-- weekday: 1-7 表示周一到周日
-- start / end: HH:mm 24 小时制；只有节次时按常见作息换算
-- place: 地点，没有就空字符串
-
-只输出 JSON 数组，例如：
-[{"name":"高等数学","weekday":1,"start":"08:00","end":"09:40","place":"教三-302"}]
-
-如果整段文字里没有可识别的课程，输出 []。`;
-
 /** 从模型输出里抠出 JSON 数组，容忍 ```json 包裹和前后废话 */
-function extractJsonArray(raw: string): unknown[] {
-  const cleaned = raw.replace(/```json/gi, "```").trim();
-  const start = cleaned.indexOf("[");
-  const end = cleaned.lastIndexOf("]");
-  if (start < 0 || end <= start) return [];
-  try {
-    const parsed: unknown = JSON.parse(cleaned.slice(start, end + 1));
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
 /**
  * 课表导入。
  *
@@ -86,20 +58,16 @@ export default function CourseImportSheet({
   existing,
   onClose,
   onSave,
-  onOpenSettings,
 }: {
   existing: Course[];
   onClose: () => void;
   onSave: (courses: Course[]) => void;
-  onOpenSettings?: () => void;
 }) {
   const [text, setText] = useState("");
   const [parsed, setParsed] = useState<ParsedCourse[] | null>(null);
   const [failed, setFailed] = useState<string[]>([]);
   const [showFailed, setShowFailed] = useState(false);
   const [source, setSource] = useState<"local" | "ai">("local");
-  const [aiBusy, setAiBusy] = useState(false);
-  const [aiError, setAiError] = useState("");
   const [termStart, setTermStart] = useState(() => readTermStart());
   const [shotBusy, setShotBusy] = useState(false);
   const [shotError, setShotError] = useState("");
@@ -144,79 +112,12 @@ export default function CourseImportSheet({
     }
   };
 
-  const hasKey = Boolean(storage.getDeepSeekKey().trim());
-
   const runParse = () => {
     const result = parseCourseText(text);
     setParsed(result.courses);
     setFailed(result.failedLines);
     setShowFailed(false);
     setSource("local");
-    setAiError("");
-  };
-
-  const runAiParse = async () => {
-    if (aiBusy) return;
-    const key = storage.getDeepSeekKey().trim();
-    if (!key) {
-      // 没连模型时直接带去设置页，而不是只丢一句报错
-      if (onOpenSettings) onOpenSettings();
-      else setAiError("还没有连接 DeepSeek，先在设置里填 Key");
-      return;
-    }
-    setAiBusy(true);
-    setAiError("");
-    try {
-      const base = storage.getDeepSeekConfig();
-      const result = await streamDeepSeekChat({
-        config: {
-          ...base,
-          temperature: 0,
-          maxTokens: 2000,
-          thinking: false,
-        },
-        apiKey: key,
-        messages: [
-          { role: "system", content: AI_PROMPT },
-          { role: "user", content: text.slice(0, 6000) },
-        ],
-      });
-      const records = extractJsonArray(result.content)
-        .map(parseCourseRecord)
-        .filter((item): item is ParsedCourse => item !== null);
-
-      if (records.length === 0) {
-        setAiError("AI 也没认出可以用的课程，检查一下文字是否完整");
-        return;
-      }
-
-      // 并入本地结果：本地优先，AI 只补本地没认出的
-      const local = parseCourseText(text);
-      const seen = new Set(
-        local.courses.map((c) => `${c.name}|${c.weekday}|${c.start}`),
-      );
-      const merged = [...local.courses];
-      for (const record of records) {
-        const key2 = `${record.name}|${record.weekday}|${record.start}`;
-        if (seen.has(key2)) continue;
-        seen.add(key2);
-        merged.push(record);
-      }
-      merged.sort((a, b) =>
-        a.weekday === b.weekday
-          ? a.start.localeCompare(b.start)
-          : a.weekday - b.weekday,
-      );
-      setParsed(merged);
-      setFailed([]);
-      setSource("ai");
-    } catch (error) {
-      setAiError(
-        error instanceof Error ? error.message.slice(0, 80) : "AI 解析失败",
-      );
-    } finally {
-      setAiBusy(false);
-    }
   };
 
   const pending = parsed ? toCourses(parsed, existing, newId) : [];
@@ -280,7 +181,6 @@ export default function CourseImportSheet({
           onChange={(event) => {
             setText(event.target.value);
             setParsed(null);
-            setAiError("");
           }}
           rows={7}
           placeholder={SAMPLE}
@@ -308,24 +208,12 @@ export default function CourseImportSheet({
         <button
           type="button"
           className="wr-course-import-ai"
-          onClick={() => {
-            // 没有本地 Key 时，文字解析走不通；直接引导去上传截图（服务端有视觉）
-            if (!hasKey) {
-              shotRef.current?.click();
-              return;
-            }
-            void runAiParse();
-          }}
-          disabled={aiBusy || (hasKey && !text.trim())}
+          onClick={() => shotRef.current?.click()}
+          disabled={shotBusy}
         >
           <Sparkles size={16} />
-          {aiBusy
-            ? "AI 正在解析…"
-            : hasKey
-              ? "格式太乱？让 AI 解析这段文字"
-              : "格式太乱？直接上传截图更快"}
+          {shotBusy ? "AI 正在识别…" : "格式太乱？直接上传截图更快"}
         </button>
-        {aiError && <p className="wr-course-import-ai-error">{aiError}</p>}
 
         {parsed && (
           <div className="wr-course-import-result">

@@ -1,13 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import {
   BookOpen,
-  CheckCircle2,
   Download,
-  Eye,
-  EyeOff,
   FileText,
   Globe,
-  KeyRound,
   Plus,
   RotateCcw,
   Settings,
@@ -42,8 +38,7 @@ import { formatSearchContext, webSearch } from "../search";
 import type { SearchProvider } from "../search";
 import { storage, createMemory } from "../storage";
 import { newId } from "../id";
-import { DeepSeekError, listDeepSeekModels } from "../deepseek/client";
-import { DEEPSEEK_MODELS } from "../deepseek/config";
+import { DeepSeekError } from "../deepseek/client";
 import { buildPromptVariables } from "../promptVariables";
 import MarkdownText from "../deepseek/Markdown";
 import { responseTokenBudget } from "../profile";
@@ -174,15 +169,7 @@ export default function ChatPage({
   onCoursesChange: (courses: Course[]) => void;
   onViewPlans: () => void;
 }) {
-  const [config, setConfig] = useState<DeepSeekConfig>(() =>
-    storage.getDeepSeekConfig(),
-  );
-  const [apiKey, setApiKey] = useState(() => storage.getDeepSeekKey());
-  const [rememberKey, setRememberKey] = useState(() =>
-    storage.getDeepSeekRemember(),
-  );
-  const [showKey, setShowKey] = useState(false);
-  const [showConfig, setShowConfig] = useState(false);
+  const [config] = useState<DeepSeekConfig>(() => storage.getDeepSeekConfig());
   /** 用户发来的课表：等确认后再写进课表 */
   const [expandedKb, setExpandedKb] = useState<string | null>(null);
   const [courseProposal, setCourseProposal] = useState<ParsedCourse[] | null>(
@@ -256,8 +243,7 @@ export default function ChatPage({
   );
   const [error, setError] = useState("");
   const [connectState, setConnectState] = useState<ConnectState>("idle");
-  const [connectText, setConnectText] = useState("");
-  const [models, setModels] = useState<string[]>([]);
+
   // 用量只记录，不渲染（界面不显示 token / 耗时）
   const [, setUsage] = useState<DeepSeekUsage | null>(null);
   // 只用于历史兼容：现在耗时挂在消息上，不再单独维护
@@ -281,67 +267,6 @@ export default function ChatPage({
     },
     [],
   );
-
-  const modelOptions = Array.from(
-    new Set([...DEEPSEEK_MODELS, ...models, config.model].filter(Boolean)),
-  );
-
-  const updateConfig = <K extends keyof DeepSeekConfig>(
-    key: K,
-    value: DeepSeekConfig[K],
-  ) => setConfig((current) => ({ ...current, [key]: value }));
-
-  const testConnection = async () => {
-    if (!apiKey.trim()) {
-      setConnectState("error");
-      setConnectText("先填写 API Key。");
-      return;
-    }
-    testAbortRef.current?.abort();
-    const controller = new AbortController();
-    testAbortRef.current = controller;
-    setConnectState("testing");
-    setConnectText("正在请求 /models…");
-    try {
-      const ids = await listDeepSeekModels({
-        baseUrl: config.baseUrl,
-        apiKey,
-        signal: controller.signal,
-      });
-      setModels(ids);
-      storage.setDeepSeekKey(apiKey, rememberKey);
-      setConnectState("ok");
-      setConnectText(
-        ids.length
-          ? `连接成功，可用模型：${ids.join("、")}`
-          : "连接成功，但 /models 没有返回模型。",
-      );
-    } catch (caught) {
-      if (controller.signal.aborted) return;
-      setConnectState("error");
-      setConnectText(describeError(caught));
-    }
-  };
-
-  const saveSettings = () => {
-    if (!apiKey.trim()) {
-      setConnectState("error");
-      setConnectText("先填写 API Key。");
-      return;
-    }
-    storage.setDeepSeekConfig(config);
-    storage.setDeepSeekKey(apiKey, rememberKey);
-    setShowConfig(false);
-    setConnectText("设置已保存到本机。");
-  };
-
-  const clearKey = () => {
-    storage.setDeepSeekKey("", false);
-    setApiKey("");
-    setRememberKey(false);
-    setConnectState("idle");
-    setConnectText("已清除本机保存的 API Key。");
-  };
 
   const sendMessage = async (
     text: string,
@@ -503,7 +428,6 @@ export default function ChatPage({
           ),
         );
         setConnectState("ok");
-        setConnectText("服务端代理");
         setLatency(Math.round(performance.now() - startedAt));
         if (voiceOn && splitterRef.current) {
           const engine = player();
@@ -653,7 +577,6 @@ export default function ChatPage({
         const parsedServerCourses = parseReply(serverContent).courses;
         if (parsedServerCourses.length) setCourseProposal(parsedServerCourses);
         setConnectState("ok");
-        setConnectText("服务端代理");
         setLatency(Math.round(performance.now() - startedAt));
         return;
       } catch (serverError) {
@@ -898,7 +821,7 @@ export default function ChatPage({
 
       {/* 空态固定在可视区里，不参与滚动：
           以前它在滚动容器内，用户往下翻头像就没了，整页像一张长截图。 */}
-      {!showConfig && messages.length === 0 && (
+      {messages.length === 0 && (
         <div className="wr-chat-empty">
           <button
             className="wr-chat-hero"
@@ -977,9 +900,8 @@ export default function ChatPage({
             m.content.toLowerCase().includes(searchQuery.trim().toLowerCase()),
           ) && <p className="wr-chat-search-empty">没有找到相关聊天记录</p>}
 
-        {(apiKey || streaming) && (
+        {streaming && (
           <div className="wr-chat-status-line">
-            {apiKey && <span>{config.model}</span>}
             {streaming && (
               <button type="button" className="wr-chat-stop" onClick={stop}>
                 <Square size={13} /> 停止
@@ -988,163 +910,7 @@ export default function ChatPage({
           </div>
         )}
 
-        {showConfig && (
-          <section className="wr-ai-config">
-            <div className="wr-ai-config-head">
-              <div>
-                <b>连接 DeepSeek</b>
-                <small>配置只保存在本机；发送时才会请求 api.deepseek.com</small>
-              </div>
-              <KeyRound size={20} />
-            </div>
-
-            <label className="wr-ai-field">
-              <span>API Key</span>
-              <div className="wr-ai-key">
-                <input
-                  type={showKey ? "text" : "password"}
-                  value={apiKey}
-                  onChange={(event) => setApiKey(event.target.value)}
-                  placeholder="sk-…"
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-                <button
-                  type="button"
-                  aria-label={showKey ? "隐藏密钥" : "显示密钥"}
-                  onClick={() => setShowKey((value) => !value)}
-                >
-                  {showKey ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </label>
-            <label className="wr-ai-check">
-              <input
-                type="checkbox"
-                checked={rememberKey}
-                onChange={(event) => setRememberKey(event.target.checked)}
-              />
-              记住密钥（写入本机 localStorage）
-            </label>
-            <p className="wr-ai-warning">
-              默认只存本次会话。正式版应通过后端代理，不要把长期 Key 打进 App。
-            </p>
-
-            <label className="wr-ai-field">
-              <span>Base URL</span>
-              <input
-                value={config.baseUrl}
-                onChange={(event) =>
-                  updateConfig("baseUrl", event.target.value)
-                }
-                placeholder="https://api.deepseek.com"
-                spellCheck={false}
-              />
-            </label>
-            <label className="wr-ai-field">
-              <span>模型</span>
-              <input
-                list="wr-chat-models"
-                value={config.model}
-                onChange={(event) => updateConfig("model", event.target.value)}
-                spellCheck={false}
-              />
-              <datalist id="wr-chat-models">
-                {modelOptions.map((model) => (
-                  <option value={model} key={model} />
-                ))}
-              </datalist>
-            </label>
-
-            <p className="wr-ai-warning">
-              回复温度与长度由「设置 → 陪伴风格」决定：{profile.tone} · 温度{" "}
-              {profile.temperature.toFixed(1)} · {profile.responseLength}回复。
-            </p>
-
-            <label className="wr-ai-check">
-              <input
-                type="checkbox"
-                checked={config.thinking}
-                onChange={(event) =>
-                  updateConfig("thinking", event.target.checked)
-                }
-              />
-              深度思考（更慢，会返回思考过程）
-            </label>
-            {config.thinking && (
-              <label className="wr-ai-field">
-                <span>思考强度</span>
-                <select
-                  value={config.reasoningEffort}
-                  onChange={(event) =>
-                    updateConfig(
-                      "reasoningEffort",
-                      event.target.value as DeepSeekConfig["reasoningEffort"],
-                    )
-                  }
-                >
-                  <option value="low">low · 更快</option>
-                  <option value="high">high · 默认</option>
-                  <option value="max">max · 最充分</option>
-                </select>
-              </label>
-            )}
-
-            <label className="wr-ai-check">
-              <input
-                type="checkbox"
-                checked={config.useContext}
-                onChange={(event) =>
-                  updateConfig("useContext", event.target.checked)
-                }
-              />
-              带入本机资料（记忆 / 课程 / 任务）
-            </label>
-
-            <div className="wr-ai-config-actions">
-              <button
-                type="button"
-                className="wr-ai-primary"
-                onClick={() => void testConnection()}
-                disabled={connectState === "testing"}
-              >
-                {connectState === "testing" ? "测试中…" : "测试连接"}
-              </button>
-              <button
-                type="button"
-                className="wr-ai-secondary"
-                onClick={saveSettings}
-              >
-                保存并开始
-              </button>
-            </div>
-            <div className="wr-ai-config-actions">
-              <button type="button" className="wr-ai-ghost" onClick={clearKey}>
-                清除密钥
-              </button>
-              <button
-                type="button"
-                className="wr-ai-ghost danger"
-                onClick={() => setShowConfig(false)}
-              >
-                收起设置
-              </button>
-            </div>
-
-            {connectText && (
-              <p
-                className={`wr-ai-connect-note ${connectState}`}
-                role={connectState === "error" ? "alert" : "status"}
-              >
-                {connectState === "ok" && <CheckCircle2 size={16} />}
-                {connectState === "error" && <TriangleAlert size={16} />}
-                {connectText}
-              </p>
-            )}
-          </section>
-        )}
-
-        {!showConfig && messages.length > 0 && (
+        {messages.length > 0 && (
           <div className="wr-ai-toolbar">
             <span>{messages.length} 条消息</span>
             <div>
@@ -1158,7 +924,7 @@ export default function ChatPage({
           </div>
         )}
 
-        {!showConfig && (
+        {
           <>
             {messages.length > 0 && (
               <div className="wr-chat-date">
@@ -1519,9 +1285,9 @@ export default function ChatPage({
               <div ref={bottomRef} />
             </div>
           </>
-        )}
+        }
 
-        {!showConfig && error && (
+        {error && (
           <div className="wr-ai-error" role="alert">
             <TriangleAlert size={18} />
             <div>
@@ -1536,7 +1302,7 @@ export default function ChatPage({
 
         {/* 用户发来课表（粘贴的文字或文件）后，先问一句要不要加进课表，
             而不是替他做决定，也不是把课表内容当成普通聊天忽略掉。 */}
-        {!showConfig && courseProposal && (
+        {courseProposal && (
           <section className="wr-course-proposal" aria-label="课表导入确认">
             <small>看起来是课表 · 等你确认</small>
             <h3>把你发来的 {courseProposal.length} 门课加进课表？</h3>
@@ -1575,13 +1341,13 @@ export default function ChatPage({
           </section>
         )}
 
-        {!showConfig && activeSkills.length > 0 && (
+        {activeSkills.length > 0 && (
           <div className="wr-skill-chip" role="status">
             已启用：{activeSkills.join(" · ")}
           </div>
         )}
 
-        {!showConfig && imageCourseHint && (
+        {imageCourseHint && (
           <div className="wr-ai-error" role="status">
             <TriangleAlert size={18} />
             <div>
