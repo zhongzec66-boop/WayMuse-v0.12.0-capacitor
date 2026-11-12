@@ -4,6 +4,7 @@ import { Mic, MicOff, Keyboard, PhoneOff, Volume2 } from "lucide-react";
 import { CallSession, STATE_COPY } from "../call/callSession";
 import type { CallState } from "../call/callSession";
 import { haptic } from "../nativeExtras";
+import { useHideNativeChrome } from "../chrome";
 
 /**
  * 语音通话半屏浮窗。
@@ -50,6 +51,9 @@ export default function CallSheet({
   const [seconds, setSeconds] = useState(0);
   const [nudge, setNudge] = useState(false);
   const sessionRef = useRef<CallSession | null>(null);
+
+  // 原生 Tab 栏 / 输入框会让位（iOS 上它们画在 WebView 之上）
+  useHideNativeChrome(open);
 
   /* 通话期间藏掉底部 Dock：玻璃再透，也不该让输入框和 Tab 栏透上来 */
   useEffect(() => {
