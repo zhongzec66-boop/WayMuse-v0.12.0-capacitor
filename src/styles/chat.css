@@ -1115,7 +1115,10 @@
   }
 }
 
-/* Short conversational turns and user-confirmed plans. */
+/* 助手消息统一走 .wr-reply-parts 的白气泡（细边框 + 玻璃底）。
+   这里只把外层壳清零，避免出现"双层气泡"。
+   注意：不要把 .wr-reply-parts 本身清零——那样会变成文档流裸排，
+   和验收基准（白气泡 + 细边框）不符。 */
 .wr-ai-bubble.assistant {
   max-width: 100%;
   padding: 0;
