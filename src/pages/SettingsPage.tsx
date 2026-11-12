@@ -49,6 +49,9 @@ export default function SettingsPage({
 }) {
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [importMode, setImportMode] = useState<"merge" | "replace">("merge");
+  const [voiceEnabled, setVoiceEnabled] = useState(() =>
+    storage.getVoiceEnabled(),
+  );
   const [deepSeek, setDeepSeek] = useState<DeepSeekConfig>(() =>
     storage.getDeepSeekConfig(),
   );
@@ -193,6 +196,17 @@ export default function SettingsPage({
               </button>
             ))}
           </div>
+          <label className="wr-settings-check">
+            <input
+              type="checkbox"
+              checked={voiceEnabled}
+              onChange={(event) => {
+                setVoiceEnabled(event.target.checked);
+                storage.setVoiceEnabled(event.target.checked);
+              }}
+            />
+            语音朗读回复（默认关，耗配额）
+          </label>
           <label className="wr-settings-field">
             <span>语气</span>
             <select

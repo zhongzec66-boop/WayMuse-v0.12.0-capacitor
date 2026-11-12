@@ -16,8 +16,16 @@ import {
   Square,
   Trash2,
   TriangleAlert,
+  Volume2,
 } from "lucide-react";
 import { ApiError, streamServerChat } from "../api";
+import {
+  EXAM_INSTRUCTION,
+  SentenceSplitter,
+  VoicePlayer,
+  cleanForSpeech,
+  sceneInstruction,
+} from "../voice/tts";
 import { localSuggestions, parseReply, planTasks } from "../agent";
 import type { Assignment, Exam } from "../semester";
 import DeadlineProposalCard from "./DeadlineProposalCard";
@@ -184,6 +192,45 @@ export default function ChatPage({
   const [imageCourseHint, setImageCourseHint] = useState(false);
   /** 这一轮命中了哪些技能，给用户一个可见的信号 */
   const [activeSkills, setActiveSkills] = useState<string[]>([]);
+  const [voiceOn, setVoiceOn] = useState(() => storage.getVoiceEnabled());
+  const [voiceSpeaking, setVoiceSpeaking] = useState(false);
+  const voicePlayerRef = useRef<VoicePlayer | null>(null);
+  const splitterRef = useRef<SentenceSplitter | null>(null);
+
+  /** 单例播放器：同一时间只允许一条音频在播 */
+  const player = () => {
+    if (!voicePlayerRef.current) {
+      voicePlayerRef.current = new VoicePlayer({
+        onEnd: () => setVoiceSpeaking(false),
+      });
+    }
+    return voicePlayerRef.current;
+  };
+
+  const instructionFor = (skills: string[]) =>
+    skills.some((name) => /考试|冲刺|突击/.test(name))
+      ? EXAM_INSTRUCTION
+      : sceneInstruction();
+
+  /** 点喇叭：没开就顺手打开，然后用当前这条回复读一遍 */
+  const toggleRead = (messageId: string, text: string) => {
+    const engine = player();
+    if (voiceSpeaking) {
+      engine.stop();
+      setVoiceSpeaking(false);
+      return;
+    }
+    if (!voiceOn) {
+      setVoiceOn(true);
+      storage.setVoiceEnabled(true);
+    }
+    const clean = cleanForSpeech(text);
+    if (!clean) return;
+    engine.stop();
+    setVoiceSpeaking(true);
+    engine.enqueue(clean, instructionFor(activeSkills));
+    void messageId;
+  };
   const [messages, setMessages] = useState<DeepSeekMessage[]>(() => {
     const saved = storage.getDeepSeekMessages();
     return saved.filter(
@@ -413,6 +460,16 @@ export default function ChatPage({
           },
           onDelta: (delta) => {
             serverContent += delta;
+            if (voiceOn) {
+              if (!splitterRef.current)
+                splitterRef.current = new SentenceSplitter();
+              const engine = player();
+              engine.setInstruction(instructionFor(activeSkills));
+              for (const sentence of splitterRef.current.push(delta)) {
+                setVoiceSpeaking(true);
+                engine.enqueue(sentence);
+              }
+            }
             setMessages((current) =>
               current.map((message) =>
                 message.id === assistantId
@@ -441,6 +498,14 @@ export default function ChatPage({
         setConnectState("ok");
         setConnectText("服务端代理");
         setLatency(Math.round(performance.now() - startedAt));
+        if (voiceOn && splitterRef.current) {
+          const engine = player();
+          for (const sentence of splitterRef.current.flush()) {
+            setVoiceSpeaking(true);
+            engine.enqueue(sentence);
+          }
+          engine.finish();
+        }
       } catch (serverError) {
         if (serverError instanceof ApiError && serverError.status === 429) {
           setError("今天的额度用完了，明天再来；需要更多额度可以找我们充值");
@@ -1231,6 +1296,32 @@ export default function ChatPage({
                           </div>
                         ) : null}
                         <div className="wr-ai-meta">
+                          {message.content.trim() ? (
+                            <button
+                              type="button"
+                              className={
+                                voiceSpeaking
+                                  ? "wr-voice-btn playing"
+                                  : "wr-voice-btn"
+                              }
+                              onClick={() =>
+                                toggleRead(
+                                  message.id,
+                                  parseReply(message.content).text,
+                                )
+                              }
+                              aria-label={
+                                voiceSpeaking ? "停止朗读" : "朗读这条回复"
+                              }
+                            >
+                              {voiceSpeaking ? (
+                                <Square size={12} />
+                              ) : (
+                                <Volume2 size={12} />
+                              )}
+                              {voiceSpeaking ? "停止" : "朗读"}
+                            </button>
+                          ) : null}
                           {message.usage && (
                             <span>{message.usage.total_tokens} tokens</span>
                           )}

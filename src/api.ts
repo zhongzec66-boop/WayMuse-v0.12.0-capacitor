@@ -290,6 +290,41 @@ export async function parseCourseImage(
   return result.courses ?? [];
 }
 
+/* ── 语音合成 ──────────────────────────────────────────── */
+
+/**
+ * 一句话 → mp3 字节。
+ *
+ * Key 在服务端，这里只带设备令牌；失败返回 null（调用方跳过这句）。
+ */
+export async function synthesizeSpeech(
+  text: string,
+  instruction: string,
+  signal?: AbortSignal,
+): Promise<ArrayBuffer | null> {
+  let session = readSession();
+  if (!session) session = await guestLogin();
+
+  const request = (token: string) =>
+    fetch(apiBase() + "/api/voice/tts", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ text, instruction }),
+      signal,
+    });
+
+  let response = await request(session.accessToken);
+  if (response.status === 401) {
+    const next = await refreshSession(session);
+    response = await request(next.accessToken);
+  }
+  if (!response.ok) return null;
+  return await response.arrayBuffer();
+}
+
 /* ── 聊天（SSE 代理）───────────────────────────────────── */
 
 export type ServerContentPart =

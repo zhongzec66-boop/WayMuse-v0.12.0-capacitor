@@ -428,6 +428,12 @@ function readDeepSeekMessages(): DeepSeekMessage[] {
 }
 
 export const storage = {
+  getVoiceEnabled: () => readText("voice-on", "") === "1",
+  setVoiceEnabled: (value: boolean) => {
+    if (value) localStorage.setItem(PREFIX + "voice-on", "1");
+    else localStorage.removeItem(PREFIX + "voice-on");
+  },
+
   getEntered: () => readText("entered", "") === "1",
   setEntered: (entered: boolean) => {
     try {

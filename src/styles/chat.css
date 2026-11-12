@@ -2318,3 +2318,23 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── 朗读按钮 ───────────────────────────────────────────── */
+.wr-voice-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 28px;
+  padding: 0 var(--space-8);
+  border: var(--border-1) solid var(--divider);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: var(--text-12);
+}
+
+.wr-voice-btn.playing {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-soft);
+}
