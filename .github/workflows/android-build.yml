@@ -61,6 +61,7 @@ jobs:
         run: |
           npm run typecheck
           npm run lint
+          npm test
           npm run build
 
       - name: Copy web app into Android project
