@@ -8,6 +8,9 @@ permissions:
 
 jobs:
   build-ios:
+    env:
+      # time-sensitive tests assume Asia/Shanghai; CI defaults to UTC
+      TZ: Asia/Shanghai
     runs-on: macos-26
     timeout-minutes: 45
     steps:
