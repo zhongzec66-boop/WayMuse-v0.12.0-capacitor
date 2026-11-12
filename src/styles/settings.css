@@ -933,3 +933,25 @@
 .wr-voice-selftest-log .bad {
   color: var(--danger);
 }
+
+.wr-voice-selftest-debug {
+  margin-top: var(--space-8);
+  font-size: var(--text-11);
+}
+
+.wr-voice-selftest-debug summary {
+  color: var(--ink-3);
+  cursor: pointer;
+}
+
+.wr-voice-selftest-debug pre {
+  margin: var(--space-8) 0 0;
+  padding: var(--space-8);
+  border-radius: var(--radius-12);
+  background: var(--surface-muted);
+  color: var(--ink-2);
+  font-size: var(--text-10, 10px);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}

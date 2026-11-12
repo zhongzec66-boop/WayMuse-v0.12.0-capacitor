@@ -49,6 +49,11 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
     /// 是否已经因为端上不可用降级过（只降一次，避免死循环）
     private var didFallback = false
     private var currentLocale = "zh-CN"
+    /// 本轮 tap 收到的最大 RMS（≈0 说明麦克风没进音频）
+    private var rmsMax: Float = 0
+    private var inputSampleRate: Double = 0
+    private var inputChannels: Int = 0
+    private var authStatus = "unknown"
     /// 通话中打开：用 .voiceChat 换回声消除，代价是音质偏「电话音」
     private var inCall = false
     private var callAudioMode: AVAudioSession.Mode {
@@ -99,7 +104,8 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func startSpeech(_ call: CAPPluginCall) {
         let localeId = call.getString("locale") ?? "zh-CN"
-        let preferOnDevice = call.getBool("onDevice") ?? true
+        var preferOnDevice = call.getBool("onDevice") ?? true
+        var preferOverride: Bool? = nil
 
         if recognizing {
             stopInternal()
@@ -107,6 +113,10 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
         // 每次开新的一轮都重新允许降级一次
         didFallback = false
         currentLocale = localeId
+        rmsMax = 0
+        if let forced = call.getBool("onDeviceOverride") {
+            preferOverride = forced
+        }
 
         SFSpeechRecognizer.requestAuthorization { status in
             guard status == .authorized else {
@@ -119,6 +129,7 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
                     return
                 }
                 DispatchQueue.main.async {
+                    if let forced = preferOverride { preferOnDevice = forced }
                     self.begin(localeId: localeId, preferOnDevice: preferOnDevice, call: call)
                 }
             }
@@ -180,9 +191,36 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
 
             let input = engine.inputNode
             let format = input.inputFormat(forBus: 0)
+            self.inputSampleRate = format.sampleRate
+            self.inputChannels = format.channelCount
+            self.authStatus = "\(SFSpeechRecognizer.authorizationStatus().rawValue)"
+            self.notifyListeners("speechDebug", data: [
+                "phase": "start",
+                "category": session.category.rawValue,
+                "mode": session.mode.rawValue,
+                "sampleRate": format.sampleRate,
+                "channels": format.channelCount,
+                "locale": recognizer.locale.identifier,
+                "supportsOnDevice": recognizer.supportsOnDeviceRecognition,
+                "onDeviceActive": self.onDeviceActive,
+                "authStatus": self.authStatus
+            ])
             input.removeTap(onBus: 0)
             self.tapInstalled = true
             input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
+                // 记录最大电平：接近 0 = 麦克风/会话问题；正常 = 音频在流
+                if let channel = buffer.floatChannelData?[0] {
+                    let frames = Int(buffer.frameLength)
+                    var sum: Float = 0
+                    for i in 0..<frames {
+                        let v = channel[i]
+                        sum += v * v
+                    }
+                    if frames > 0 {
+                        let rms = (sum / Float(frames)).squareRoot()
+                        if rms > self.rmsMax { self.rmsMax = rms }
+                    }
+                }
                 request.append(buffer)
             }
 
@@ -217,6 +255,15 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
                         return
                     }
                     let message = error.localizedDescription
+                    self.notifyListeners("speechDebug", data: [
+                        "phase": "error",
+                        "rmsMax": Double(self.rmsMax),
+                        "sampleRate": self.inputSampleRate,
+                        "channels": self.inputChannels,
+                        "onDeviceActive": self.onDeviceActive,
+                        "didFallback": self.didFallback,
+                        "message": message
+                    ])
                     DispatchQueue.main.async {
                         self.notifyListeners("speechError", data: ["message": message])
                         self.stopInternal()

@@ -31,6 +31,8 @@ export default function VoiceSelfTest() {
   const [running, setRunning] = useState(false);
   const [rounds, setRounds] = useState<Round[]>([]);
   const [summary, setSummary] = useState("");
+  const [forceOffDevice, setForceOffDevice] = useState(false);
+  const [debug, setDebug] = useState<string[]>([]);
 
   const supported = isNativeExtrasSupported();
 
@@ -41,6 +43,16 @@ export default function VoiceSelfTest() {
     setSummary("");
 
     const results: Round[] = [];
+    setDebug([]);
+    const debugLines: string[] = [];
+
+    const offDebug = await speechEvents.debug((event) => {
+      const line = Object.entries(event)
+        .map(([key, value]) => `${key}=${String(value)}`)
+        .join(" ");
+      debugLines.push(line);
+      setDebug([...debugLines]);
+    });
 
     for (let index = 0; index < ROUNDS; index += 1) {
       const mode: "stop" | "cancel" = index % 3 === 2 ? "cancel" : "stop";
@@ -60,7 +72,7 @@ export default function VoiceSelfTest() {
       });
 
       try {
-        await startSpeech("zh-CN");
+        await startSpeech("zh-CN", { onDevice: !forceOffDevice });
         // 给用户 1.4 秒说话时间（自检时请对着手机念「一二三四」）
         await new Promise((resolve) => setTimeout(resolve, 1400));
         if (mode === "cancel") await cancelSpeech();
@@ -74,6 +86,7 @@ export default function VoiceSelfTest() {
       await offPartial.remove();
       await offFinal.remove();
       await offError.remove();
+      await offDebug.remove();
 
       results.push({
         index: index + 1,
@@ -104,6 +117,14 @@ export default function VoiceSelfTest() {
 
   return (
     <div className="wr-voice-selftest">
+      <label className="wr-settings-check">
+        <input
+          type="checkbox"
+          checked={forceOffDevice}
+          onChange={(event) => setForceOffDevice(event.target.checked)}
+        />
+        强制关闭端上模型（对照测试用）
+      </label>
       <button
         type="button"
         className="wr-settings-row"
@@ -140,6 +161,13 @@ export default function VoiceSelfTest() {
       )}
 
       {summary && <p className="wr-settings-note">{summary}</p>}
+
+      {debug.length > 0 && (
+        <details className="wr-voice-selftest-debug">
+          <summary>诊断日志（{debug.length} 条）</summary>
+          <pre>{debug.join("\n")}</pre>
+        </details>
+      )}
     </div>
   );
 }

@@ -55,6 +55,10 @@ interface NativeExtras {
     event: "speechCancelled",
     listener: () => void,
   ): Promise<PluginListenerHandle>;
+  addListener(
+    event: "speechDebug",
+    listener: (event: Record<string, unknown>) => void,
+  ): Promise<PluginListenerHandle>;
   calendarStatus(): Promise<{ granted: boolean; rawStatus: number }>;
   requestCalendar(): Promise<{ granted: boolean }>;
   readEvents(options: {
@@ -113,8 +117,14 @@ export async function hapticNotify(
 
 /* ── 本地语音识别（端上，不上传音频）────────────── */
 
-export async function startSpeech(locale = "zh-CN"): Promise<void> {
-  await NativeExtras.startSpeech({ locale, onDevice: true });
+export async function startSpeech(
+  locale = "zh-CN",
+  options: { onDevice?: boolean } = {},
+): Promise<void> {
+  await NativeExtras.startSpeech({
+    locale,
+    onDevice: options.onDevice ?? true,
+  });
 }
 
 export async function stopSpeech(): Promise<void> {
@@ -144,6 +154,8 @@ export const speechEvents = {
     NativeExtras.addListener("speechError", cb),
   cancelled: (cb: () => void) =>
     NativeExtras.addListener("speechCancelled", cb),
+  debug: (cb: (event: Record<string, unknown>) => void) =>
+    NativeExtras.addListener("speechDebug", cb),
 };
 
 /* ── 日历 / 提醒事项 ─────────────────────────────── */

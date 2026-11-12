@@ -193,7 +193,12 @@ export default function ChatPage({
   /** 这一轮命中了哪些技能，给用户一个可见的信号 */
   const [activeSkills, setActiveSkills] = useState<string[]>([]);
   const [voiceOn, setVoiceOn] = useState(() => storage.getVoiceEnabled());
-  const [voiceSpeaking, setVoiceSpeaking] = useState(false);
+  // 播放状态只保留一份：哪条在播、播到哪一步。
+  // 以前是全局 boolean，所有按钮都跟着变「停止」，串扰。
+  const [voicePlay, setVoicePlay] = useState<{
+    status: "idle" | "loading" | "playing";
+    messageId: string | null;
+  }>({ status: "idle", messageId: null });
   const voicePlayerRef = useRef<VoicePlayer | null>(null);
   const splitterRef = useRef<SentenceSplitter | null>(null);
 
@@ -201,7 +206,7 @@ export default function ChatPage({
   const player = () => {
     if (!voicePlayerRef.current) {
       voicePlayerRef.current = new VoicePlayer({
-        onEnd: () => setVoiceSpeaking(false),
+        onEnd: () => setVoicePlay({ status: "idle", messageId: null }),
       });
     }
     return voicePlayerRef.current;
@@ -215,21 +220,22 @@ export default function ChatPage({
   /** 点喇叭：没开就顺手打开，然后用当前这条回复读一遍 */
   const toggleRead = (messageId: string, text: string) => {
     const engine = player();
-    if (voiceSpeaking) {
+    // 点的是正在播的那条 → 停；点的是另一条 → 先停再播新的，不排队
+    if (voicePlay.messageId === messageId && voicePlay.status !== "idle") {
       engine.stop();
-      setVoiceSpeaking(false);
+      setVoicePlay({ status: "idle", messageId: null });
       return;
     }
+    if (voicePlay.status !== "idle") engine.stop();
     if (!voiceOn) {
       setVoiceOn(true);
       storage.setVoiceEnabled(true);
     }
     const clean = cleanForSpeech(text);
     if (!clean) return;
-    engine.stop();
-    setVoiceSpeaking(true);
+    setVoicePlay({ status: "playing", messageId });
     engine.enqueue(clean, instructionFor(activeSkills));
-    void messageId;
+    engine.finish();
   };
   const [messages, setMessages] = useState<DeepSeekMessage[]>(() => {
     const saved = storage.getDeepSeekMessages();
@@ -252,7 +258,8 @@ export default function ChatPage({
   const [connectState, setConnectState] = useState<ConnectState>("idle");
   const [connectText, setConnectText] = useState("");
   const [models, setModels] = useState<string[]>([]);
-  const [usage, setUsage] = useState<DeepSeekUsage | null>(null);
+  // 用量只记录，不渲染（界面不显示 token / 耗时）
+  const [, setUsage] = useState<DeepSeekUsage | null>(null);
   // 只用于历史兼容：现在耗时挂在消息上，不再单独维护
   const [, setLatency] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -466,7 +473,7 @@ export default function ChatPage({
               const engine = player();
               engine.setInstruction(instructionFor(activeSkills));
               for (const sentence of splitterRef.current.push(delta)) {
-                setVoiceSpeaking(true);
+                setVoicePlay({ status: "playing", messageId: assistantId });
                 engine.enqueue(sentence);
               }
             }
@@ -501,7 +508,7 @@ export default function ChatPage({
         if (voiceOn && splitterRef.current) {
           const engine = player();
           for (const sentence of splitterRef.current.flush()) {
-            setVoiceSpeaking(true);
+            setVoicePlay({ status: "playing", messageId: assistantId });
             engine.enqueue(sentence);
           }
           engine.finish();
@@ -1300,7 +1307,8 @@ export default function ChatPage({
                             <button
                               type="button"
                               className={
-                                voiceSpeaking
+                                voicePlay.messageId === message.id &&
+                                voicePlay.status !== "idle"
                                   ? "wr-voice-btn playing"
                                   : "wr-voice-btn"
                               }
@@ -1311,23 +1319,25 @@ export default function ChatPage({
                                 )
                               }
                               aria-label={
-                                voiceSpeaking ? "停止朗读" : "朗读这条回复"
+                                voicePlay.messageId === message.id &&
+                                voicePlay.status !== "idle"
+                                  ? "停止朗读"
+                                  : "朗读这条回复"
                               }
                             >
-                              {voiceSpeaking ? (
+                              {voicePlay.messageId === message.id &&
+                              voicePlay.status !== "idle" ? (
                                 <Square size={12} />
                               ) : (
                                 <Volume2 size={12} />
                               )}
-                              {voiceSpeaking ? "停止" : "朗读"}
+                              {voicePlay.messageId === message.id &&
+                              voicePlay.status !== "idle"
+                                ? "停止"
+                                : "朗读"}
                             </button>
                           ) : null}
-                          {message.usage && (
-                            <span>{message.usage.total_tokens} tokens</span>
-                          )}
-                          {message.latencyMs && (
-                            <span>{message.latencyMs} ms</span>
-                          )}
+
                           {message.finishReason === "length" && (
                             <span className="danger">已截断</span>
                           )}
@@ -1583,15 +1593,7 @@ export default function ChatPage({
           </div>
         )}
 
-        {/* 每条消息自己带了耗时，这里只在有 token 用量时展示，避免同一个数字出现两次 */}
-        {!showConfig && usage && (
-          <div className="wr-ai-usage">
-            <span>
-              上次：{usage.prompt_tokens} 输入 / {usage.completion_tokens} 输出
-              / {usage.total_tokens} tokens
-            </span>
-          </div>
-        )}
+        {/* 用量与耗时只进日志/自检，不渲染到界面 */}
       </div>
     </>
   );
