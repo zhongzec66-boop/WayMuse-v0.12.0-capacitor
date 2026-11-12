@@ -74,7 +74,23 @@
 
 ## 通话浮窗（call）
 
-_待实现（58vh 浮窗 + 5 状态机）。落地后补：listening / thinking / speaking / interrupted / idle，以及结束后的系统卡。_
+## 通话浮窗（call）
+
+从聊天页点「语音通话」打开；58vh 半屏，玻璃只用 CSS。
+
+| id | 状态 | 进入方式 | 期望 |
+| --- | --- | --- | --- |
+| call-listening | 聆听 | 打开浮窗 | 状态「我在听，你说」；字幕区留空不重复；头像眼睛竖直 |
+| call-thinking | 思考 | 有输入后等待回复 | 状态「想一下…」；点呼吸；眼睛略收 |
+| call-speaking | 说话 | 开始播 TTS | 状态「我在说」；光圈扩散；字幕显示当前句 |
+| call-interrupted | 被打断 | 播放中开口 | 状态「你说，我在听」；眼睛弯 |
+| call-idle | 结束 | 挂断瞬间 | 眼睛闭成线；浮窗反向落回 |
+| call-summary | 系统卡 | 挂断后 | 聊天流出现「通话时长 + 一句话小结」，不朗读 |
+
+补充：
+- 震动只在 speaking / interrupted → listening 触发一次；thinking → listening 不震。
+- 沉默 10 秒字幕出现「还在吗？」，30 秒自动挂断并写入系统卡。
+- 通话期间底部 Dock 隐藏（只改视觉）。
 
 ## 暗色模式
 

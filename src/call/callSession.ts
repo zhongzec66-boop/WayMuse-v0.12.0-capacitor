@@ -19,7 +19,7 @@ export type CallHooks = {
   onNudge?: () => void;
   /** 沉默 30 秒，应结束通话 */
   onHangup?: () => void;
-  /** speaking → listening 的边沿（触发一次轻震动） */
+  /** speaking / interrupted → listening 的边沿（触发一次轻震动） */
   onTurnEnd?: () => void;
 };
 
