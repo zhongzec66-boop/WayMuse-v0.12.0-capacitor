@@ -220,7 +220,12 @@ export default function ChatPage({
   const openCall = () => {
     const lastReply = [...messages]
       .reverse()
-      .find((m) => m.role === "assistant");
+      .find(
+        (m) =>
+          m.role === "assistant" &&
+          m.kind !== "call-summary" &&
+          m.content.trim(),
+      );
     callStartedAtRef.current = Date.now();
     setCallOpen(true);
     setCallExternal("listening");
@@ -729,6 +734,22 @@ export default function ChatPage({
   const exportChat = () => {
     if (!messages.length) return;
     const lines = messages.map((message) => {
+      // 系统卡存的是 JSON，导出时换成一行可读文本，别把花括号带进 Markdown
+      if (message.kind === "call-summary") {
+        let brief = "语音通话";
+        try {
+          const parsed = JSON.parse(message.content) as {
+            durationSec?: number;
+            oneLine?: string;
+          };
+          const total = parsed.durationSec ?? 0;
+          brief += ` · ${Math.floor(total / 60)} 分 ${total % 60} 秒`;
+          if (parsed.oneLine) brief += ` · ${parsed.oneLine}`;
+        } catch {
+          // 坏数据就只写标题
+        }
+        return `## ${formatTime(message.createdAt)} · ${brief}`;
+      }
       const who = message.role === "user" ? "我" : agentName;
       const reasoning = message.reasoning
         ? `\n\n<details><summary>思考过程</summary>\n\n${message.reasoning}\n\n</details>`
