@@ -327,3 +327,47 @@ body.wr-in-call .wr-dock {
   pointer-events: none;
   transition: opacity 160ms linear;
 }
+
+/* ── 通话结束的系统卡（聊天流里）──────────────────────── */
+.wr-call-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-10, 10px);
+  margin: var(--space-16) auto;
+  padding: var(--space-12) var(--space-14, 14px);
+  max-width: 86%;
+  border: 1px solid rgba(3, 111, 59, 0.16);
+  border-radius: var(--radius-16);
+  background: rgba(3, 111, 59, 0.06);
+}
+
+.wr-call-card-mark {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--call-green);
+  color: #fff;
+}
+
+.wr-call-card-body strong {
+  display: block;
+  color: var(--ink);
+  font-size: var(--text-13);
+  font-weight: var(--weight-semibold);
+}
+
+.wr-call-card-body em {
+  color: var(--ink-3);
+  font-size: var(--text-11);
+  font-style: normal;
+}
+
+.wr-call-card-body p {
+  margin: var(--space-4) 0 0;
+  color: var(--ink-2);
+  font-size: var(--text-12s, 12px);
+  line-height: 1.5;
+}

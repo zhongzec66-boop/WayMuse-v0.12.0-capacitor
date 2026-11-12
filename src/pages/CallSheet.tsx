@@ -27,8 +27,6 @@ export type CallSheetProps = {
   onHangup: (durationSec: number) => void;
   /** 播报时说话状态由外部驱动；这里只负责展示 */
   externalState?: CallState;
-  /** 结束语（挂断后给系统卡用） */
-  onSpeakLastReply?: () => void;
 };
 
 function formatDuration(total: number): string {
@@ -105,8 +103,9 @@ export default function CallSheet({
   const display =
     nudge && state === "listening" ? "还在吗？" : STATE_COPY[state];
   const caption = useMemo(() => {
-    if (state === "listening")
-      return heard.trim() || (nudge ? "还在吗？" : "我在听，你说");
+    // 聆听时状态胶囊已经写了「我在听」，字幕区不再重复；只有识别到文字
+    // 或提示「还在吗？」时才占位。 */
+    if (state === "listening") return heard.trim() || (nudge ? "还在吗？" : "");
     if (state === "interrupted") return heard.trim() || "你说，我在听";
     if (state === "thinking") return heard.trim() || "想一下…";
     return subtitle.trim() || "…";

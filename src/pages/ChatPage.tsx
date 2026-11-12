@@ -1004,7 +1004,31 @@ export default function ChatPage({
                       .includes(searchQuery.trim().toLowerCase()),
                 )
                 .map((message) =>
-                  message.role === "user" ? (
+                  message.kind === "call-summary" ? (
+                    (() => {
+                      let summary: { durationSec?: number; oneLine?: string };
+                      try {
+                        summary = JSON.parse(message.content);
+                      } catch {
+                        summary = {};
+                      }
+                      const total = summary.durationSec ?? 0;
+                      const mm = Math.floor(total / 60);
+                      const ss = total % 60;
+                      return (
+                        <div className="wr-call-card" key={message.id}>
+                          <span className="wr-call-card-mark">
+                            <Phone size={14} />
+                          </span>
+                          <div className="wr-call-card-body">
+                            <strong>语音通话</strong>
+                            <em>{mm > 0 ? `${mm} 分 ${ss} 秒` : `${ss} 秒`}</em>
+                            {summary.oneLine ? <p>{summary.oneLine}</p> : null}
+                          </div>
+                        </div>
+                      );
+                    })()
+                  ) : message.role === "user" ? (
                     (() => {
                       const parsed = splitFileBlock(message.content);
                       return (
