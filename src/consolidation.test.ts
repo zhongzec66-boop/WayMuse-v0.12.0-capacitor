@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { applyConsolidation, memoryCounts, planConsolidation } from "./consolidation";
+import {
+  applyConsolidation,
+  memoryCounts,
+  planConsolidation,
+} from "./consolidation";
 import type { Memory } from "./types";
 
 const NOW = new Date("2026-11-11T21:00:00+08:00");
@@ -79,7 +83,11 @@ describe("执行巩固", () => {
   });
 
   it("海马体减几条，皮层就加几条", () => {
-    const list = [memory("a", YESTERDAY), memory("b", YESTERDAY), memory("c", TODAY)];
+    const list = [
+      memory("a", YESTERDAY),
+      memory("b", YESTERDAY),
+      memory("c", TODAY),
+    ];
     const before = memoryCounts(list);
     const next = applyConsolidation(
       list,

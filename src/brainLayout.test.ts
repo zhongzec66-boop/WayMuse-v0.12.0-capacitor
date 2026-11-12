@@ -8,10 +8,7 @@ import {
 } from "./brainLayout";
 import type { Memory } from "./types";
 
-function memory(
-  id: string,
-  partial: Partial<Memory> = {},
-): Memory {
+function memory(id: string, partial: Partial<Memory> = {}): Memory {
   return {
     id,
     text: `记忆 ${id}`,
@@ -31,9 +28,9 @@ describe("记忆归区", () => {
   });
 
   it("情绪 → 杏仁核（无论在哪个阶段）", () => {
-    expect(
-      regionOf(memory("a", { kind: "emotion", status: "pending" })),
-    ).toBe("amygdala");
+    expect(regionOf(memory("a", { kind: "emotion", status: "pending" }))).toBe(
+      "amygdala",
+    );
     expect(
       regionOf(memory("a", { kind: "emotion", status: "consolidated" })),
     ).toBe("amygdala");
@@ -62,7 +59,9 @@ describe("大脑图", () => {
       memory("b", { status: "pending" }),
       memory("c", { status: "consolidated" }),
     ]);
-    expect(graph.regions.find((r) => r.id === "hippocampus")?.nodes).toHaveLength(2);
+    expect(
+      graph.regions.find((r) => r.id === "hippocampus")?.nodes,
+    ).toHaveLength(2);
     expect(graph.regions.find((r) => r.id === "cortex")?.nodes).toHaveLength(1);
   });
 

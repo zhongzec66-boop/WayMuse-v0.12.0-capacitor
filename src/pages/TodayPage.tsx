@@ -99,10 +99,13 @@ export default function TodayPage({
     d.setDate(d.getDate() + offset);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   };
-  const pendingAssignments = assignments.filter((item) => item.status !== "done");
+  const pendingAssignments = assignments.filter(
+    (item) => item.status !== "done",
+  );
   const countOn = (offset: number) =>
-    pendingAssignments.filter((item) => item.dueAt.slice(0, 10) === dayKey(offset))
-      .length;
+    pendingAssignments.filter(
+      (item) => item.dueAt.slice(0, 10) === dayKey(offset),
+    ).length;
   const overdueCount = pendingAssignments.filter(
     (item) => item.dueAt.slice(0, 10) < todayKey,
   ).length;
@@ -209,9 +212,14 @@ export default function TodayPage({
         {academicWeek(readTermStart())} 周
       </p>
 
-      {(overdueCount > 0 || todayDue > 0 || tomorrowDue > 0 || examInDays !== null) && (
+      {(overdueCount > 0 ||
+        todayDue > 0 ||
+        tomorrowDue > 0 ||
+        examInDays !== null) && (
         <p className="wr-today-deadline">
-          {overdueCount > 0 && <span className="is-overdue">{overdueCount} 个已逾期</span>}
+          {overdueCount > 0 && (
+            <span className="is-overdue">{overdueCount} 个已逾期</span>
+          )}
           {todayDue > 0 && <span>{todayDue} 个今天到期</span>}
           {tomorrowDue > 0 && <span>{tomorrowDue} 个明天到期</span>}
           {examInDays !== null && examInDays <= 14 && (

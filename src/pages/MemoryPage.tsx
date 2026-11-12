@@ -93,7 +93,6 @@ export default function MemoryPage({
     if (hit) setPicked(hit);
   };
 
-
   // 编辑器和单条详情都是铺满屏幕的，原生 Tab 栏必须让位
   useHideNativeChrome(Boolean(editing) || Boolean(picked));
 
@@ -161,7 +160,9 @@ export default function MemoryPage({
     );
     if (removedHabits.length) {
       const keys = storage.getDismissedHabitKeys();
-      const added = removedHabits.map((memory) => memory.id.replace("habit-", ""));
+      const added = removedHabits.map((memory) =>
+        memory.id.replace("habit-", ""),
+      );
       storage.setDismissedHabitKeys([...new Set([...keys, ...added])]);
     }
     setMemories(next);
@@ -247,63 +248,62 @@ export default function MemoryPage({
       {tab === "files" && (
         <>
           {/* ── 健康 ─────────────────────────────────── */}
-      <section className="wr-health" aria-label="健康">
-        <header className="wr-health-head">
-          <span className="wr-health-mark">
-            <Heart size={16} />
-          </span>
-          <span className="wr-health-title">
-            <b>健康</b>
-            <small>更新于 {health.updatedAt}</small>
-          </span>
-        </header>
-        <div className="wr-health-grid">
-          <div className="wr-health-tile">
-            <Moon size={15} />
-            <b>{formatSleep(health.sleepMinutes)}</b>
-            <small>睡眠</small>
-          </div>
-          <div className="wr-health-tile">
-            <Footprints size={15} />
-            <b>{health.steps.toLocaleString("zh-CN")}</b>
-            <small>步数</small>
-          </div>
-          <div className="wr-health-tile">
-            <Activity size={15} />
-            <b>{health.restingHeartRate}</b>
-            <small>静息心率</small>
-          </div>
-          <div className="wr-health-tile">
-            <Timer size={15} />
-            <b>{formatFocus(health.focusMinutes)}</b>
-            <small>专注</small>
-          </div>
-        </div>
-      </section>
-
-      {/* ── 文件 ─────────────────────────────────── */}
-      <h2 className="wr-section-title">文件</h2>
-      <section className="wr-filegrid" aria-label="人格与记忆文件">
-        {DOCS.map((doc) => {
-          const text = docs[doc.id];
-          const count = docBullets(text).length;
-          return (
-            <button
-              key={doc.id}
-              className="wr-filecard"
-              onClick={() => openDoc(doc.id)}
-            >
-              <span className="wr-filecard-mark">
-                <FileText size={16} />
+          <section className="wr-health" aria-label="健康">
+            <header className="wr-health-head">
+              <span className="wr-health-mark">
+                <Heart size={16} />
               </span>
-              <b>{doc.filename}</b>
-              <small>{docSummary(text)}</small>
-              <em>{count > 0 ? `${count} 条` : doc.hint}</em>
-            </button>
-          );
-        })}
-      </section>
+              <span className="wr-health-title">
+                <b>健康</b>
+                <small>更新于 {health.updatedAt}</small>
+              </span>
+            </header>
+            <div className="wr-health-grid">
+              <div className="wr-health-tile">
+                <Moon size={15} />
+                <b>{formatSleep(health.sleepMinutes)}</b>
+                <small>睡眠</small>
+              </div>
+              <div className="wr-health-tile">
+                <Footprints size={15} />
+                <b>{health.steps.toLocaleString("zh-CN")}</b>
+                <small>步数</small>
+              </div>
+              <div className="wr-health-tile">
+                <Activity size={15} />
+                <b>{health.restingHeartRate}</b>
+                <small>静息心率</small>
+              </div>
+              <div className="wr-health-tile">
+                <Timer size={15} />
+                <b>{formatFocus(health.focusMinutes)}</b>
+                <small>专注</small>
+              </div>
+            </div>
+          </section>
 
+          {/* ── 文件 ─────────────────────────────────── */}
+          <h2 className="wr-section-title">文件</h2>
+          <section className="wr-filegrid" aria-label="人格与记忆文件">
+            {DOCS.map((doc) => {
+              const text = docs[doc.id];
+              const count = docBullets(text).length;
+              return (
+                <button
+                  key={doc.id}
+                  className="wr-filecard"
+                  onClick={() => openDoc(doc.id)}
+                >
+                  <span className="wr-filecard-mark">
+                    <FileText size={16} />
+                  </span>
+                  <b>{doc.filename}</b>
+                  <small>{docSummary(text)}</small>
+                  <em>{count > 0 ? `${count} 条` : doc.hint}</em>
+                </button>
+              );
+            })}
+          </section>
         </>
       )}
 

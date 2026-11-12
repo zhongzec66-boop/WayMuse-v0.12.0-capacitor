@@ -20,7 +20,8 @@ export function dueText(hours: number | null): string {
   if (hours < 0) {
     const overdue = Math.abs(hours);
     // 不足一小时的不要说「逾期 0 小时」
-    if (overdue < 1) return `逾期 ${Math.max(1, Math.round(overdue * 60))} 分钟`;
+    if (overdue < 1)
+      return `逾期 ${Math.max(1, Math.round(overdue * 60))} 分钟`;
     return overdue < 24
       ? `逾期 ${Math.round(overdue)} 小时`
       : `逾期 ${Math.round(overdue / 24)} 天`;
@@ -102,7 +103,12 @@ export default function DeadlineCards({
         ...(courseId ? { courseId } : {}),
         dueAt: new Date(`${dueDate}T${dueTime || "23:59"}:00`).toISOString(),
         ...(Number.isFinite(parsedWeight) && weight.trim()
-          ? { weightPercent: Math.min(100, Math.max(0, Math.round(parsedWeight))) }
+          ? {
+              weightPercent: Math.min(
+                100,
+                Math.max(0, Math.round(parsedWeight)),
+              ),
+            }
           : {}),
         status: "todo",
       },
@@ -177,8 +183,7 @@ export default function DeadlineCards({
               <article
                 key={item.id}
                 className={
-                  "wr-deadline-card" +
-                  (isOverdue(hours) ? " is-overdue" : "")
+                  "wr-deadline-card" + (isOverdue(hours) ? " is-overdue" : "")
                 }
               >
                 <button
@@ -345,7 +350,9 @@ export default function DeadlineCards({
                 type="button"
                 className="is-primary"
                 onClick={sheet === "assignment" ? addAssignment : addExam}
-                disabled={sheet === "assignment" ? !title.trim() || !dueDate : !dueDate}
+                disabled={
+                  sheet === "assignment" ? !title.trim() || !dueDate : !dueDate
+                }
               >
                 保存
               </button>

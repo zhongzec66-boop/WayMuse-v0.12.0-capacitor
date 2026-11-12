@@ -24,7 +24,9 @@ body,
   background-color: var(--bg-mid);
   background-image: var(--bg-layer);
   background-repeat: repeat, no-repeat;
-  background-size: 160px 160px, 100% 100%;
+  background-size:
+    160px 160px,
+    100% 100%;
   background-attachment: fixed;
   color: var(--ink);
   font-family: var(--font-sans);

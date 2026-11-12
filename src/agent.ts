@@ -149,27 +149,28 @@ export function parseReply(content: string): Reply {
       const raw: unknown = JSON.parse(memoriesBlock.body);
       if (Array.isArray(raw)) {
         // 兼容两种形状：纯字符串（老协议）和 {text, kind}（新协议）
-      memories = raw
-        .map((item) => {
-          if (typeof item === "string") return { text: item.trim().slice(0, 60) };
-          if (item && typeof item === "object") {
-            const record = item as Record<string, unknown>;
-            if (typeof record.text !== "string") return null;
-            return {
-              text: record.text.trim().slice(0, 60),
-              kind:
-                record.kind === "emotion"
-                  ? ("emotion" as const)
-                  : ("normal" as const),
-            };
-          }
-          return null;
-        })
-        .filter(
-          (item): item is { text: string; kind?: "emotion" | "normal" } =>
-            !!item && !!item.text,
-        )
-        .slice(0, 3);
+        memories = raw
+          .map((item) => {
+            if (typeof item === "string")
+              return { text: item.trim().slice(0, 60) };
+            if (item && typeof item === "object") {
+              const record = item as Record<string, unknown>;
+              if (typeof record.text !== "string") return null;
+              return {
+                text: record.text.trim().slice(0, 60),
+                kind:
+                  record.kind === "emotion"
+                    ? ("emotion" as const)
+                    : ("normal" as const),
+              };
+            }
+            return null;
+          })
+          .filter(
+            (item): item is { text: string; kind?: "emotion" | "normal" } =>
+              !!item && !!item.text,
+          )
+          .slice(0, 3);
       }
     } catch {
       memories = [];
@@ -411,11 +412,11 @@ function parseDeadlineProposal(value: unknown): DeadlineProposal | null {
         ? "assignment"
         : null;
   if (!title || !kind) return null;
-  const date =
-    typeof record.date === "string" ? record.date.trim() : "";
+  const date = typeof record.date === "string" ? record.date.trim() : "";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
   const time =
-    typeof record.time === "string" && /^\d{1,2}:\d{2}$/.test(record.time.trim())
+    typeof record.time === "string" &&
+    /^\d{1,2}:\d{2}$/.test(record.time.trim())
       ? record.time.trim().padStart(5, "0")
       : undefined;
   const weightRaw = Number(record.weight);
@@ -442,7 +443,6 @@ function parseDeadlineProposal(value: unknown): DeadlineProposal | null {
 
 /** 把提议换成精确时刻；作业默认当天 23:59，考试默认 09:00 */
 export function proposalDueAt(proposal: DeadlineProposal): string {
-  const time =
-    proposal.time ?? (proposal.kind === "exam" ? "09:00" : "23:59");
+  const time = proposal.time ?? (proposal.kind === "exam" ? "09:00" : "23:59");
   return new Date(`${proposal.date}T${time}:00`).toISOString();
 }

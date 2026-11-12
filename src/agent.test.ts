@@ -47,7 +47,7 @@ describe("作业与考试的提议解析", () => {
   });
 
   it("坏 JSON 不会抛异常，正文照常保留", () => {
-    const reply = parseReply('正文。\n<deadlines>不是 json</deadlines>');
+    const reply = parseReply("正文。\n<deadlines>不是 json</deadlines>");
     expect(reply.deadlines).toEqual([]);
     expect(reply.text).toBe("正文。");
   });

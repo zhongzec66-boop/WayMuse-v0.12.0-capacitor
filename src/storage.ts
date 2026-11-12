@@ -91,7 +91,7 @@ function sanitizeTask(value: unknown): Task | null {
     deadline,
     time,
     category,
-    ...(completedAt ? { completedAt } : {})
+    ...(completedAt ? { completedAt } : {}),
   };
 }
 
@@ -450,7 +450,9 @@ export const storage = {
   getDismissedHabitKeys: (): string[] => {
     const value = readJson("dismissed-habit-keys");
     return Array.isArray(value)
-      ? value.filter((item): item is string => typeof item === "string").slice(-200)
+      ? value
+          .filter((item): item is string => typeof item === "string")
+          .slice(-200)
       : [];
   },
   setDismissedHabitKeys: (keys: string[]) =>

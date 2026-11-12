@@ -63,7 +63,10 @@ export default function BrainMap({
     onMemoriesChange(
       memories.map((memory) =>
         memory.id === id
-          ? { ...memory, kind: memory.kind === "emotion" ? "normal" : "emotion" }
+          ? {
+              ...memory,
+              kind: memory.kind === "emotion" ? "normal" : "emotion",
+            }
           : memory,
       ),
     );
@@ -99,9 +102,7 @@ export default function BrainMap({
       <section className="wr-brain" aria-label="记忆分布">
         <header className="wr-brain-head">
           <span>这是 WayMuse 的抽象大脑</span>
-          <em>
-            {graph.totalMemories} 条 · 不进解剖，只看它把事记在哪儿
-          </em>
+          <em>{graph.totalMemories} 条 · 不进解剖，只看它把事记在哪儿</em>
         </header>
 
         <div className="wr-brain-stage">
@@ -113,7 +114,10 @@ export default function BrainMap({
           >
             {/* 大脑轮廓：只描边 + 浅填充，不画沟回 */}
             <path className="wr-brain-outline" d={outline.cerebrum} />
-            <path className="wr-brain-outline is-cerebellum" d={outline.cerebellum} />
+            <path
+              className="wr-brain-outline is-cerebellum"
+              d={outline.cerebellum}
+            />
             <path className="wr-brain-outline is-stem" d={outline.brainstem} />
             {graph.regions.map((region) => (
               <g
@@ -190,7 +194,11 @@ export default function BrainMap({
                 <span style={{ background: region.color }} />
                 <b>{region.name}</b>
                 <em>{region.hint}</em>
-                <i>{region.id === "cerebellum" && region.count === 0 ? "还在形成中" : `${region.count} 条`}</i>
+                <i>
+                  {region.id === "cerebellum" && region.count === 0
+                    ? "还在形成中"
+                    : `${region.count} 条`}
+                </i>
               </button>
             </li>
           ))}
@@ -200,7 +208,11 @@ export default function BrainMap({
           <div className="wr-brain-list" aria-label="该区域的记忆">
             <header>
               <b>{REGIONS.find((region) => region.id === openRegion)?.name}</b>
-              <button type="button" onClick={() => setOpenRegion(null)} aria-label="收起">
+              <button
+                type="button"
+                onClick={() => setOpenRegion(null)}
+                aria-label="收起"
+              >
                 <X size={16} />
               </button>
             </header>
@@ -230,8 +242,9 @@ export default function BrainMap({
                         className="wr-brain-dot"
                         style={{
                           background:
-                            REGIONS.find((region) => region.id === regionOf(memory))
-                              ?.color ?? "#888",
+                            REGIONS.find(
+                              (region) => region.id === regionOf(memory),
+                            )?.color ?? "#888",
                         }}
                       />
                       <b>{memory.text}</b>
@@ -239,7 +252,10 @@ export default function BrainMap({
                     </button>
                     {menuId === memory.id && (
                       <div className="wr-brain-menu">
-                        <button type="button" onClick={() => toggleKind(memory.id)}>
+                        <button
+                          type="button"
+                          onClick={() => toggleKind(memory.id)}
+                        >
                           {memory.kind === "emotion"
                             ? "改为普通记忆"
                             : "改为情绪记忆"}
@@ -264,7 +280,12 @@ export default function BrainMap({
                   if (event.key === "Enter") add();
                 }}
               />
-              <button type="button" onClick={add} aria-label="添加记忆" disabled={!draft.trim()}>
+              <button
+                type="button"
+                onClick={add}
+                aria-label="添加记忆"
+                disabled={!draft.trim()}
+              >
                 <Plus size={16} />
               </button>
             </div>

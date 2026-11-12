@@ -88,7 +88,9 @@
 
 /* 巩固动画：海马体节点整体向皮层方向移动，2 秒，只做位移+淡出 */
 .wr-brain-region.is-consolidating {
-  transition: transform 2s ease-in, opacity 2s ease-in;
+  transition:
+    transform 2s ease-in,
+    opacity 2s ease-in;
   transform: translate(68px, -30px);
   opacity: 0.35;
 }

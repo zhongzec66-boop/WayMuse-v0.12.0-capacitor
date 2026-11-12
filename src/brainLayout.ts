@@ -8,11 +8,7 @@ import type { Memory } from "./types";
  */
 
 export type RegionId =
-  | "hippocampus"
-  | "cortex"
-  | "amygdala"
-  | "prefrontal"
-  | "cerebellum";
+  "hippocampus" | "cortex" | "amygdala" | "prefrontal" | "cerebellum";
 
 export type RegionSpec = {
   id: RegionId;
@@ -83,7 +79,6 @@ export const REGIONS: RegionSpec[] = [
   },
 ];
 
-
 /**
  * 侧视大脑的外形。
  *
@@ -108,7 +103,11 @@ function catmullRom(points: { x: number; y: number }[]): string {
   return `${d} Z`;
 }
 
-export type BrainOutline = { cerebrum: string; cerebellum: string; brainstem: string };
+export type BrainOutline = {
+  cerebrum: string;
+  cerebellum: string;
+  brainstem: string;
+};
 
 export function brainOutlinePaths(): BrainOutline {
   // 半球：前额（左）略高、顶部有起伏、枕部（右）圆、底下有颞叶的凹口

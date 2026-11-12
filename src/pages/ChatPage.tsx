@@ -731,29 +731,33 @@ export default function ChatPage({
       "最近总是拖延，有什么办法",
     ];
 
-    // 6 条：时段 3 + 年级 2 + 通用 1，按天错开起点，避免每次都一样
+    // 4 条：2×2 网格刚好一屏放得下，不用滚动也不会压到输入框
     const pool = [...timePool, ...gradePool, ...general];
     const offset = new Date().getDate() % pool.length;
     const rotated = [...pool.slice(offset), ...pool.slice(0, offset)];
-    return rotated.slice(0, 6);
+    return rotated.slice(0, 4);
   })();
 
   // 胶囊里的一行：默认报下一节课，回复中报「正在回复…」
-  const upcoming = nextClass(courses, new Date(), academicWeek(readTermStart()));
+  const upcoming = nextClass(
+    courses,
+    new Date(),
+    academicWeek(readTermStart()),
+  );
   const nextClassLine = upcoming
     ? `下一节 ${upcoming.course.name} ${String(upcoming.startsAt.getHours()).padStart(2, "0")}:${String(upcoming.startsAt.getMinutes()).padStart(2, "0")}`
     : "";
 
+  // 模型在服务端，用户不用配任何东西：没出错就是「准备就绪」，
+  // 只有真出错才显示连接失败（以前这里写「未连接」，看起来像没配好）
   const statusLabel =
     connectState === "ok"
       ? "已连接"
       : connectState === "testing"
-        ? "测试中"
+        ? "发送中"
         : connectState === "error"
           ? "连接失败"
-          : apiKey
-            ? "待测试"
-            : "未连接";
+          : "准备就绪";
 
   // 标题菜单打开时要隐藏原生 chrome，否则会被原生输入框盖住
   useHideNativeChrome(Boolean(titleMenu));
@@ -813,11 +817,7 @@ export default function ChatPage({
             <BotAvatar source={agentAvatar} replying={streaming} />
           </span>
           <span className="wr-chat-cap-pill">
-            <b>
-              {streaming
-                ? "正在回复…"
-                : nextClassLine || agentName}
-            </b>
+            <b>{streaming ? "正在回复…" : nextClassLine || agentName}</b>
           </span>
         </button>
         {/* 右侧留白，保证标题严格居中 */}
@@ -1354,7 +1354,10 @@ export default function ChatPage({
                             <DeadlineProposalCard
                               proposals={proposals}
                               onAssignmentsChange={(items) =>
-                                onAssignmentsChange([...assignments, ...items] as Assignment[])
+                                onAssignmentsChange([
+                                  ...assignments,
+                                  ...items,
+                                ] as Assignment[])
                               }
                               onExamsChange={(items) =>
                                 onExamsChange([...exams, ...items] as Exam[])

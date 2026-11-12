@@ -94,7 +94,6 @@ function companionInstruction(profile: UserProfile): string {
     ...(profile.persona.trim()
       ? [`用户自定义的人格偏好：${profile.persona.trim()}`]
       : []),
-
   ].join("\n");
 }
 

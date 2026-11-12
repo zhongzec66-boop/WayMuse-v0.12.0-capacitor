@@ -37,7 +37,6 @@ export default function DeadlineProposalCard({
 
   if (!proposals.length || hidden) return null;
 
-
   const accept = () => {
     const assignments: Assignment[] = [];
     const exams: Exam[] = [];

@@ -86,7 +86,9 @@ describe("上课提醒", () => {
     expect(shouldRemindClass(soon, NOW)).toBe(false);
 
     const at = new Date("2026-11-11T09:25:00+08:00"); // 35 分钟后
-    expect(shouldRemindClass(nextClass([course({ id: "a" })], at), at)).toBe(true);
+    expect(shouldRemindClass(nextClass([course({ id: "a" })], at), at)).toBe(
+      true,
+    );
   });
 
   it("提醒文案带上教室和分钟数", () => {
@@ -132,7 +134,10 @@ describe("考试复习窗口", () => {
 });
 
 describe("作业剩余时间", () => {
-  const assignment = (hours: number, steps?: Assignment["steps"]): Assignment => ({
+  const assignment = (
+    hours: number,
+    steps?: Assignment["steps"],
+  ): Assignment => ({
     id: "a1",
     title: "数据结构作业",
     dueAt: new Date(NOW.getTime() + hours * 3_600_000).toISOString(),
@@ -184,11 +189,14 @@ describe("上课提醒排程", () => {
   });
 
   it("时间已过的课不排", () => {
-    const reminders = planClassReminders([course({ id: "a", start: "08:00" })], {
-      now: NOW,
-      academicWeek: 11,
-      days: 1,
-    });
+    const reminders = planClassReminders(
+      [course({ id: "a", start: "08:00" })],
+      {
+        now: NOW,
+        academicWeek: 11,
+        days: 1,
+      },
+    );
     expect(reminders).toEqual([]);
   });
 
@@ -203,14 +211,23 @@ describe("上课提醒排程", () => {
   });
 
   it("同一节课的 key 稳定", () => {
-    const first = planClassReminders([course({ id: "a" })], { now: NOW, days: 7 });
-    const second = planClassReminders([course({ id: "a" })], { now: NOW, days: 7 });
+    const first = planClassReminders([course({ id: "a" })], {
+      now: NOW,
+      days: 7,
+    });
+    const second = planClassReminders([course({ id: "a" })], {
+      now: NOW,
+      days: 7,
+    });
     expect(first[0].key).toBe(second[0].key);
     expect(first[0].key).toContain("a@");
   });
 
   it("文案说明为什么提醒", () => {
-    const [reminder] = planClassReminders([course({ id: "a" })], { now: NOW, days: 7 });
+    const [reminder] = planClassReminders([course({ id: "a" })], {
+      now: NOW,
+      days: 7,
+    });
     expect(reminder.body).toContain("高等数学");
     expect(reminder.body).toContain("教三-201");
   });

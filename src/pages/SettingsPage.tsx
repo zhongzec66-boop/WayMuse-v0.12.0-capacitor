@@ -451,9 +451,7 @@ export default function SettingsPage({
           <div className="wr-settings-row">
             <span>
               版本
-              <em className="wr-settings-sub">
-                安全区 {safeTop}px
-              </em>
+              <em className="wr-settings-sub">安全区 {safeTop}px</em>
             </span>
             <b>{APP_VERSION}</b>
           </div>

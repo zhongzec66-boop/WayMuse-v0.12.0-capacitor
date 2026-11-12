@@ -149,10 +149,7 @@ export function classReminderText(upcoming: UpcomingClass): string {
 }
 
 /** 考试是否已经进入复习窗口（考前 14 天） */
-export function inExamPrepWindow(
-  exam: Exam,
-  now: Date = new Date(),
-): boolean {
+export function inExamPrepWindow(exam: Exam, now: Date = new Date()): boolean {
   const at = new Date(exam.at);
   if (Number.isNaN(at.getTime())) return false;
   const days = (at.getTime() - now.getTime()) / 86_400_000;

@@ -25,7 +25,11 @@ function done(
 describe("习惯推断", () => {
   it("同类事情 7 天内做 3 次、时段相近 → 生成一条习惯", () => {
     const habits = inferHabits(
-      [done("a", "背单词", 1, 7), done("b", "背单词", 2, 8), done("c", "背单词", 3, 7)],
+      [
+        done("a", "背单词", 1, 7),
+        done("b", "背单词", 2, 8),
+        done("c", "背单词", 3, 7),
+      ],
       { now: NOW },
     );
     expect(habits).toHaveLength(1);
@@ -36,7 +40,11 @@ describe("习惯推断", () => {
 
   it("文案格式：「连续 N 天 · 早上 X 点左右 + 事情」", () => {
     const habits = inferHabits(
-      [done("a", "背单词", 1, 7), done("b", "背单词", 2, 7), done("c", "背单词", 3, 7)],
+      [
+        done("a", "背单词", 1, 7),
+        done("b", "背单词", 2, 7),
+        done("c", "背单词", 3, 7),
+      ],
       { now: NOW },
     );
     expect(habits[0].text).toBe("连续 3 天 · 早上 6 点左右背单词");
@@ -52,7 +60,11 @@ describe("习惯推断", () => {
 
   it("时段分散（不在同一个 2 小时窗口）不算同一种习惯", () => {
     const habits = inferHabits(
-      [done("a", "读书", 1, 7), done("b", "读书", 2, 13), done("c", "读书", 3, 20)],
+      [
+        done("a", "读书", 1, 7),
+        done("b", "读书", 2, 13),
+        done("c", "读书", 3, 20),
+      ],
       { now: NOW },
     );
     expect(habits).toHaveLength(0);
@@ -60,7 +72,11 @@ describe("习惯推断", () => {
 
   it("超过 7 天的记录不计入", () => {
     const habits = inferHabits(
-      [done("a", "早起", 10, 7), done("b", "早起", 11, 7), done("c", "早起", 12, 7)],
+      [
+        done("a", "早起", 10, 7),
+        done("b", "早起", 11, 7),
+        done("c", "早起", 12, 7),
+      ],
       { now: NOW },
     );
     expect(habits).toHaveLength(0);
@@ -68,7 +84,11 @@ describe("习惯推断", () => {
 
   it("同一天做 3 次也算 3 次，但只算 1 天", () => {
     const habits = inferHabits(
-      [done("a", "整理", 1, 20), done("b", "整理", 1, 20), done("c", "整理", 1, 21)],
+      [
+        done("a", "整理", 1, 20),
+        done("b", "整理", 1, 20),
+        done("c", "整理", 1, 21),
+      ],
       { now: NOW },
     );
     expect(habits).toHaveLength(1);
@@ -111,10 +131,30 @@ describe("习惯推断", () => {
 
   it("类别为空时退回任务正文，不同正文不混在一起", () => {
     const tasks: Task[] = [
-      { id: "a", text: "晨跑三公里", done: true, completedAt: done("x", "", 1, 6).completedAt },
-      { id: "b", text: "晨跑三公里", done: true, completedAt: done("x", "", 2, 6).completedAt },
-      { id: "c", text: "晨跑三公里", done: true, completedAt: done("x", "", 3, 6).completedAt },
-      { id: "d", text: "写周报", done: true, completedAt: done("x", "", 1, 6).completedAt },
+      {
+        id: "a",
+        text: "晨跑三公里",
+        done: true,
+        completedAt: done("x", "", 1, 6).completedAt,
+      },
+      {
+        id: "b",
+        text: "晨跑三公里",
+        done: true,
+        completedAt: done("x", "", 2, 6).completedAt,
+      },
+      {
+        id: "c",
+        text: "晨跑三公里",
+        done: true,
+        completedAt: done("x", "", 3, 6).completedAt,
+      },
+      {
+        id: "d",
+        text: "写周报",
+        done: true,
+        completedAt: done("x", "", 1, 6).completedAt,
+      },
     ];
     const habits = inferHabits(tasks, { now: NOW });
     expect(habits).toHaveLength(1);

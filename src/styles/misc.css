@@ -97,7 +97,9 @@
   background-image: var(--bg-layer);
   background-color: var(--bg-mid);
   background-repeat: repeat, no-repeat;
-  background-size: 200px 200px, 100% 100%;
+  background-size:
+    200px 200px,
+    100% 100%;
 }
 
 .wr-login-overlay .wr-page {

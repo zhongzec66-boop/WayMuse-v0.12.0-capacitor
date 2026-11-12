@@ -85,7 +85,11 @@ function densestCluster(times: number[]): number[] {
   for (let i = 0; i < items.length; i += 1) {
     const start = extended[i].minutes;
     const cluster: typeof items = [];
-    for (let j = i; j < extended.length && extended[j].minutes < start + span; j += 1) {
+    for (
+      let j = i;
+      j < extended.length && extended[j].minutes < start + span;
+      j += 1
+    ) {
       cluster.push(extended[j]);
     }
     if (cluster.length > best.length) best = cluster;
@@ -131,7 +135,8 @@ export function inferHabits(
     if (cluster.length < HABIT_MIN_COUNT) continue;
 
     const hours = cluster.map((time) => new Date(time).getHours());
-    const medianHour = hours.slice().sort((a, b) => a - b)[Math.floor(hours.length / 2)] ?? 0;
+    const medianHour =
+      hours.slice().sort((a, b) => a - b)[Math.floor(hours.length / 2)] ?? 0;
     const start = bucketHour(medianHour);
     // 签名用「类别 + 2 小时桶」，同一行为换个星期也不会重复生成
     const signature = `${label}#${start}`;
