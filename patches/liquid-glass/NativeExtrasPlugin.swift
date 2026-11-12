@@ -192,7 +192,7 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
             let input = engine.inputNode
             let format = input.inputFormat(forBus: 0)
             self.inputSampleRate = format.sampleRate
-            self.inputChannels = format.channelCount
+            self.inputChannels = Int(format.channelCount)
             self.authStatus = "\(SFSpeechRecognizer.authorizationStatus().rawValue)"
             self.notifyListeners("speechDebug", data: [
                 "phase": "start",
