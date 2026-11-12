@@ -11,10 +11,12 @@ import {
   X,
   Square,
   Trash2,
+  Phone,
   TriangleAlert,
   Volume2,
 } from "lucide-react";
 import { ApiError, streamServerChat } from "../api";
+import CallSheet from "./CallSheet";
 import {
   EXAM_INSTRUCTION,
   SentenceSplitter,
@@ -187,16 +189,73 @@ export default function ChatPage({
     messageId: string | null;
   }>({ status: "idle", messageId: null });
   const voicePlayerRef = useRef<VoicePlayer | null>(null);
+  const [callOpen, setCallOpen] = useState(false);
+  const [callSubtitle, setCallSubtitle] = useState("");
+  const [callMuted, setCallMuted] = useState(false);
+  const [callExternal, setCallExternal] = useState<
+    "listening" | "thinking" | "speaking"
+  >("listening");
+  const callStartedAtRef = useRef(0);
   const splitterRef = useRef<SentenceSplitter | null>(null);
 
   /** 单例播放器：同一时间只允许一条音频在播 */
   const player = () => {
     if (!voicePlayerRef.current) {
       voicePlayerRef.current = new VoicePlayer({
-        onEnd: () => setVoicePlay({ status: "idle", messageId: null }),
+        onEnd: () => {
+          setVoicePlay({ status: "idle", messageId: null });
+          setCallExternal("listening");
+          setCallSubtitle("");
+        },
+        onSentence: (text) => {
+          setCallSubtitle(text);
+          setCallExternal("speaking");
+        },
       });
     }
     return voicePlayerRef.current;
+  };
+
+  /** 打开通话浮窗：把最后一条助手回复读出来，字幕跟着句子走 */
+  const openCall = () => {
+    const lastReply = [...messages]
+      .reverse()
+      .find((m) => m.role === "assistant");
+    callStartedAtRef.current = Date.now();
+    setCallOpen(true);
+    setCallExternal("listening");
+    setCallSubtitle("");
+    if (!lastReply?.content.trim()) return;
+
+    const engine = player();
+    const text = parseReply(lastReply.content).text;
+    if (!cleanForSpeech(text)) return;
+    setCallExternal("speaking");
+    engine.stop();
+    engine.enqueue(cleanForSpeech(text), instructionFor(activeSkills));
+    engine.finish();
+  };
+
+  const hangupCall = (durationSec: number) => {
+    player().stop();
+    setCallOpen(false);
+    setCallExternal("listening");
+    setCallSubtitle("");
+    const minutes = Math.floor(durationSec / 60);
+    const summary: DeepSeekMessage = {
+      id: newId(),
+      role: "assistant",
+      kind: "call-summary",
+      content: JSON.stringify({
+        durationSec,
+        oneLine:
+          minutes > 0
+            ? `聊了 ${minutes} 分钟，记下你说的重点。`
+            : "简短聊了几句，记下你说的重点。",
+      }),
+      createdAt: Date.now(),
+    };
+    setMessages((current) => [...current, summary]);
   };
 
   const instructionFor = (skills: string[]) =>
@@ -914,6 +973,9 @@ export default function ChatPage({
           <div className="wr-ai-toolbar">
             <span>{messages.length} 条消息</span>
             <div>
+              <button type="button" onClick={openCall}>
+                <Phone size={15} /> 语音通话
+              </button>
               <button type="button" onClick={exportChat}>
                 <Download size={15} /> 导出
               </button>
@@ -1361,6 +1423,20 @@ export default function ChatPage({
 
         {/* 用量与耗时只进日志/自检，不渲染到界面 */}
       </div>
+
+      <CallSheet
+        open={callOpen}
+        subtitle={callSubtitle}
+        heard={""}
+        muted={callMuted}
+        onToggleMute={() => setCallMuted((current) => !current)}
+        onCollapse={() => {
+          player().stop();
+          setCallOpen(false);
+        }}
+        onHangup={hangupCall}
+        externalState={callExternal}
+      />
     </>
   );
 }

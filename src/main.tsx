@@ -18,6 +18,7 @@ import "./styles/persona.css";
 import "./styles/misc.css";
 import "./styles/deadlines.css";
 import "./styles/brain.css";
+import "./styles/call.css";
 
 // 平台标记：不同厂商的系统栏、输入法、返回手势差别很大，
 // CSS / 逻辑里用 html[data-platform="android"] 做针对性适配，

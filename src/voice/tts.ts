@@ -189,10 +189,18 @@ export class VoicePlayer {
   private stopped = false;
   private instruction = "";
   private onEnd?: () => void;
+  private onSentence?: (text: string) => void;
   private onError?: () => void;
 
-  constructor(options: { onEnd?: () => void; onError?: () => void } = {}) {
+  constructor(
+    options: {
+      onEnd?: () => void;
+      onError?: () => void;
+      onSentence?: (text: string) => void;
+    } = {},
+  ) {
     this.onEnd = options.onEnd;
+    this.onSentence = options.onSentence;
     this.onError = options.onError;
   }
 
@@ -255,6 +263,7 @@ export class VoicePlayer {
       const nextAudio = nextSentence ? this.fetchAudio(nextSentence) : null;
 
       try {
+        this.currentSentence = sentence;
         const audio = await this.fetchAudio(sentence);
         this.queue.shift();
         if (this.stopped) break;
@@ -281,9 +290,12 @@ export class VoicePlayer {
     }
   }
 
+  private currentSentence = "";
+
   private async play(audio: ArrayBuffer): Promise<void> {
     const ctx = this.context();
     if (ctx.state === "suspended") await ctx.resume();
+    this.onSentence?.(this.currentSentence ?? "");
     const buffer = await ctx.decodeAudioData(audio.slice(0));
     if (this.stopped) return;
 
