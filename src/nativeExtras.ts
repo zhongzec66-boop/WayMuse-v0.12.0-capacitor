@@ -123,7 +123,8 @@ export async function startSpeech(
 ): Promise<void> {
   await NativeExtras.startSpeech({
     locale,
-    onDevice: options.onDevice ?? true,
+    // 默认 false：端上模型缺失时不会静默失败
+    onDevice: options.onDevice ?? false,
   });
 }
 

@@ -57,7 +57,9 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
     /// 通话中打开：用 .voiceChat 换回声消除，代价是音质偏「电话音」
     private var inCall = false
     private var callAudioMode: AVAudioSession.Mode {
-        inCall ? .voiceChat : .measurement
+        // .measurement 会关闭输入处理（AGC/EQ），录音电平极低，
+        // 语音识别会一直 No speech detected。这里必须用 .default。
+        inCall ? .voiceChat : .default
     }
     private let eventStore = EKEventStore()
     private var player: AVAudioPlayer?
@@ -104,7 +106,8 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func startSpeech(_ call: CAPPluginCall) {
         let localeId = call.getString("locale") ?? "zh-CN"
-        var preferOnDevice = call.getBool("onDevice") ?? true
+        // 默认走服务器识别：端上模型没下载时会静默失败（partial 全空）
+        var preferOnDevice = call.getBool("onDevice") ?? false
         var preferOverride: Bool? = nil
 
         if recognizing {
@@ -181,10 +184,12 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
 
             let request = SFSpeechAudioBufferRecognitionRequest()
             request.shouldReportPartialResults = true
+            // 双保险：端上必须「要求 + 设备支持」两个条件同时成立
             if preferOnDevice && recognizer.supportsOnDeviceRecognition {
                 request.requiresOnDeviceRecognition = true
                 self.onDeviceActive = true
             } else {
+                request.requiresOnDeviceRecognition = false
                 self.onDeviceActive = false
             }
             self.request = request

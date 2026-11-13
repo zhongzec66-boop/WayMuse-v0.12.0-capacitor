@@ -77,6 +77,28 @@ describe("CallSession", () => {
     vi.useRealTimers();
   });
 
+  it("thinking 期间不挂断（模型还在回）", () => {
+    vi.useFakeTimers();
+    const onHangup = vi.fn();
+    const session = new CallSession({ onHangup });
+    session.start();
+    session.userDone();
+    vi.advanceTimersByTime(SILENCE_HANGUP_MS + 5000);
+    expect(onHangup).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it("speaking 期间不挂断", () => {
+    vi.useFakeTimers();
+    const onHangup = vi.fn();
+    const session = new CallSession({ onHangup });
+    session.start();
+    session.modelSpeaking();
+    vi.advanceTimersByTime(SILENCE_HANGUP_MS + 5000);
+    expect(onHangup).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
   it("有话说会重置沉默计时", () => {
     vi.useFakeTimers();
     const onNudge = vi.fn();

@@ -33,11 +33,13 @@ const files = [
 ];
 
 if (!fs.existsSync(target)) {
-  console.warn(
-    `[inject-native-compose] 未找到插件目录，跳过：${path.relative(root, target)}\n` +
-      "  （依赖未安装，或插件包路径变了；原生输入框会退回到 Web 输入框）",
+  // 以前这里只 warn + exit 0：插件目录一变就静默退化成 Web 输入框，
+  // CI 也不会报错。改成直接失败，让问题在构建时就暴露。
+  console.error(
+    `[inject-native-compose] 插件目录不存在：${path.relative(root, target)}\n` +
+      "  （依赖未安装，或插件包路径变了；先 npm ci）",
   );
-  process.exit(0);
+  process.exit(1);
 }
 
 let written = 0;
@@ -45,8 +47,8 @@ for (const name of files) {
   const from = path.join(source, name);
   const to = path.join(target, name);
   if (!fs.existsSync(from)) {
-    console.warn(`[inject-native-compose] 缺少源文件：${path.relative(root, from)}`);
-    continue;
+    console.error(`[inject-native-compose] 缺少源文件：${path.relative(root, from)}`);
+    process.exit(1);
   }
   const next = fs.readFileSync(from, "utf8");
   const current = fs.existsSync(to) ? fs.readFileSync(to, "utf8") : null;
