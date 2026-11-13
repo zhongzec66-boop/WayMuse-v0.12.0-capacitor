@@ -356,23 +356,42 @@ export async function streamServerChat(options: {
   let session = readSession();
   if (!session) session = await guestLogin();
 
-  const run = async (token: string) =>
-    fetch(apiBase() + "/api/ai/chat", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        // 提示词模板在服务端，这里只带开关和变量
-        ...(options.variables ? { useServerPrompt: true } : {}),
-        ...(options.variables ? { variables: options.variables } : {}),
-        messages: options.messages,
-        temperature: options.temperature,
-        maxTokens: options.maxTokens,
-      }),
-      signal: options.signal,
-    });
+  // 移动网络下偶发一次 fetch 失败很常见，重试一次再报错，
+  // 用户看到「连不上」的次数会明显下降。
+  const retryOnce = async <T>(
+    fn: () => Promise<T>,
+    signal?: AbortSignal,
+  ): Promise<T> => {
+    try {
+      return await fn();
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      return await fn();
+    }
+  };
+
+  const run = (token: string) =>
+    retryOnce(
+      () =>
+        fetch(apiBase() + "/api/ai/chat", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            // 提示词模板在服务端，这里只带开关和变量
+            ...(options.variables ? { useServerPrompt: true } : {}),
+            ...(options.variables ? { variables: options.variables } : {}),
+            messages: options.messages,
+            temperature: options.temperature,
+            maxTokens: options.maxTokens,
+          }),
+          signal: options.signal,
+        }),
+      options.signal,
+    );
 
   let response = await run(session.accessToken);
   if (response.status === 401) {

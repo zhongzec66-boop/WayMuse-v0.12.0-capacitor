@@ -102,21 +102,20 @@ type ConnectState = "idle" | "testing" | "ok" | "error";
 
 function describeError(error: unknown): string {
   if (error instanceof DeepSeekError) {
-    if (error.status === 401) return "API Key 无效或已过期（401）。";
-    if (error.status === 402)
-      return "账户余额不足（402），请到 DeepSeek 平台充值。";
-    if (error.status === 429) return "请求过于频繁（429），请稍后再试。";
-    if (error.status === 400) return `请求参数有误（400）：${error.message}`;
+    if (error.status === 401) return "登录状态失效了，重新打开一次 App 就好。";
+    if (error.status === 402) return "额度用完了，找我们充值后继续。";
+    if (error.status === 429) return "问得太快了，歇几秒再发。";
+    if (error.status === 400) return "这条消息没能发出去，换个说法再试。";
     if (error.status && error.status >= 500) {
-      return `DeepSeek 服务异常（${error.status}），请稍后重试。`;
+      return "服务器有点忙，过一会儿再试。";
     }
-    return error.message;
+    return "没连上，检查一下网络再发一次。";
   }
   if (error instanceof DOMException && error.name === "AbortError") {
     return "请求已取消。";
   }
   if (error instanceof TypeError) {
-    return "网络请求失败。检查网络、Base URL，或浏览器是否拦截了跨域请求。";
+    return "连不上服务器，检查一下网络（Wi-Fi / 流量）再发一次。";
   }
   return "请求失败，请稍后重试。";
 }
@@ -181,7 +180,9 @@ export default function ChatPage({
   const [imageCourseHint, setImageCourseHint] = useState(false);
   /** 这一轮命中了哪些技能，给用户一个可见的信号 */
   const [activeSkills, setActiveSkills] = useState<string[]>([]);
-  const [voiceOn, setVoiceOn] = useState(() => storage.getVoiceEnabled());
+  // 自动朗读只由设置里的开关控制；点喇叭朗读一次不会把它打开
+  const [autoRead] = useState(() => storage.getAutoRead());
+  const [voiceHint, setVoiceHint] = useState("");
   // 播放状态只保留一份：哪条在播、播到哪一步。
   // 以前是全局 boolean，所有按钮都跟着变「停止」，串扰。
   const [voicePlay, setVoicePlay] = useState<{
@@ -206,6 +207,10 @@ export default function ChatPage({
           setVoicePlay({ status: "idle", messageId: null });
           setCallExternal("listening");
           setCallSubtitle("");
+        },
+        onError: () => {
+          setVoiceHint("这句没读出来，点喇叭再试一次");
+          setVoicePlay({ status: "idle", messageId: null });
         },
         onSentence: (text) => {
           setCallSubtitle(text);
@@ -271,6 +276,8 @@ export default function ChatPage({
   /** 点喇叭：没开就顺手打开，然后用当前这条回复读一遍 */
   const toggleRead = (messageId: string, text: string) => {
     const engine = player();
+    // 必须在用户手势里解锁，否则移动端 WebView 会静音播放
+    void engine.unlock();
     // 点的是正在播的那条 → 停；点的是另一条 → 先停再播新的，不排队
     if (voicePlay.messageId === messageId && voicePlay.status !== "idle") {
       engine.stop();
@@ -278,10 +285,7 @@ export default function ChatPage({
       return;
     }
     if (voicePlay.status !== "idle") engine.stop();
-    if (!voiceOn) {
-      setVoiceOn(true);
-      storage.setVoiceEnabled(true);
-    }
+    setVoiceHint("");
     const clean = cleanForSpeech(text);
     if (!clean) return;
     setVoicePlay({ status: "playing", messageId });
@@ -456,7 +460,7 @@ export default function ChatPage({
           },
           onDelta: (delta) => {
             serverContent += delta;
-            if (voiceOn) {
+            if (autoRead) {
               if (!splitterRef.current)
                 splitterRef.current = new SentenceSplitter();
               const engine = player();
@@ -493,7 +497,7 @@ export default function ChatPage({
         );
         setConnectState("ok");
         setLatency(Math.round(performance.now() - startedAt));
-        if (voiceOn && splitterRef.current) {
+        if (autoRead && splitterRef.current) {
           const engine = player();
           for (const sentence of splitterRef.current.flush()) {
             setVoicePlay({ status: "playing", messageId: assistantId });
@@ -988,6 +992,12 @@ export default function ChatPage({
               </button>
             )}
           </div>
+        )}
+
+        {voiceHint && (
+          <p className="wr-voice-hint" role="status">
+            {voiceHint}
+          </p>
         )}
 
         {messages.length > 0 && (

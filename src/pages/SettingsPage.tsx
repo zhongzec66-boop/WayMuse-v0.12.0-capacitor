@@ -50,9 +50,8 @@ export default function SettingsPage({
 }) {
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [importMode, setImportMode] = useState<"merge" | "replace">("merge");
-  const [voiceEnabled, setVoiceEnabled] = useState(() =>
-    storage.getVoiceEnabled(),
-  );
+  // 只管「新回复自动朗读」；点喇叭听一条不受这个开关影响
+  const [autoRead, setAutoRead] = useState(() => storage.getAutoRead());
   const [deepSeek, setDeepSeek] = useState<DeepSeekConfig>(() =>
     storage.getDeepSeekConfig(),
   );
@@ -200,13 +199,13 @@ export default function SettingsPage({
           <label className="wr-settings-check">
             <input
               type="checkbox"
-              checked={voiceEnabled}
+              checked={autoRead}
               onChange={(event) => {
-                setVoiceEnabled(event.target.checked);
-                storage.setVoiceEnabled(event.target.checked);
+                setAutoRead(event.target.checked);
+                storage.setAutoRead(event.target.checked);
               }}
             />
-            语音朗读回复（默认关，耗配额）
+            自动朗读新回复（默认关，耗配额；单条朗读点消息下的喇叭）
           </label>
           <label className="wr-settings-field">
             <span>语气</span>

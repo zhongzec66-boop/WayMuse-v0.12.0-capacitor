@@ -2106,3 +2106,11 @@
   color: var(--primary);
   background: var(--primary-soft);
 }
+
+/* 朗读失败提示：一行灰字，不打断对话 */
+.wr-voice-hint {
+  margin: var(--space-8) 0 0;
+  color: var(--ink-3);
+  font-size: var(--text-12);
+  text-align: center;
+}

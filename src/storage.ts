@@ -401,6 +401,10 @@ function readDeepSeekMessages(): DeepSeekMessage[] {
 }
 
 export const storage = {
+  /** 自动朗读新回复（默认关；点喇叭朗读一次不会打开它） */
+  getAutoRead: () => readText("voice-auto", "") === "1",
+  setAutoRead: (value: boolean) => writeText("voice-auto", value ? "1" : ""),
+
   getVoiceEnabled: () => readText("voice-on", "") === "1",
   setVoiceEnabled: (value: boolean) => {
     if (value) localStorage.setItem(PREFIX + "voice-on", "1");

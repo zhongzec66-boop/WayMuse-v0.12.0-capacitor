@@ -90,15 +90,12 @@ export class CallSession {
     this.clearSilence();
     this.silenceTimer = setTimeout(() => {
       this.hooks.onNudge?.();
-      this.hangupTimer = setTimeout(
-        () => {
-          // 双保险：只有还在聆听才挂断。thinking / speaking 期间一律不挂，
-          // 否则模型还在回话就会被沉默计时器掐掉。
-          if (this.state !== "listening") return;
-          this.hooks.onHangup?.();
-        },
-        SILENCE_HANGUP_MS - SILENCE_PROMPT_MS,
-      );
+      this.hangupTimer = setTimeout(() => {
+        // 双保险：只有还在聆听才挂断。thinking / speaking 期间一律不挂，
+        // 否则模型还在回话就会被沉默计时器掐掉。
+        if (this.state !== "listening") return;
+        this.hooks.onHangup?.();
+      }, SILENCE_HANGUP_MS - SILENCE_PROMPT_MS);
     }, SILENCE_PROMPT_MS);
   }
 

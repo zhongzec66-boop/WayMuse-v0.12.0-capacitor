@@ -215,6 +215,21 @@ export class VoicePlayer {
     return this.ctx;
   }
 
+  /**
+   * 在用户手势里调用一次，把 AudioContext 激活。
+   * iOS/Android 的 WebView 都要求先有手势，否则 resume() 会一直挂起，
+   * 表现就是「播放按钮亮了但没声」。
+   */
+  async unlock(): Promise<boolean> {
+    try {
+      const ctx = this.context();
+      if (ctx.state === "suspended") await ctx.resume();
+      return ctx.state === "running";
+    } catch {
+      return false;
+    }
+  }
+
   setInstruction(instruction: string): void {
     this.instruction = instruction;
   }
@@ -295,6 +310,11 @@ export class VoicePlayer {
   private async play(audio: ArrayBuffer): Promise<void> {
     const ctx = this.context();
     if (ctx.state === "suspended") await ctx.resume();
+    // 没跑起来就别假装在播：交给上层提示「点喇叭再试」
+    if (ctx.state !== "running") {
+      this.onError?.();
+      return;
+    }
     this.onSentence?.(this.currentSentence ?? "");
     const buffer = await ctx.decodeAudioData(audio.slice(0));
     if (this.stopped) return;
