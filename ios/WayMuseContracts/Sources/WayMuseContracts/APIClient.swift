@@ -196,11 +196,8 @@ public final class APIClient: @unchecked Sendable {
         if let instruction { body["instruction"] = instruction }
         let request = try makeRequest(path: "/api/voice/tts", body: body)
 
-        let (data, response) = try await transport.send(request)
-        guard (200..<300).contains(response.statusCode) else {
-            throw APIError.decode(status: response.statusCode, data: data)
-        }
-        return data
+        // 走统一的重试包装：401 要续期重试一次，429 直接抛错，5xx 退避一次。
+        return try await sendWithRetry(request)
     }
 
     // MARK: - 内部

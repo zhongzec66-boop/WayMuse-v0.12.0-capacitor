@@ -27,9 +27,18 @@ public struct SSELineBuffer {
         pending += chunk
         var events: [SSEEvent] = []
 
-        while let newlineIndex = pending.firstIndex(of: "\n") {
-            var line = String(pending[..<newlineIndex])
-            pending = String(pending[pending.index(after: newlineIndex)...])
+        // 注意：Swift 里 "\r\n" 是**一个 Character**（字素簇），
+        // 用 Character 找 "\n" 会漏掉所有 CRLF 行。必须按 Unicode 标量找。
+        while true {
+            let scalars = pending.unicodeScalars
+            guard let newline = scalars.firstIndex(of: "\n"),
+                  let lineEnd = newline.samePosition(in: pending) else { break }
+
+            let nextScalarIndex = scalars.index(after: newline)
+            guard let nextStart = nextScalarIndex.samePosition(in: pending) else { break }
+
+            var line = String(pending[..<lineEnd])
+            pending = String(pending[nextStart...])
 
             if line.hasSuffix("\r") { line.removeLast() }
             guard let event = Self.event(from: line) else { continue }
