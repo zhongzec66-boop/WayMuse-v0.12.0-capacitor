@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum WayPage: String, CaseIterable, Identifiable {
     case chat = "聊天"
@@ -22,23 +23,22 @@ enum WayPage: String, CaseIterable, Identifiable {
 
 struct MainShell: View {
     @State private var page: WayPage = .chat
-    @AppStorage("duoAppearance") private var duoAppearance = false
+    @AppStorage("duoPreview") private var duoPreview = false
     @EnvironmentObject private var session: ChatSession
 
     var body: some View {
         GeometryReader { geometry in
-            let useDuo = duoAppearance && geometry.size.width >= 350
-            let expanded = useDuo && geometry.size.width >= 700
+            let expanded = geometry.size.width >= 700
+            let useDuo = expanded || duoPreview || DuoDevice.isDuo
             Group {
                 if expanded {
-                    HStack(spacing: 12) {
+                    HStack(spacing: 8) {
                         duoContext
-                            .frame(width: min(280, geometry.size.width * 0.29))
+                            .frame(width: min(320, geometry.size.width * 0.27))
                         content
-                            .clipShape(RoundedRectangle(cornerRadius: 22))
                         duoRail
                     }
-                    .padding(12)
+                    .padding(8)
                 } else if useDuo {
                     HStack(spacing: 0) {
                         content
@@ -61,14 +61,21 @@ struct MainShell: View {
                 Text(page.rawValue)
                     .font(.title2.weight(.semibold))
                 Spacer()
-                if page == .chat {
+                Menu {
                     Button {
                         session.startNewConversation()
+                        page = .chat
                     } label: {
-                        Image(systemName: "square.and.pencil")
+                        Label("新对话", systemImage: "square.and.pencil")
                     }
-                    .accessibilityLabel("新对话")
+                    Button { page = .settings } label: {
+                        Label("设置", systemImage: "gearshape")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.title3)
                 }
+                .accessibilityLabel("更多工具")
             }
             .padding(.horizontal, 18)
             .frame(height: 52)
@@ -87,6 +94,7 @@ struct MainShell: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .background(Color(.systemBackground))
     }
 
     private var bottomTabs: some View {
@@ -103,14 +111,14 @@ struct MainShell: View {
     }
 
     private var duoRail: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             ForEach(WayPage.allCases) { item in
                 tabButton(item, vertical: true)
             }
             Spacer(minLength: 0)
         }
         .padding(.vertical, 12)
-        .frame(width: 62)
+        .frame(width: 68)
         .modifier(NativeGlass())
         .overlay(alignment: .leading) { Divider() }
     }
@@ -148,7 +156,7 @@ struct MainShell: View {
         }
         .padding(20)
         .frame(maxHeight: .infinity)
-        .modifier(NativeGlass())
+        .background(Color(.secondarySystemBackground))
     }
 
     private func tabButton(_ item: WayPage, vertical: Bool) -> some View {
@@ -162,10 +170,10 @@ struct MainShell: View {
                     .font(.system(size: 10))
             }
             .foregroundStyle(page == item ? Color.accentColor : Color.secondary)
-            .frame(width: vertical ? 52 : nil, height: vertical ? 48 : 43)
+            .frame(width: vertical ? 56 : nil, height: vertical ? 48 : 43)
             .frame(maxWidth: vertical ? nil : .infinity)
+            .background(page == item ? Color.accentColor.opacity(0.13) : Color.clear)
             .clipShape(Capsule())
-            .modifier(NativeGlass())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(item.rawValue)
@@ -174,19 +182,25 @@ struct MainShell: View {
 }
 
 private struct NativeGlass: ViewModifier {
-    var active = true
-
     @ViewBuilder
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
-            if active {
-                content.glassEffect(.regular, in: RoundedRectangle(cornerRadius: 20))
-            } else {
-                content
-            }
+            content.glassEffect(.regular, in: RoundedRectangle(cornerRadius: 20))
         } else {
-            content.background(active ? AnyShapeStyle(Material.ultraThin) : AnyShapeStyle(Color.clear))
+            content.background(Material.ultraThin)
         }
+    }
+}
+
+private enum DuoDevice {
+    static var isDuo: Bool {
+        let environment = ProcessInfo.processInfo.environment
+        let names = [
+            UIDevice.current.model,
+            UIDevice.current.name,
+            environment["SIMULATOR_MODEL_NAME"] ?? ""
+        ]
+        return names.contains { $0.localizedCaseInsensitiveContains("iPhone Duo") }
     }
 }
 
@@ -205,12 +219,12 @@ private struct PlaceholderPage: View {
 }
 
 private struct SettingsView: View {
-    @AppStorage("duoAppearance") private var duoAppearance = false
+    @AppStorage("duoPreview") private var duoPreview = false
 
     var body: some View {
         Form {
-            Toggle("iPhone Duo 界面", isOn: $duoAppearance)
-            Text("开启后使用顶部工具栏和右侧竖向胶囊导航。")
+            Toggle("预览 iPhone Duo 界面", isOn: $duoPreview)
+            Text("展开窗口会自动使用 Duo 三栏；此开关用于在普通 iPhone 上预览折叠态布局。")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
