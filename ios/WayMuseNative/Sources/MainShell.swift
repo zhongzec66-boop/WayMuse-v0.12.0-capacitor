@@ -1,53 +1,39 @@
 import SwiftUI
-import UIKit
 
 enum WayPage: String, CaseIterable, Identifiable {
     case chat = "聊天"
-    case today = "今日"
-    case courses = "课表"
+    case today = "Today"
+    case courses = "计划"
     case memories = "记忆"
-    case settings = "设置"
+    case settings = "助理"
 
     var id: Self { self }
 
     var symbol: String {
         switch self {
         case .chat: return "bubble.left.and.bubble.right"
-        case .today: return "checklist"
-        case .courses: return "calendar"
-        case .memories: return "brain.head.profile"
-        case .settings: return "gearshape"
+        case .today: return "calendar"
+        case .courses: return "checklist"
+        case .memories: return "sparkles"
+        case .settings: return "person.crop.circle"
         }
     }
 }
 
 struct MainShell: View {
     @State private var page: WayPage = .chat
-    @AppStorage("duoPreview") private var duoPreview = false
     @EnvironmentObject private var session: ChatSession
 
     var body: some View {
         GeometryReader { geometry in
             let expanded = geometry.size.width >= 900
-            let useDuo = expanded || duoPreview || DuoDevice.isDuo
             Group {
                 if expanded {
                     HStack(spacing: 8) {
-                        if page == .chat {
-                            duoContext
-                                .frame(width: min(300, geometry.size.width * 0.25))
-                        }
                         content
                         duoRail
                     }
                     .padding(8)
-                } else if useDuo {
-                    content
-                        .overlay(alignment: .bottomTrailing) {
-                            compactDuoTabs
-                                .padding(.trailing, 16)
-                                .padding(.bottom, 96)
-                        }
                 } else {
                     VStack(spacing: 0) {
                         content
@@ -61,7 +47,8 @@ struct MainShell: View {
 
     private var content: some View {
         VStack(spacing: 0) {
-            HStack {
+            if page != .chat {
+              HStack {
                 Text(page.rawValue)
                     .font(.title2.weight(.semibold))
                 Spacer()
@@ -83,15 +70,16 @@ struct MainShell: View {
             }
             .padding(.horizontal, 18)
             .frame(height: 52)
-            .modifier(NativeGlass())
+              .modifier(NativeGlass())
 
-            Divider()
+              Divider()
+            }
 
             Group {
                 switch page {
                 case .chat: ChatView()
-                case .today: PlaceholderPage(title: "今日", detail: "今日计划正在接入真实数据。")
-                case .courses: PlaceholderPage(title: "课表", detail: "课表导入和编辑正在开发。")
+                case .today: PlaceholderPage(title: "Today", detail: "今日计划正在接入真实数据。")
+                case .courses: PlaceholderPage(title: "计划", detail: "计划与课表正在接入真实数据。")
                 case .memories: PlaceholderPage(title: "记忆", detail: "记忆管理正在接入真实数据。")
                 case .settings: SettingsView()
                 }
@@ -127,61 +115,6 @@ struct MainShell: View {
         .overlay(alignment: .leading) { Divider() }
     }
 
-    private var compactDuoTabs: some View {
-        VStack(spacing: 4) {
-            ForEach([WayPage.chat, .today, .courses]) { item in
-                tabButton(item, vertical: true)
-            }
-            Menu {
-                Button { page = .memories } label: { Label("记忆", systemImage: WayPage.memories.symbol) }
-                Button { page = .settings } label: { Label("设置", systemImage: WayPage.settings.symbol) }
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 19, weight: .medium))
-                    .frame(width: 56, height: 44)
-            }
-            .accessibilityLabel("更多页面")
-        }
-        .padding(5)
-        .modifier(NativeGlass())
-    }
-
-    private var duoContext: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("WayMuse")
-                .font(.title2.weight(.bold))
-            Text(page == .chat ? "当前会话" : page.rawValue)
-                .font(.headline)
-            if page == .chat {
-                Button("新对话") { session.startNewConversation() }
-                    .buttonStyle(.borderedProminent)
-                if session.messages.isEmpty {
-                    Text("还没有消息")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 12) {
-                            ForEach(session.messages.filter { $0.role == .user }) { message in
-                                Text(message.text)
-                                    .lineLimit(2)
-                                    .font(.subheadline)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                        }
-                    }
-                }
-            } else {
-                Text("此区域将在功能接入后展示相关内容。")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(20)
-        .frame(maxHeight: .infinity)
-        .background(Color(.secondarySystemBackground))
-    }
-
     private func tabButton(_ item: WayPage, vertical: Bool) -> some View {
         Button {
             page = item
@@ -215,18 +148,6 @@ private struct NativeGlass: ViewModifier {
     }
 }
 
-private enum DuoDevice {
-    static var isDuo: Bool {
-        let environment = ProcessInfo.processInfo.environment
-        let names = [
-            UIDevice.current.model,
-            UIDevice.current.name,
-            environment["SIMULATOR_MODEL_NAME"] ?? ""
-        ]
-        return names.contains { $0.localizedCaseInsensitiveContains("iPhone Duo") }
-    }
-}
-
 private struct PlaceholderPage: View {
     let title: String
     let detail: String
@@ -242,14 +163,9 @@ private struct PlaceholderPage: View {
 }
 
 private struct SettingsView: View {
-    @AppStorage("duoPreview") private var duoPreview = false
-
     var body: some View {
         Form {
-            Toggle("预览 iPhone Duo 界面", isOn: $duoPreview)
-            Text("展开窗口会自动使用 Duo 三栏；此开关用于在普通 iPhone 上预览折叠态布局。")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+            Text("助理页面正在接入现有 WayMuse 功能。")
         }
     }
 }
