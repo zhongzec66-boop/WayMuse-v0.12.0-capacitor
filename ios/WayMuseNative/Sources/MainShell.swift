@@ -28,8 +28,18 @@ struct MainShell: View {
     var body: some View {
         GeometryReader { geometry in
             let useDuo = duoAppearance && geometry.size.width >= 350
+            let expanded = useDuo && geometry.size.width >= 700
             Group {
-                if useDuo {
+                if expanded {
+                    HStack(spacing: 12) {
+                        duoContext
+                            .frame(width: min(280, geometry.size.width * 0.29))
+                        content
+                            .clipShape(RoundedRectangle(cornerRadius: 22))
+                        duoRail
+                    }
+                    .padding(12)
+                } else if useDuo {
                     HStack(spacing: 0) {
                         content
                         duoRail
@@ -62,7 +72,7 @@ struct MainShell: View {
             }
             .padding(.horizontal, 18)
             .frame(height: 52)
-            .background(Color(.systemBackground))
+            .modifier(NativeGlass())
 
             Divider()
 
@@ -88,7 +98,7 @@ struct MainShell: View {
         }
         .padding(.top, 8)
         .padding(.bottom, 4)
-        .background(Color(.systemBackground))
+        .modifier(NativeGlass())
         .overlay(alignment: .top) { Divider() }
     }
 
@@ -101,8 +111,44 @@ struct MainShell: View {
         }
         .padding(.vertical, 12)
         .frame(width: 62)
-        .background(Color(.secondarySystemGroupedBackground))
+        .modifier(NativeGlass())
         .overlay(alignment: .leading) { Divider() }
+    }
+
+    private var duoContext: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("WayMuse")
+                .font(.title2.weight(.bold))
+            Text(page == .chat ? "当前会话" : page.rawValue)
+                .font(.headline)
+            if page == .chat {
+                Button("新对话") { session.startNewConversation() }
+                    .buttonStyle(.borderedProminent)
+                if session.messages.isEmpty {
+                    Text("还没有消息")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 12) {
+                            ForEach(session.messages.filter { $0.role == .user }) { message in
+                                Text(message.text)
+                                    .lineLimit(2)
+                                    .font(.subheadline)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+                    }
+                }
+            } else {
+                Text("此区域将在功能接入后展示相关内容。")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(20)
+        .frame(maxHeight: .infinity)
+        .modifier(NativeGlass())
     }
 
     private func tabButton(_ item: WayPage, vertical: Bool) -> some View {
@@ -118,12 +164,29 @@ struct MainShell: View {
             .foregroundStyle(page == item ? Color.accentColor : Color.secondary)
             .frame(width: vertical ? 52 : nil, height: vertical ? 48 : 43)
             .frame(maxWidth: vertical ? nil : .infinity)
-            .background(page == item && vertical ? Color.accentColor.opacity(0.12) : Color.clear)
             .clipShape(Capsule())
+            .modifier(NativeGlass())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(item.rawValue)
         .accessibilityAddTraits(page == item ? .isSelected : [])
+    }
+}
+
+private struct NativeGlass: ViewModifier {
+    var active = true
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            if active {
+                content.glassEffect(.regular, in: RoundedRectangle(cornerRadius: 20))
+            } else {
+                content
+            }
+        } else {
+            content.background(active ? AnyShapeStyle(Material.ultraThin) : AnyShapeStyle(Color.clear))
+        }
     }
 }
 

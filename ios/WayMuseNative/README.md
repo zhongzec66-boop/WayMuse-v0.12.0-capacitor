@@ -16,7 +16,8 @@ xcodebuild -project WayMuseNative.xcodeproj -scheme WayMuseNative -configuration
 ## 当前范围
 
 - 原生聊天界面接真实 `/api/auth/guest` 与 `/api/ai/chat` SSE；请求只发文字。
-- 普通 iPhone 底部导航，设置中可切到 Duo 风格的顶部工具栏与右侧竖向胶囊导航。
+- 普通 iPhone 底部导航，设置中可切到 Duo 风格的顶部工具栏与右侧竖向胶囊导航。窗口宽度达到 700 点时，Duo 展开为左侧会话上下文、中央正文和右侧导航三栏。
+- 导航和工具区域在 iOS 26 及以上使用系统 Liquid Glass；旧系统使用系统半透明材质。
 - 今日、课表、记忆目前只显示开发状态，不展示假数据。
 - 会话只存在内存；账号、刷新令牌、协议块结构化解析、语音和课程能力仍未完成。
 - 这是编译和交互对接版本，不用于 TestFlight 上传或产品验收。
