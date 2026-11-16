@@ -1,0 +1,93 @@
+{
+  "note": "今日三件选取规则的跨语言用例。Swift 端照此实现，输出必须逐字一致（顺序也一致）。",
+  "today": "2026-11-16",
+  "cases": [
+    {
+      "name": "空列表",
+      "tasks": [],
+      "expect": { "top": null, "ranked": [], "display": [], "openCount": 0 }
+    },
+    {
+      "name": "全部完成",
+      "tasks": [
+        { "id": "a", "text": "A", "done": true },
+        { "id": "b", "text": "B", "done": true }
+      ],
+      "expect": { "top": null, "ranked": [], "openCount": 0 }
+    },
+    {
+      "name": "逾期优先于今天到期",
+      "tasks": [
+        { "id": "today", "text": "今天", "done": false, "deadline": "2026-11-16" },
+        { "id": "late", "text": "逾期", "done": false, "deadline": "2026-11-10" }
+      ],
+      "expect": { "top": "late", "ranked": ["late", "today"] }
+    },
+    {
+      "name": "多个逾期按日期升序",
+      "tasks": [
+        { "id": "c", "text": "C", "done": false, "deadline": "2026-11-12" },
+        { "id": "a", "text": "A", "done": false, "deadline": "2026-11-01" },
+        { "id": "b", "text": "B", "done": false, "deadline": "2026-11-08" }
+      ],
+      "expect": { "top": "a", "ranked": ["a", "b", "c"] }
+    },
+    {
+      "name": "同一天截止保持原顺序（稳定排序）",
+      "tasks": [
+        { "id": "first", "text": "1", "done": false, "deadline": "2026-11-16" },
+        { "id": "second", "text": "2", "done": false, "deadline": "2026-11-16" }
+      ],
+      "expect": { "ranked": ["first", "second"] }
+    },
+    {
+      "name": "有截止优先于无截止",
+      "tasks": [
+        { "id": "no-date", "text": "无", "done": false },
+        { "id": "has-date", "text": "有", "done": false, "deadline": "2026-12-01" }
+      ],
+      "expect": { "top": "has-date" }
+    },
+    {
+      "name": "无截止取原数组第一个",
+      "tasks": [
+        { "id": "x", "text": "X", "done": false },
+        { "id": "y", "text": "Y", "done": false },
+        { "id": "z", "text": "Z", "done": false }
+      ],
+      "expect": { "top": "x" }
+    },
+    {
+      "name": "display 首项是 top，其余保持原顺序",
+      "tasks": [
+        { "id": "a", "text": "A", "done": false },
+        { "id": "b", "text": "B", "done": false, "deadline": "2026-11-01" },
+        { "id": "c", "text": "C", "done": false }
+      ],
+      "expect": { "top": "b", "display": ["b", "a", "c"] }
+    },
+    {
+      "name": "已完成不入选",
+      "tasks": [
+        { "id": "done", "text": "完成", "done": true, "deadline": "2026-11-01" },
+        { "id": "open", "text": "未完成", "done": false, "deadline": "2026-11-16" }
+      ],
+      "expect": { "ranked": ["open"], "openCount": 1 }
+    },
+    {
+      "name": "今天到期不算逾期",
+      "tasks": [{ "id": "a", "text": "A", "done": false, "deadline": "2026-11-16" }],
+      "expect": { "overdueCount": 0, "scheduledCount": 1 }
+    },
+    {
+      "name": "大量数据：最早逾期为 top",
+      "tasks": [
+        { "id": "t01", "text": "1", "done": false, "deadline": "2026-11-02" },
+        { "id": "t02", "text": "2", "done": false, "deadline": "2026-11-03" },
+        { "id": "t03", "text": "3", "done": false, "deadline": "2026-11-01" },
+        { "id": "t04", "text": "4", "done": false, "deadline": "2026-11-30" }
+      ],
+      "expect": { "top": "t03", "openCount": 4 }
+    }
+  ]
+}
