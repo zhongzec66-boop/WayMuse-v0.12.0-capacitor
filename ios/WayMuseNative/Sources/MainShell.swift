@@ -28,22 +28,26 @@ struct MainShell: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let expanded = geometry.size.width >= 700
+            let expanded = geometry.size.width >= 900
             let useDuo = expanded || duoPreview || DuoDevice.isDuo
             Group {
                 if expanded {
                     HStack(spacing: 8) {
-                        duoContext
-                            .frame(width: min(320, geometry.size.width * 0.27))
+                        if page == .chat {
+                            duoContext
+                                .frame(width: min(300, geometry.size.width * 0.25))
+                        }
                         content
                         duoRail
                     }
                     .padding(8)
                 } else if useDuo {
-                    HStack(spacing: 0) {
-                        content
-                        duoRail
-                    }
+                    content
+                        .overlay(alignment: .bottomTrailing) {
+                            compactDuoTabs
+                                .padding(.trailing, 16)
+                                .padding(.bottom, 96)
+                        }
                 } else {
                     VStack(spacing: 0) {
                         content
@@ -121,6 +125,25 @@ struct MainShell: View {
         .frame(width: 68)
         .modifier(NativeGlass())
         .overlay(alignment: .leading) { Divider() }
+    }
+
+    private var compactDuoTabs: some View {
+        VStack(spacing: 4) {
+            ForEach([WayPage.chat, .today, .courses]) { item in
+                tabButton(item, vertical: true)
+            }
+            Menu {
+                Button { page = .memories } label: { Label("记忆", systemImage: WayPage.memories.symbol) }
+                Button { page = .settings } label: { Label("设置", systemImage: WayPage.settings.symbol) }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 19, weight: .medium))
+                    .frame(width: 56, height: 44)
+            }
+            .accessibilityLabel("更多页面")
+        }
+        .padding(5)
+        .modifier(NativeGlass())
     }
 
     private var duoContext: some View {
