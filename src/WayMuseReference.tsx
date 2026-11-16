@@ -64,7 +64,17 @@ export default function WayMuseReference() {
   // 键盘弹起时把被遮挡的高度写进 --kb-inset，弹层才能躲开键盘。
   useKeyboardInset();
   const [page, setPage] = useState<Page>("聊天");
+  // Duo 竖向胶囊：默认启用；?duo=0 可临时关掉用于对比
+  const [duoRail] = useState(() => {
+    if (typeof location === "undefined") return true;
+    return new URLSearchParams(location.search).get("duo") !== "0";
+  });
   const [overlay, setOverlay] = useState<Overlay>("");
+
+  useEffect(() => {
+    document.body.classList.toggle("wr-duo", duoRail);
+    return () => document.body.classList.remove("wr-duo");
+  }, [duoRail]);
   const [attachmentMenu, setAttachmentMenu] = useState(false);
   const [courseImportOpen, setCourseImportOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);

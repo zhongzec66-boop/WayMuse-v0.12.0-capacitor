@@ -9,6 +9,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useRef } from "react";
+import DuoRail from "../shell/DuoRail";
 import type { ChangeEvent, Dispatch, SetStateAction } from "react";
 import BotAvatar from "../BotAvatar";
 import { haptic } from "../nativeExtras";
@@ -227,6 +228,8 @@ export default function WebDock({
           <Send size={19} />
         </button>
       </div>
+      <DuoRail page={page} onNavigate={nav} />
+
       <nav
         id="waymuse-native-tab-slot"
         className={nativeTabsActive ? "wr-native-tabs" : undefined}
