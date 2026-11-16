@@ -60,9 +60,13 @@ struct MainShell: View {
                         duoRail
                     }
                 } else {
-                    VStack(spacing: 0) {
-                        content
-                        bottomTabs
+                    TabView(selection: $page) {
+                        ForEach(WayPage.allCases) { item in
+                            content(for: item)
+                                .tabItem { Image(systemName: item.symbol) }
+                                .tag(item)
+                                .accessibilityLabel(item.rawValue)
+                        }
                     }
                 }
             }
@@ -76,10 +80,14 @@ struct MainShell: View {
     }
 
     private var content: some View {
+        content(for: page)
+    }
+
+    private func content(for selectedPage: WayPage) -> some View {
         VStack(spacing: 0) {
-            if page != .chat {
+            if selectedPage != .chat {
               HStack {
-                Text(page.rawValue)
+                Text(selectedPage.rawValue)
                     .font(.title2.weight(.semibold))
                 Spacer()
               }
@@ -88,7 +96,7 @@ struct MainShell: View {
             }
 
             Group {
-                switch page {
+                switch selectedPage {
                 case .chat: ChatView()
                 case .today: PlaceholderPage(title: "Today", detail: "今日计划正在接入真实数据。")
                 case .courses: PlaceholderPage(title: "计划", detail: "计划与课表正在接入真实数据。")
@@ -99,18 +107,6 @@ struct MainShell: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Color(red: 248.0 / 255, green: 243.0 / 255, blue: 232.0 / 255))
-    }
-
-    private var bottomTabs: some View {
-        HStack(spacing: 0) {
-            ForEach(WayPage.allCases) { item in
-                tabButton(item, vertical: false)
-                    .frame(maxWidth: .infinity)
-            }
-        }
-        .padding(.vertical, 3)
-        .modifier(NativeGlass())
-        .overlay(alignment: .top) { Divider() }
     }
 
     private var expandedSidebar: some View {
@@ -278,17 +274,6 @@ struct MainShell: View {
         .buttonStyle(.plain)
         .accessibilityLabel(item.rawValue)
         .accessibilityAddTraits(page == item ? .isSelected : [])
-    }
-}
-
-private struct NativeGlass: ViewModifier {
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content.glassEffect(.regular, in: RoundedRectangle(cornerRadius: 20))
-        } else {
-            content.background(Material.ultraThin)
-        }
     }
 }
 
