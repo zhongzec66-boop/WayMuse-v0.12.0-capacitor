@@ -1,0 +1,36 @@
+{
+  "note": "课表文字解析的跨语言用例。Swift 端按 parseCourseText 的语义实现：返回 courses（按 weekday、start 排序）与 failedLines。",
+  "cases": [
+    {
+      "name": "单行：周几 + 时间 + 课程名 + 地点",
+      "input": "周三 08:00-09:40 高等数学 教三-201",
+      "expected": [
+        { "name": "高等数学", "weekday": 3, "start": "08:00", "end": "09:40", "place": "教三-201" }
+      ],
+      "expectedFailed": 0
+    },
+    {
+      "name": "两行不同课程",
+      "input": "周一 10:00-11:40 大学英语 外语楼105\n周五 14:00-15:40 操作系统 计算机楼203",
+      "expected": [
+        { "name": "大学英语", "weekday": 1, "start": "10:00", "end": "11:40", "place": "外语楼105" },
+        { "name": "操作系统", "weekday": 5, "start": "14:00", "end": "15:40", "place": "计算机楼203" }
+      ],
+      "expectedFailed": 0
+    },
+    {
+      "name": "节次写法换算成时间",
+      "input": "周三 第3-4节 大学物理",
+      "expected": [
+        { "name": "大学物理", "weekday": 3, "start": "10:00", "end": "11:40", "place": "" }
+      ],
+      "expectedFailed": 0
+    },
+    {
+      "name": "无法识别的文字进 failedLines",
+      "input": "这是一段随便写的话",
+      "expected": [],
+      "expectedFailed": 1
+    }
+  ]
+}
