@@ -4,20 +4,28 @@ struct ChatView: View {
     let duoInset: CGFloat
     @EnvironmentObject private var session: ChatSession
     @State private var draft = ""
+    @FocusState private var composerFocused: Bool
     private let brand = Color(red: 3.0 / 255, green: 111.0 / 255, blue: 59.0 / 255)
     private let paper = Color(red: 248.0 / 255, green: 243.0 / 255, blue: 232.0 / 255)
 
     var body: some View {
         VStack(spacing: 0) {
-            if session.isSending {
-                statusPill
-                    .padding(.top, 10)
-                    .padding(.bottom, 4)
+            if !session.messages.isEmpty || composerFocused || session.isSending {
+                VStack(spacing: 0) {
+                    wayFace(size: 40)
+                        .zIndex(1)
+                    statusPill
+                        .padding(.top, -8)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.trailing, duoInset)
+                .padding(.vertical, 8)
+                .background { Rectangle().fill(.ultraThinMaterial).opacity(0.4) }
             }
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 14) {
-                        if session.messages.isEmpty { welcome }
+                        if session.messages.isEmpty && !composerFocused { welcome }
                         ForEach(session.messages) { message in
                             if !message.text.isEmpty {
                                 HStack {
@@ -72,6 +80,7 @@ struct ChatView: View {
                 .accessibilityLabel("更多操作")
                 TextField("点击输入", text: $draft)
                     .padding(.vertical, 10)
+                    .focused($composerFocused)
                 Button {
                     let outgoing = draft
                     draft = ""
@@ -90,18 +99,14 @@ struct ChatView: View {
             .padding(.horizontal, 12)
             .padding(.trailing, duoInset)
             .padding(.vertical, 8)
-            .background(paper)
+            .background { Rectangle().fill(.ultraThinMaterial).opacity(0.4) }
         }
         .background(paper)
     }
 
     private var welcome: some View {
         VStack(spacing: 0) {
-            Text("●  ●")
-                .font(.system(size: 19, weight: .heavy))
-                .foregroundStyle(.white)
-                .frame(width: 56, height: 56)
-                .background(brand, in: Circle())
+            wayFace(size: 56)
                 .zIndex(1)
             statusPill
                 .padding(.top, -12)
@@ -112,6 +117,15 @@ struct ChatView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 92)
+    }
+
+    private func wayFace(size: CGFloat) -> some View {
+        Text("●  ●")
+            .font(.system(size: size * 0.34, weight: .heavy))
+            .foregroundStyle(.white)
+            .frame(width: size, height: size)
+            .background(brand, in: Circle())
+            .accessibilityLabel("WayMuse 头像")
     }
 
     private var statusPill: some View {
