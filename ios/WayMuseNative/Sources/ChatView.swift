@@ -8,6 +8,11 @@ struct ChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if session.isSending {
+                statusPill
+                    .padding(.top, 10)
+                    .padding(.bottom, 4)
+            }
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 14) {
@@ -94,14 +99,28 @@ struct ChatView: View {
                 .foregroundStyle(.white)
                 .frame(width: 68, height: 68)
                 .background(brand, in: Circle())
-            Text("WayMuse")
-                .font(.headline)
+            statusPill
             Text("今天想聊些什么？")
                 .font(.title3.weight(.medium))
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 92)
+    }
+
+    private var statusPill: some View {
+        HStack(spacing: 7) {
+            if session.isSending {
+                ProgressView()
+                    .controlSize(.mini)
+            }
+            Text(session.isSending ? "梳理中" : (draft.isEmpty ? "WayMuse" : "输入中"))
+                .font(.subheadline.weight(.semibold))
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .modifier(ComposerGlass())
+        .accessibilityLabel(session.isSending ? "WayMuse 正在梳理" : "WayMuse")
     }
 }
 

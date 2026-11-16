@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum WayPage: String, CaseIterable, Identifiable {
     case chat = "聊天"
@@ -21,8 +22,13 @@ enum WayPage: String, CaseIterable, Identifiable {
 }
 
 struct MainShell: View {
-    // Duo simulator's side status cluster extends below the horizontal safe area's top edge.
-    private let duoStatusClearance: CGFloat = 112
+    private var duoStatusClearance: CGFloat {
+        let activeScene = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive }
+        let statusBottom = activeScene?.statusBarManager?.statusBarFrame.maxY ?? 0
+        return max(128, statusBottom + 16)
+    }
     @State private var page: WayPage = .chat
     @EnvironmentObject private var session: ChatSession
 
@@ -83,8 +89,7 @@ struct MainShell: View {
                     .frame(maxWidth: .infinity)
             }
         }
-        .padding(.top, 8)
-        .padding(.bottom, 4)
+        .padding(.vertical, 3)
         .modifier(NativeGlass())
         .overlay(alignment: .top) { Divider() }
     }
@@ -122,12 +127,14 @@ struct MainShell: View {
         } label: {
             VStack(spacing: 3) {
                 Image(systemName: item.symbol)
-                    .font(.system(size: 19, weight: .medium))
-                Text(item.rawValue)
-                    .font(.system(size: 10))
+                    .font(.system(size: vertical ? 19 : 22, weight: .medium))
+                if vertical {
+                    Text(item.rawValue)
+                        .font(.system(size: 10))
+                }
             }
             .foregroundStyle(page == item ? Color.accentColor : Color.secondary)
-            .frame(width: vertical ? 56 : nil, height: vertical ? 48 : 43)
+            .frame(width: vertical ? 56 : nil, height: vertical ? 48 : 44)
             .frame(maxWidth: vertical ? nil : .infinity)
             .background(page == item ? Color.accentColor.opacity(0.13) : Color.clear)
             .clipShape(Capsule())
