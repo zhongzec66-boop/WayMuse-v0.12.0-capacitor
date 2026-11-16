@@ -34,6 +34,7 @@ struct MainShell: View {
     @State private var editingName = false
     @State private var nameDraft = ""
     @State private var showingSettings = false
+    @State private var isKeyboardVisible = false
     @EnvironmentObject private var session: ChatSession
 
     var body: some View {
@@ -62,12 +63,18 @@ struct MainShell: View {
                 } else {
                     VStack(spacing: 0) {
                         content
-                        bottomTabs
+                        if !isKeyboardVisible { bottomTabs }
                     }
                 }
             }
             .ignoresSafeArea(.container, edges: .horizontal)
             .background(Color(red: 248.0 / 255, green: 243.0 / 255, blue: 232.0 / 255).ignoresSafeArea())
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            isKeyboardVisible = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            isKeyboardVisible = false
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView()
