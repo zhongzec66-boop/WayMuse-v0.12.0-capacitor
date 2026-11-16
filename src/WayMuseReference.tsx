@@ -409,6 +409,7 @@ export default function WayMuseReference() {
         {page !== "聊天" && <div className="wr-topfade" aria-hidden="true" />}
         <main
           key={page}
+          data-page={page}
           className={`wr-content ${page === "聊天" ? "wr-content-chat" : ""}`}
         >
           {page === "Today" && (

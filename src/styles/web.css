@@ -13,9 +13,46 @@
     left: clamp(32px, 5vw, 88px);
     right: 104px;
     bottom: 20px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
     /* A blurred ancestor would trap the fixed navigation in the dock box. */
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
+  }
+
+  html[data-platform="web"]
+    .wr-content:not(.wr-content-chat)
+    + .wr-dock
+    .wr-compose {
+    max-width: 720px;
+    margin-inline: auto;
+  }
+
+  html[data-platform="web"] .wr-content[data-page="Today"] .wr-today-board {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    align-items: start;
+    gap: 16px;
+  }
+
+  html[data-platform="web"]
+    .wr-content[data-page="Today"]
+    .wr-today-board
+    > .wr-brief {
+    grid-row: span 2;
+  }
+
+  html[data-platform="web"]
+    .wr-content[data-page="Today"]
+    .wr-today-board
+    > .wr-dayline,
+  html[data-platform="web"]
+    .wr-content[data-page="Today"]
+    .wr-today-board
+    > .wr-weekline {
+    margin-bottom: 0;
   }
 
   html[data-platform="web"] .wr-dock nav {
@@ -46,7 +83,9 @@
     border: 1px solid rgba(255, 255, 255, 0.75);
     border-radius: 24px;
     background: rgba(255, 255, 255, 0.5);
-    box-shadow: 0 5px 16px rgba(39, 64, 45, 0.08), inset 0 1px white;
+    box-shadow:
+      0 5px 16px rgba(39, 64, 45, 0.08),
+      inset 0 1px white;
     backdrop-filter: blur(18px);
   }
 
@@ -57,6 +96,27 @@
 }
 
 @media (min-width: 1100px) {
+  html[data-platform="web"] .wr-content:not(.wr-content-chat) + .wr-dock {
+    left: clamp(32px, 5vw, 88px);
+  }
+
+  html[data-platform="web"] .wr-content[data-page="任务"],
+  html[data-platform="web"] .wr-content[data-page="记忆"],
+  html[data-platform="web"] .wr-content[data-page="角色"],
+  html[data-platform="web"] .wr-content[data-page="Today"] {
+    width: min(100%, 1060px);
+    margin-inline: auto;
+    padding-inline: 48px 96px;
+  }
+
+  html[data-platform="web"] .wr-persona,
+  html[data-platform="web"] .wr-persona-card,
+  html[data-platform="web"] .wr-brain,
+  html[data-platform="web"] .wr-memory-tip {
+    max-width: 780px;
+    margin-inline: auto;
+  }
+
   html[data-platform="web"] .wr-content-chat {
     display: grid;
     grid-template-columns: minmax(340px, 2fr) minmax(0, 3fr);
@@ -65,7 +125,9 @@
     padding-bottom: 24px;
   }
 
-  html[data-platform="web"] .wr-phone:not(:has(.wr-dock-native)) .wr-content-chat {
+  html[data-platform="web"]
+    .wr-phone:not(:has(.wr-dock-native))
+    .wr-content-chat {
     padding-bottom: 24px;
   }
 
@@ -77,7 +139,9 @@
     border: 1px solid rgba(255, 255, 255, 0.8);
     border-radius: 28px;
     background: rgba(255, 255, 255, 0.38);
-    box-shadow: 0 10px 36px rgba(42, 57, 40, 0.05), inset 0 1px white;
+    box-shadow:
+      0 10px 36px rgba(42, 57, 40, 0.05),
+      inset 0 1px white;
   }
 
   html[data-platform="web"] .wr-desktop-today {

@@ -230,113 +230,117 @@ export default function TodayPage({
         </p>
       )}
 
-      <BriefCard
-        todayCourses={todayCourses}
-        tasks={tasks}
-        nowMinutes={now}
-        todayKey={todayKey}
-        onOpenTasks={() => nav("任务")}
-        onOpenTimeline={() =>
-          document
-            .querySelector(".wr-dayline")
-            ?.scrollIntoView({ behavior: "smooth", block: "start" })
-        }
-      />
+      <div className="wr-today-board">
+        <BriefCard
+          todayCourses={todayCourses}
+          tasks={tasks}
+          nowMinutes={now}
+          todayKey={todayKey}
+          onOpenTasks={() => nav("任务")}
+          onOpenTimeline={() =>
+            document
+              .querySelector(".wr-dayline")
+              ?.scrollIntoView({ behavior: "smooth", block: "start" })
+          }
+        />
 
-      {/* ── 今天的时间轴 ───────────────────────────── */}
-      <section className="wr-dayline" aria-label="今天的时间轴">
-        <header className="wr-dayline-head">
-          <span>时间轴</span>
-          <em>
-            现在 {clock}
-            {nextEntry ? ` · 接下来 ${nextEntry.clock}` : ""}
-          </em>
-        </header>
+        {/* ── 今天的时间轴 ───────────────────────────── */}
+        <section className="wr-dayline" aria-label="今天的时间轴">
+          <header className="wr-dayline-head">
+            <span>时间轴</span>
+            <em>
+              现在 {clock}
+              {nextEntry ? ` · 接下来 ${nextEntry.clock}` : ""}
+            </em>
+          </header>
 
-        {entries.length === 0 ? (
-          <p className="wr-dayline-empty">
-            今天没有课，也没有到期的事。要不要说说你现在想做什么？
-          </p>
-        ) : (
-          <ol className="wr-timeline">
-            {entries.map((e) => (
-              <li key={e.key} data-state={e.state} data-kind={e.kind}>
-                <span className="wr-timeline-time">{e.clock}</span>
-                <span className="wr-timeline-dot" aria-hidden="true" />
-                <span className="wr-timeline-body">
-                  <b>{e.title}</b>
-                  {e.meta && <small>{e.meta}</small>}
-                </span>
-                <span className="wr-timeline-state">
-                  {STATE_LABEL[e.state]}
-                </span>
-                {e.kind === "task" && e.taskId && (
-                  <button
-                    className="wr-timeline-act"
-                    aria-label={`把「${e.title}」加到系统日历`}
-                    onClick={() => {
-                      const task = tasks.find((x) => x.id === e.taskId);
-                      if (!task) return;
-                      const day = task.deadline ?? todayKey;
-                      const time = task.time ?? "09:00";
-                      const start = new Date(`${day}T${time}:00`).toISOString();
-                      void addEventToCalendar({
-                        title: task.text,
-                        start,
-                        notes: task.category,
-                      }).then((ok) => haptic(ok ? "light" : "heavy"));
-                    }}
-                  >
-                    <CalendarPlus size={13} />
-                  </button>
-                )}
-                {e.kind === "course" && e.courseId && (
-                  <button
-                    className="wr-timeline-x"
-                    aria-label={`移除课程 ${e.title}`}
-                    onClick={() =>
-                      setCourses(courses.filter((c) => c.id !== e.courseId))
-                    }
-                  >
-                    ×
-                  </button>
-                )}
-              </li>
-            ))}
-          </ol>
-        )}
-        {todayCourses.length === 0 && (
-          <button
-            type="button"
-            className="wr-dayline-import"
-            onClick={onImportCourses}
+          {entries.length === 0 ? (
+            <p className="wr-dayline-empty">
+              今天没有课，也没有到期的事。要不要说说你现在想做什么？
+            </p>
+          ) : (
+            <ol className="wr-timeline">
+              {entries.map((e) => (
+                <li key={e.key} data-state={e.state} data-kind={e.kind}>
+                  <span className="wr-timeline-time">{e.clock}</span>
+                  <span className="wr-timeline-dot" aria-hidden="true" />
+                  <span className="wr-timeline-body">
+                    <b>{e.title}</b>
+                    {e.meta && <small>{e.meta}</small>}
+                  </span>
+                  <span className="wr-timeline-state">
+                    {STATE_LABEL[e.state]}
+                  </span>
+                  {e.kind === "task" && e.taskId && (
+                    <button
+                      className="wr-timeline-act"
+                      aria-label={`把「${e.title}」加到系统日历`}
+                      onClick={() => {
+                        const task = tasks.find((x) => x.id === e.taskId);
+                        if (!task) return;
+                        const day = task.deadline ?? todayKey;
+                        const time = task.time ?? "09:00";
+                        const start = new Date(
+                          `${day}T${time}:00`,
+                        ).toISOString();
+                        void addEventToCalendar({
+                          title: task.text,
+                          start,
+                          notes: task.category,
+                        }).then((ok) => haptic(ok ? "light" : "heavy"));
+                      }}
+                    >
+                      <CalendarPlus size={13} />
+                    </button>
+                  )}
+                  {e.kind === "course" && e.courseId && (
+                    <button
+                      className="wr-timeline-x"
+                      aria-label={`移除课程 ${e.title}`}
+                      onClick={() =>
+                        setCourses(courses.filter((c) => c.id !== e.courseId))
+                      }
+                    >
+                      ×
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ol>
+          )}
+          {todayCourses.length === 0 && (
+            <button
+              type="button"
+              className="wr-dayline-import"
+              onClick={onImportCourses}
+            >
+              粘贴课表文字，一键导入
+            </button>
+          )}
+        </section>
+
+        {/* ── 本周 ───────────────────────────────────── */}
+        <section className="wr-weekline" aria-label="本周进度">
+          <header>
+            <span>本周</span>
+            <em>
+              {weekDone}/{weekTotal}
+            </em>
+          </header>
+          <div
+            className="wr-progress-track"
+            role="progressbar"
+            aria-valuenow={percent}
+            aria-valuemin={0}
+            aria-valuemax={100}
           >
-            粘贴课表文字，一键导入
+            <span style={{ width: `${percent}%` }} />
+          </div>
+          <button className="wr-weekline-link" onClick={() => nav("任务")}>
+            看全部计划
           </button>
-        )}
-      </section>
-
-      {/* ── 本周 ───────────────────────────────────── */}
-      <section className="wr-weekline" aria-label="本周进度">
-        <header>
-          <span>本周</span>
-          <em>
-            {weekDone}/{weekTotal}
-          </em>
-        </header>
-        <div
-          className="wr-progress-track"
-          role="progressbar"
-          aria-valuenow={percent}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        >
-          <span style={{ width: `${percent}%` }} />
-        </div>
-        <button className="wr-weekline-link" onClick={() => nav("任务")}>
-          看全部计划
-        </button>
-      </section>
+        </section>
+      </div>
     </>
   );
 }
