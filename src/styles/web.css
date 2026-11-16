@@ -1,0 +1,54 @@
+/* Wide browser layout. Native shells keep the compact layout. */
+@media (min-width: 900px) {
+  html[data-platform="web"] .wr-phone {
+    max-width: none;
+    width: min(100%, 1600px);
+  }
+
+  html[data-platform="web"] .wr-content {
+    padding-inline: clamp(32px, 5vw, 88px) 104px;
+  }
+
+  html[data-platform="web"] .wr-dock {
+    left: clamp(32px, 5vw, 88px);
+    right: 104px;
+    bottom: 20px;
+  }
+
+  html[data-platform="web"] .wr-dock nav {
+    position: fixed;
+    top: 50%;
+    right: 20px;
+    bottom: auto;
+    width: 56px;
+    padding: 8px 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transform: translateY(-50%);
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  html[data-platform="web"] .wr-dock nav .wr-tab-highlight,
+  html[data-platform="web"] .wr-dock nav button > span:last-child {
+    display: none;
+  }
+
+  html[data-platform="web"] .wr-dock nav button {
+    width: 48px;
+    min-height: 48px;
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 5px 16px rgba(39, 64, 45, 0.08), inset 0 1px white;
+    backdrop-filter: blur(18px);
+  }
+
+  html[data-platform="web"] .wr-dock nav button.active {
+    background: rgba(213, 234, 210, 0.8);
+    color: var(--primary);
+  }
+}
