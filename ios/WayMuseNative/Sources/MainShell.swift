@@ -30,6 +30,10 @@ struct MainShell: View {
         return max(128, statusBottom + 16)
     }
     @State private var page: WayPage = .chat
+    @State private var historyQuery = ""
+    @State private var editingName = false
+    @State private var nameDraft = ""
+    @State private var showingSettings = false
     @EnvironmentObject private var session: ChatSession
 
     var body: some View {
@@ -41,7 +45,18 @@ struct MainShell: View {
             Group {
                 if expanded {
                     HStack(spacing: 0) {
+                        expandedSidebar
+                            .frame(width: min(330, fullWidth * 0.32))
                         content
+                            .overlay(alignment: .topLeading) {
+                                Button { showingSettings = true } label: {
+                                    Image(systemName: "gearshape")
+                                        .font(.system(size: 20))
+                                        .frame(width: 44, height: 44)
+                                }
+                                .accessibilityLabel("设置")
+                                .padding(16)
+                            }
                         duoRail
                     }
                 } else {
@@ -53,6 +68,10 @@ struct MainShell: View {
             }
             .ignoresSafeArea(.container, edges: .horizontal)
             .background(Color(red: 248.0 / 255, green: 243.0 / 255, blue: 232.0 / 255).ignoresSafeArea())
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView()
+                .environmentObject(session)
         }
     }
 
@@ -74,7 +93,7 @@ struct MainShell: View {
                 case .today: PlaceholderPage(title: "Today", detail: "今日计划正在接入真实数据。")
                 case .courses: PlaceholderPage(title: "计划", detail: "计划与课表正在接入真实数据。")
                 case .memories: PlaceholderPage(title: "记忆", detail: "记忆管理正在接入真实数据。")
-                case .settings: SettingsView()
+                case .settings: PlaceholderPage(title: "助理", detail: "助理功能正在接入原生版。")
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -92,6 +111,127 @@ struct MainShell: View {
         .padding(.vertical, 3)
         .modifier(NativeGlass())
         .overlay(alignment: .top) { Divider() }
+    }
+
+    private var expandedSidebar: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 12) {
+                Image(systemName: "person.crop.circle.fill")
+                    .font(.system(size: 38))
+                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    if editingName {
+                        TextField("你的称呼", text: $nameDraft)
+                            .textFieldStyle(.roundedBorder)
+                            .onSubmit { saveDisplayName() }
+                    } else {
+                        Text(session.displayName).font(.headline)
+                    }
+                    Text(session.quotaSummary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                Spacer(minLength: 0)
+                Button {
+                    if editingName { saveDisplayName() }
+                    else {
+                        nameDraft = session.displayName == "访客" ? "" : session.displayName
+                        editingName = true
+                    }
+                } label: {
+                    Image(systemName: editingName ? "checkmark" : "pencil")
+                }
+                .accessibilityLabel(editingName ? "保存称呼" : "修改称呼")
+            }
+            .padding(16)
+
+            Divider()
+
+            Button { page = .courses } label: {
+                HStack {
+                    Label("计划", systemImage: "checklist").font(.headline)
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption)
+                }
+                .padding(16)
+            }
+            .buttonStyle(.plain)
+            Text("计划内容正在接入原生版")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
+
+            Divider()
+
+            HStack {
+                Text("聊天记录").font(.headline)
+                Spacer()
+                Button {
+                    session.startNewConversation()
+                    page = .chat
+                } label: {
+                    Image(systemName: "square.and.pencil")
+                }
+                .accessibilityLabel("新对话")
+            }
+            .padding(16)
+
+            ScrollView {
+                LazyVStack(spacing: 6) {
+                    ForEach(filteredThreads) { thread in
+                        Button {
+                            session.selectConversation(thread.id)
+                            page = .chat
+                        } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: "bubble.left")
+                                Text(thread.title).lineLimit(1)
+                                Spacer(minLength: 0)
+                            }
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(session.selectedThreadID == thread.id ? Color.accentColor.opacity(0.12) : Color.clear)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    if filteredThreads.isEmpty {
+                        Text(historyQuery.isEmpty ? "还没有聊天记录" : "没有匹配的记录")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 22)
+                    }
+                }
+                .padding(.horizontal, 10)
+            }
+
+            HStack {
+                Image(systemName: "magnifyingglass")
+                TextField("搜索聊天记录", text: $historyQuery)
+            }
+            .padding(12)
+            .background(.ultraThinMaterial, in: Capsule())
+            .padding(14)
+        }
+        .background(Color(.secondarySystemBackground).opacity(0.55))
+        .overlay(alignment: .trailing) { Divider() }
+    }
+
+    private var filteredThreads: [ChatThread] {
+        let query = historyQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return session.threads }
+        return session.threads.filter {
+            $0.title.localizedCaseInsensitiveContains(query) ||
+            $0.messages.contains { $0.text.localizedCaseInsensitiveContains(query) }
+        }
+    }
+
+    private func saveDisplayName() {
+        let value = nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        session.displayName = value.isEmpty ? "访客" : String(value.prefix(40))
+        editingName = false
     }
 
     private var duoRail: some View {
@@ -117,7 +257,7 @@ struct MainShell: View {
         .padding(.bottom, 12)
         .frame(width: 84)
         .frame(maxHeight: .infinity)
-        .background(.ultraThinMaterial)
+        .modifier(RailGlass())
         .overlay(alignment: .leading) { Divider() }
     }
 
@@ -128,10 +268,6 @@ struct MainShell: View {
             VStack(spacing: 3) {
                 Image(systemName: item.symbol)
                     .font(.system(size: vertical ? 19 : 22, weight: .medium))
-                if vertical {
-                    Text(item.rawValue)
-                        .font(.system(size: 10))
-                }
             }
             .foregroundStyle(page == item ? Color.accentColor : Color.secondary)
             .frame(width: vertical ? 56 : nil, height: vertical ? 48 : 44)
@@ -156,6 +292,17 @@ private struct NativeGlass: ViewModifier {
     }
 }
 
+private struct RailGlass: ViewModifier {
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.glassEffect(.regular, in: Rectangle())
+        } else {
+            content.background(.ultraThinMaterial)
+        }
+    }
+}
+
 private struct PlaceholderPage: View {
     let title: String
     let detail: String
@@ -171,9 +318,15 @@ private struct PlaceholderPage: View {
 }
 
 private struct SettingsView: View {
+    @EnvironmentObject private var session: ChatSession
+
     var body: some View {
         Form {
-            Text("助理页面正在接入现有 WayMuse 功能。")
+            Section("账户") {
+                TextField("称呼", text: $session.displayName)
+                Text(session.quotaSummary)
+                Button("刷新额度") { Task { await session.refreshQuota() } }
+            }
         }
     }
 }

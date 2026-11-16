@@ -1,10 +1,23 @@
 import Foundation
 
-struct ChatMessage: Identifiable {
-    enum Role: String { case user, assistant }
-    let id = UUID()
+struct ChatMessage: Identifiable, Codable {
+    enum Role: String, Codable { case user, assistant }
+    let id: UUID
     let role: Role
     var text: String
+
+    init(role: Role, text: String) {
+        id = UUID()
+        self.role = role
+        self.text = text
+    }
+}
+
+struct ChatThread: Identifiable, Codable {
+    let id: UUID
+    var title: String
+    var updatedAt: Date
+    var messages: [ChatMessage]
 }
 
 enum ChatFailure: LocalizedError {
@@ -26,14 +39,22 @@ enum ChatFailure: LocalizedError {
 @MainActor
 final class ChatSession: ObservableObject {
     @Published private(set) var messages: [ChatMessage] = []
+    @Published private(set) var threads: [ChatThread] = []
     @Published private(set) var isSending = false
     @Published var errorMessage: String?
+    @Published var displayName: String {
+        didSet { UserDefaults.standard.set(displayName, forKey: "waymuseDisplayName") }
+    }
+    @Published private(set) var quotaSummary = "额度加载中"
 
     private let baseURL = URL(string: "https://waymuse.duckdns.org")!
     private var accessToken: String?
     private let deviceId: String
+    private var currentThreadID = UUID()
+    private let threadsKey = "waymuseNativeThreads"
 
     init() {
+        displayName = UserDefaults.standard.string(forKey: "waymuseDisplayName") ?? "访客"
         if let existing = UserDefaults.standard.string(forKey: "waymuseDeviceId") {
             deviceId = existing
         } else {
@@ -41,12 +62,51 @@ final class ChatSession: ObservableObject {
             UserDefaults.standard.set(created, forKey: "waymuseDeviceId")
             deviceId = created
         }
+        if let data = UserDefaults.standard.data(forKey: threadsKey),
+           let saved = try? JSONDecoder().decode([ChatThread].self, from: data) {
+            threads = saved.sorted { $0.updatedAt > $1.updatedAt }
+            if let first = threads.first {
+                currentThreadID = first.id
+                messages = first.messages
+            }
+        }
+        Task { await refreshQuota() }
     }
 
     func startNewConversation() {
         guard !isSending else { return }
+        saveCurrentConversation()
+        currentThreadID = UUID()
         messages = []
         errorMessage = nil
+    }
+
+    func selectConversation(_ id: UUID) {
+        guard !isSending, id != currentThreadID,
+              let thread = threads.first(where: { $0.id == id }) else { return }
+        saveCurrentConversation()
+        currentThreadID = id
+        messages = thread.messages
+        errorMessage = nil
+    }
+
+    var selectedThreadID: UUID { currentThreadID }
+
+    private func saveCurrentConversation() {
+        guard !messages.isEmpty else { return }
+        let title = messages.first(where: { $0.role == .user })?.text
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .prefix(28).description ?? "新对话"
+        let thread = ChatThread(id: currentThreadID, title: title, updatedAt: Date(), messages: messages)
+        if let index = threads.firstIndex(where: { $0.id == currentThreadID }) {
+            threads[index] = thread
+        } else {
+            threads.append(thread)
+        }
+        threads.sort { $0.updatedAt > $1.updatedAt }
+        if let data = try? JSONEncoder().encode(threads) {
+            UserDefaults.standard.set(data, forKey: threadsKey)
+        }
     }
 
     func send(_ rawText: String) async {
@@ -54,7 +114,11 @@ final class ChatSession: ObservableObject {
         guard !text.isEmpty, !isSending else { return }
         errorMessage = nil
         isSending = true
-        defer { isSending = false }
+        defer {
+            isSending = false
+            saveCurrentConversation()
+            Task { await refreshQuota() }
+        }
 
         messages.append(ChatMessage(role: .user, text: text))
         let responseIndex = messages.count
@@ -126,6 +190,25 @@ final class ChatSession: ObservableObject {
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let token = json["accessToken"] as? String else { throw ChatFailure.invalidResponse }
         accessToken = token
+    }
+
+    func refreshQuota() async {
+        do {
+            if accessToken == nil { try await signInAsGuest() }
+            var request = URLRequest(url: baseURL.appendingPathComponent("api/me/quota"))
+            request.setValue("Bearer \(accessToken ?? "")", forHTTPHeaderField: "Authorization")
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200,
+                  let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let limit = json["dailyLimit"] as? Int,
+                  let used = json["dailyUsed"] as? Int else {
+                quotaSummary = "额度暂不可用"
+                return
+            }
+            quotaSummary = "DeepSeek 今日剩余 \(max(0, limit - used)) / \(limit)"
+        } catch {
+            quotaSummary = "额度暂不可用"
+        }
     }
 
     private static func visibleText(_ raw: String) -> String {
