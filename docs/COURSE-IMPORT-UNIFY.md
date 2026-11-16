@@ -5,16 +5,18 @@
 
 ---
 
-## 一、现在有几条导入路径（四条，三套解析）
+## 一、现在有几条导入路径（六条，三套解析）
+
+> A–E 是用户主动触发的入口，F 是模型返回后转入的同一条确认路径。
 
 | # | 入口 | 触发位置 | 解析实现 | 预览/确认 | 写入 |
 | --- | --- | --- | --- | --- | --- |
-| A | Today「粘贴课表文字」 | `TodayPage.tsx:306` → `onImportCourses` → `WayMuseReference.tsx:416` 打开 `CourseImportSheet` | `courseImport.ts` 的 `parseCourseText` | 有（Sheet 内结果列表 + 失败行） | `onSave` → `WayMuseReference.tsx:542` 追加 |
+| A | Today「粘贴课表文字」 | `TodayPage.tsx:312` 按钮 → `onImportCourses`；`WayMuseReference.tsx:416` 设 `courseImportOpen=true`，Sheet 渲染在 `:539`、`onSave` 在 `:542` | `courseImport.ts` 的 `parseCourseText` | 有（Sheet 内结果列表 + 失败行） | `onSave` → `WayMuseReference.tsx:542` 追加 |
 | B | 计划页「批量导入」 | `TaskPage.tsx:165` | **`TaskPage.tsx:40` 自己写的 `parseCourseLines`** | 无（直接写入） | `TaskPage.tsx:170` 直接 `setCourses` |
 | C | 计划页「录入一节课」 | `TaskPage.tsx:474` 起的手写弹层 | 用户手填字段 | 无 | `TaskPage.tsx:149` 直接 `setCourses` |
-| D | 聊天：粘贴文字 | `ChatPage.tsx:358` | `parseCourseText`（≥2 门才出卡） | 有（`courseProposal` 确认卡，`ChatPage.tsx:1422`） | 确认后 `toCourses` 追加 |
-| E | 聊天：发图片 | `ChatPage.tsx:353` | **不解析**，只 `setImageCourseHint(true)` 提示 | 无 | 无 |
-| F | 聊天：模型返回 `<courses>` | `ChatPage.tsx:486`、`646` | 服务端模型解析 | 有（同一张确认卡） | 同上 |
+| D | 聊天：粘贴文字 | `ChatPage.tsx:365`（≥2 门才出卡，`:366`） | `parseCourseText`（≥2 门才出卡） | 有（`courseProposal` 确认卡，`ChatPage.tsx:1422`） | 确认后 `toCourses` 追加 |
+| E | 聊天：发图片 | `ChatPage.tsx:361` | **不解析**，只 `setImageCourseHint(true)` 提示 | 无 | 无 |
+| F | 聊天：模型返回 `<courses>` | `ChatPage.tsx:485`、`645`；标签解析在 `src/agent.ts` 的 `parseReply` | 服务端模型解析 | 有（同一张确认卡） | 同上 |
 
 **核心问题**：A/D/F 共用 `courseImport.ts`，B 是**第二套独立实现**，C 是**第三套手填**，E 干脆没接解析。同样一段课表文字，从不同入口进，结果可能不同。
 
@@ -26,7 +28,7 @@
 | --- | --- | --- |
 | 单行识别 | 有 `parseCourseLine` | 自写实现 |
 | 表格模式（一行一节次、列是周一到周日） | 有 `parseCourseTableLine`（`courseImport.ts:198`） | 无 |
-| 失败行回传 | 有（`failedLines`） | 无 |
+| 失败行回传 | 有（`failedLines`，逐行） | 无逐行回传；一行都没认出时只给一句「没认出任何一行」 |
 | 单双周 / 周次 | 支持 | 视实现而定 |
 | 去重 | 由调用方处理 | 无 |
 
@@ -113,7 +115,21 @@ save       一次性写回（追加 / 覆盖由调用方选）
 
 ---
 
-## 八、需要 Codex 拍板的三个问题
+## 八、Codex 已定的三条（2026-11-16 seq 87）
+
+1. 计划页「批量导入」**直接打开共用的 `CourseImportSheet`**。
+2. **保留单节手填入口**，但复用相同的校验与去重。
+3. 聊天课表截图：**先自动识别并展示预览，必须用户确认后写入**；识别失败给可编辑 / 手动录入退路。
+
+实施顺序（每步一个可回滚提交）：
+
+1. 纯函数与测试 → `src/courseApply.ts`（`validateCourses` / `dedupeCourses` / `prepareCourses`）
+2. Sheet 支持 `mode` / `initialText`
+3. 计划页批量导入切到 Sheet，删 `parseCourseLines`
+4. 聊天截图自动识别 → 预览确认
+5. 清理重复校验
+
+## 九、实施前留档：最初提出的三个待定问题
 
 1. **入口形态**：计划页的「批量导入」是否直接改成打开同一个 Sheet（我倾向是），还是保留原地弹层但换解析器？
 2. **单节录入**：`TaskPage` 的手填弹层保留吗？（我倾向保留，它解决"只加一节课"的场景，但校验要复用纯函数）
