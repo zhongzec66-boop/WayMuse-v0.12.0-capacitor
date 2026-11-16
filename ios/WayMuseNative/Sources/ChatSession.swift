@@ -24,14 +24,24 @@ enum ChatFailure: LocalizedError {
     case invalidResponse
     case http(Int, String)
     case noContent
+    /// 网络层中断（URLError）：与 HTTP 状态无关，单独归类，便于重试与提示。
+    case network(String)
+    /// 流结束但没收到 `[DONE]`：回复不完整，不能当成功。
+    case interrupted
 
     var errorDescription: String? {
         switch self {
         case .invalidResponse: return "服务暂时没有返回有效响应。"
         case let .http(code, reason):
             if code == 429 { return "今天的使用额度已达到上限，请稍后再试。" }
+            if code == 401 { return "登录状态已失效，请重试。" }
             return reason.isEmpty ? "请求失败（\(code)）。" : "请求失败（\(code)）：\(reason)"
         case .noContent: return "这次没有收到回复，请重试。"
+        case let .network(detail):
+            return detail.isEmpty
+                ? "网络连接中断，回复未完成，请重试。"
+                : "网络连接中断（\(detail)），回复未完成，请重试。"
+        case .interrupted: return "回复中断，内容可能不完整，请重试。"
         }
     }
 }
@@ -128,10 +138,15 @@ final class ChatSession: ObservableObject {
             try await streamReply(at: responseIndex, retryAuth: true)
             if messages[responseIndex].text.isEmpty { throw ChatFailure.noContent }
         } catch {
+            // 没拿到任何内容才移除占位气泡；有部分内容则保留，并明确提示「不完整」。
             if messages.indices.contains(responseIndex), messages[responseIndex].text.isEmpty {
                 messages.remove(at: responseIndex)
             }
-            errorMessage = error.localizedDescription
+            if let urlError = error as? URLError {
+                errorMessage = ChatFailure.network(urlError.localizedDescription).localizedDescription
+            } else {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -151,29 +166,66 @@ final class ChatSession: ObservableObject {
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
 
-        let (bytes, response) = try await URLSession.shared.bytes(for: request)
-        guard let http = response as? HTTPURLResponse else { throw ChatFailure.invalidResponse }
-        if http.statusCode == 401 && retryAuth {
-            accessToken = nil
-            try await signInAsGuest()
-            try await streamReply(at: index, retryAuth: false)
-            return
-        }
-        guard http.statusCode == 200 else { throw ChatFailure.http(http.statusCode, "") }
+        do {
+            let (bytes, response) = try await URLSession.shared.bytes(for: request)
+            guard let http = response as? HTTPURLResponse else { throw ChatFailure.invalidResponse }
 
-        var accumulated = ""
-        for try await line in bytes.lines {
-            guard line.hasPrefix("data:") else { continue }
-            let dataLine = line.dropFirst(5).trimmingCharacters(in: .whitespaces)
-            if dataLine == "[DONE]" { break }
-            guard let data = dataLine.data(using: .utf8),
-                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let choices = json["choices"] as? [[String: Any]],
-                  let delta = choices.first?["delta"] as? [String: Any],
-                  let content = delta["content"] as? String else { continue }
-            accumulated += content
-            messages[index].text = Self.visibleText(accumulated)
+            if http.statusCode == 401 && retryAuth {
+                accessToken = nil
+                try await signInAsGuest()
+                try await streamReply(at: index, retryAuth: false)
+                return
+            }
+
+            guard http.statusCode == 200 else {
+                // 非 200 也要把响应体读出来，否则服务端的 {error, reason} 会被丢掉。
+                var body = ""
+                for try await line in bytes.lines { body += line }
+                throw Self.httpFailure(status: http.statusCode, body: body)
+            }
+
+            var accumulated = ""
+            var sawDone = false
+
+            for try await line in bytes.lines {
+                guard line.hasPrefix("data:") else { continue }
+                let dataLine = line.dropFirst(5).trimmingCharacters(in: .whitespaces)
+                if dataLine == "[DONE]" {
+                    sawDone = true
+                    break
+                }
+                guard let data = dataLine.data(using: .utf8),
+                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let choices = json["choices"] as? [[String: Any]],
+                      let delta = choices.first?["delta"] as? [String: Any],
+                      let content = delta["content"] as? String else { continue }
+                accumulated += content
+                messages[index].text = Self.visibleText(accumulated)
+            }
+
+            // 没收到 [DONE] 说明流被打断，内容可能只有半句：不能当成功。
+            if !sawDone { throw ChatFailure.interrupted }
+        } catch let failure as ChatFailure {
+            throw failure
+        } catch let urlError as URLError {
+            throw ChatFailure.network(urlError.localizedDescription)
         }
+    }
+
+    /// 从错误响应体里取出 `{ "error": ..., "reason": ... }`，拼成可读原因。
+    private static func httpFailure(status: Int, body: String) -> ChatFailure {
+        var reason = ""
+        if let data = body.data(using: .utf8),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            let error = (json["error"] as? String) ?? ""
+            let detail = (json["reason"] as? String) ?? ""
+            if detail.isEmpty {
+                reason = error
+            } else {
+                reason = error.isEmpty ? detail : "\(error)（\(detail)）"
+            }
+        }
+        return .http(status, reason)
     }
 
     private func signInAsGuest() async throws {
@@ -186,8 +238,10 @@ final class ChatSession: ObservableObject {
         ])
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw ChatFailure.invalidResponse }
-        guard http.statusCode == 200 else { throw ChatFailure.http(http.statusCode, "") }
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+        guard http.statusCode == 200 else {
+            throw Self.httpFailure(status: http.statusCode, body: String(data: data, encoding: .utf8) ?? "")
+        }
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let token = json["accessToken"] as? String else { throw ChatFailure.invalidResponse }
         accessToken = token
     }
@@ -199,7 +253,7 @@ final class ChatSession: ObservableObject {
             request.setValue("Bearer \(accessToken ?? "")", forHTTPHeaderField: "Authorization")
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200,
-                  let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let limit = json["dailyLimit"] as? Int,
                   let used = json["dailyUsed"] as? Int else {
                 quotaSummary = "额度暂不可用"
