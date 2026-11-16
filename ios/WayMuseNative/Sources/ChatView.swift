@@ -24,20 +24,32 @@ struct ChatView: View {
             }
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 14) {
+                    LazyVStack(alignment: .leading, spacing: 12) {
                         if session.messages.isEmpty && !composerFocused { welcome }
                         ForEach(session.messages) { message in
                             if !message.text.isEmpty {
-                                HStack {
-                                    if message.role == .user { Spacer(minLength: 36) }
-                                    Text(message.text)
-                                        .textSelection(.enabled)
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 13)
-                                        .background(message.role == .user ? brand : Color.white)
-                                        .foregroundStyle(message.role == .user ? Color.white : Color.primary)
-                                        .clipShape(RoundedRectangle(cornerRadius: 22))
-                                    if message.role == .assistant { Spacer(minLength: 36) }
+                                Group {
+                                    if message.role == .user {
+                                        HStack {
+                                            Spacer(minLength: 48)
+                                            Text(message.text)
+                                                .font(.system(size: 15.5))
+                                                .lineSpacing(3)
+                                                .textSelection(.enabled)
+                                                .foregroundStyle(.white)
+                                                .padding(.horizontal, 12)
+                                                .padding(.vertical, 9)
+                                                .background(brand, in: RoundedRectangle(cornerRadius: 18))
+                                        }
+                                    } else {
+                                        Text(message.text)
+                                            .font(.system(size: 16.5))
+                                            .lineSpacing(4)
+                                            .textSelection(.enabled)
+                                            .foregroundStyle(.primary)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .padding(.vertical, 4)
+                                    }
                                 }
                                 .id(message.id)
                             }
@@ -48,7 +60,8 @@ struct ChatView: View {
                                 .id("progress")
                         }
                     }
-                    .padding(16)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
                     .padding(.trailing, duoInset)
                 }
                 .background(paper)
