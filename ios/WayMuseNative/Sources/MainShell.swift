@@ -21,6 +21,8 @@ enum WayPage: String, CaseIterable, Identifiable {
 }
 
 struct MainShell: View {
+    // Duo simulator's side status cluster extends below the horizontal safe area's top edge.
+    private let duoStatusClearance: CGFloat = 112
     @State private var page: WayPage = .chat
     @EnvironmentObject private var session: ChatSession
 
@@ -106,7 +108,7 @@ struct MainShell: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(.top, 72)
+        .padding(.top, duoStatusClearance)
         .padding(.bottom, 12)
         .frame(width: 84)
         .frame(maxHeight: .infinity)
