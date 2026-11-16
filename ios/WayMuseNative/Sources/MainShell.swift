@@ -336,14 +336,28 @@ private struct PlaceholderPage: View {
 
 private struct SettingsView: View {
     @EnvironmentObject private var session: ChatSession
+    @EnvironmentObject private var avatarStore: AvatarStore
+    @State private var showingPhotoPicker = false
 
     var body: some View {
         Form {
             Section("账户") {
+                HStack {
+                    Spacer()
+                    WayAvatar(state: .idle, size: 64)
+                    Spacer()
+                }
+                Button("上传头像") { showingPhotoPicker = true }
+                if avatarStore.image != nil {
+                    Button("恢复 WayMuse 头像") { avatarStore.reset() }
+                }
                 TextField("称呼", text: $session.displayName)
                 Text(session.quotaSummary)
                 Button("刷新额度") { Task { await session.refreshQuota() } }
             }
+        }
+        .sheet(isPresented: $showingPhotoPicker) {
+            AvatarPhotoPicker { avatarStore.save($0) }
         }
     }
 }

@@ -18,6 +18,7 @@ xcodebuild -project WayMuseNative.xcodeproj -scheme WayMuseNative -configuration
 - 原生聊天界面接真实 `/api/auth/guest` 与 `/api/ai/chat` SSE；请求只发文字。
 - 普通 iPhone 使用图标底部导航；Duo 展开窗口按含侧边安全区的宽度切换为账户/计划/会话、聊天、侧边导航三栏。
 - 导航和工具区域在 iOS 26 及以上使用系统 Liquid Glass；旧系统使用系统半透明材质。
+- WayMuse 默认头像随待机、输入和回复状态轻微变化；设置页可从系统照片选择器上传头像，自定义头像仅做本地轻动效，图片裁成 512px 方形并保存在本机。系统“减少动态效果”开启时停止动画。
 - 今日、课表、记忆目前只显示开发状态，不展示假数据。
 - 原生会话和可编辑称呼保存在本机，侧栏可搜索和切换会话；额度从 `/api/me/quota` 读取。账号完整资料、刷新令牌、协议块结构化解析、语音和课程能力仍未完成。
 - 这是编译和交互对接版本，不用于 TestFlight 上传或产品验收。
