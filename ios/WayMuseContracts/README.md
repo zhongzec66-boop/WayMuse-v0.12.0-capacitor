@@ -23,9 +23,9 @@ swift test --package-path ios/WayMuseContracts
 | `Sources/WayMuseContracts/APIError.swift` | 错误体解析 + 重试/续期判定（401/429/5xx） | 完成 |
 | `Sources/WayMuseContracts/SSE.swift` | SSE 行缓冲（跨 chunk 拼行）+ chunk 增量解析 | 完成 |
 | `Sources/WayMuseContracts/APIClient.swift` | 认证 / SSE 聊天 / TTS；网络层可注入 | 完成 |
-| `Tests/.../APIClientTests.swift` | SSE、重试策略、假网络层下的登录/续期/聊天/TTS（13 条） | 完成 |
+| `Tests/.../APIClientTests.swift` | SSE、重试策略、假网络层下的登录/续期/聊天/TTS（18 条） | 完成 |
 | `Tests/.../Top3ContractTests.swift` | 用共享 fixture 逐条跑 11 条用例 | 完成 |
-| `Tests/.../ReplyParserTests.swift` | 协议块解析行为测试（11 条） | 完成 |
+| `Tests/.../ReplyParserTests.swift` | 协议块解析行为测试（14 条） | 完成 |
 | `Tests/.../Fixtures/top3-cases.json` | 从 `docs/contract/` 复制的**同一份**用例 | 完成 |
 | `Tests/.../Fixtures/course-parse-cases.json` | 课程解析 4 条用例 | **待移植**（文字解析 `parseCourseText` 未写） |
 
