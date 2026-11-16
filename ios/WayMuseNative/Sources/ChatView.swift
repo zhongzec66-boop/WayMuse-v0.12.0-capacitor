@@ -79,9 +79,7 @@ struct ChatView: View {
             .foregroundStyle(brand)
             .padding(.horizontal, 15)
             .padding(.vertical, 7)
-            .background(Color.white.opacity(0.86))
-            .clipShape(Capsule())
-            .overlay(Capsule().stroke(Color.black.opacity(0.08)))
+            .modifier(ComposerGlass())
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(paper)
@@ -104,5 +102,16 @@ struct ChatView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 92)
+    }
+}
+
+private struct ComposerGlass: ViewModifier {
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.glassEffect(.regular, in: Capsule())
+        } else {
+            content.background(.ultraThinMaterial, in: Capsule())
+        }
     }
 }

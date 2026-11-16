@@ -26,7 +26,10 @@ struct MainShell: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let expanded = geometry.size.width >= 900
+            let fullWidth = geometry.size.width
+                + geometry.safeAreaInsets.leading
+                + geometry.safeAreaInsets.trailing
+            let expanded = fullWidth >= 900
             Group {
                 if expanded {
                     HStack(spacing: 0) {
@@ -40,6 +43,7 @@ struct MainShell: View {
                     }
                 }
             }
+            .ignoresSafeArea(.container, edges: .horizontal)
             .background(Color(red: 248.0 / 255, green: 243.0 / 255, blue: 232.0 / 255).ignoresSafeArea())
         }
     }
@@ -102,8 +106,9 @@ struct MainShell: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(.vertical, 12)
-        .frame(width: 68)
+        .padding(.top, 72)
+        .padding(.bottom, 12)
+        .frame(width: 84)
         .frame(maxHeight: .infinity)
         .background(.ultraThinMaterial)
         .overlay(alignment: .leading) { Divider() }
