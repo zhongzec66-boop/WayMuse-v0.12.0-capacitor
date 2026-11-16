@@ -60,13 +60,9 @@ struct MainShell: View {
                         duoRail
                     }
                 } else {
-                    TabView(selection: $page) {
-                        ForEach(WayPage.allCases) { item in
-                            content(for: item)
-                                .tabItem { Image(systemName: item.symbol) }
-                                .tag(item)
-                                .accessibilityLabel(item.rawValue)
-                        }
+                    VStack(spacing: 0) {
+                        content
+                        bottomTabs
                     }
                 }
             }
@@ -107,6 +103,29 @@ struct MainShell: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Color(red: 248.0 / 255, green: 243.0 / 255, blue: 232.0 / 255))
+    }
+
+    private var bottomTabs: some View {
+        HStack(spacing: 0) {
+            ForEach(WayPage.allCases) { item in
+                Button { page = item } label: {
+                    Image(systemName: item.symbol)
+                        .font(.system(size: 22, weight: .medium))
+                        .foregroundStyle(page == item ? Color.accentColor : Color.secondary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .background(page == item ? Color.accentColor.opacity(0.13) : .clear, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(item.rawValue)
+                .accessibilityAddTraits(page == item ? .isSelected : [])
+            }
+        }
+        .padding(6)
+        .frame(height: 56)
+        .modifier(TabGlass())
+        .padding(.horizontal, 16)
+        .padding(.bottom, 12)
     }
 
     private var expandedSidebar: some View {
@@ -274,6 +293,17 @@ struct MainShell: View {
         .buttonStyle(.plain)
         .accessibilityLabel(item.rawValue)
         .accessibilityAddTraits(page == item ? .isSelected : [])
+    }
+}
+
+private struct TabGlass: ViewModifier {
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.glassEffect(.regular, in: Capsule())
+        } else {
+            content.background(.ultraThinMaterial, in: Capsule())
+        }
     }
 }
 

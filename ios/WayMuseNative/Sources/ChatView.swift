@@ -93,32 +93,41 @@ struct ChatView: View {
     }
 
     private var welcome: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 0) {
             Text("●  ●")
                 .font(.system(size: 19, weight: .heavy))
                 .foregroundStyle(.white)
-                .frame(width: 68, height: 68)
+                .frame(width: 56, height: 56)
                 .background(brand, in: Circle())
+                .zIndex(1)
             statusPill
+                .padding(.top, -12)
             Text("今天想聊些什么？")
                 .font(.title3.weight(.medium))
                 .foregroundStyle(.secondary)
+                .padding(.top, 16)
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 92)
     }
 
     private var statusPill: some View {
-        HStack(spacing: 7) {
-            if session.isSending {
-                ProgressView()
-                    .controlSize(.mini)
+        VStack(spacing: 2) {
+            Text("WayMuse")
+                .font(.system(size: 15, weight: .semibold))
+            HStack(spacing: 5) {
+                if session.isSending {
+                    ProgressView()
+                        .controlSize(.mini)
+                }
+                Text(session.isSending ? "梳理中" : (draft.isEmpty ? "随时陪你聊聊" : "输入中"))
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
             }
-            Text(session.isSending ? "梳理中" : (draft.isEmpty ? "WayMuse" : "输入中"))
-                .font(.subheadline.weight(.semibold))
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.top, 16)
+        .padding(.bottom, 9)
         .modifier(ComposerGlass())
         .accessibilityLabel(session.isSending ? "WayMuse 正在梳理" : "WayMuse")
     }
