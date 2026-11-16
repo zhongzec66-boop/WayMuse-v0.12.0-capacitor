@@ -14,8 +14,11 @@ import {
 } from "./semester";
 import type { Assignment, Exam } from "./semester";
 
-// 2026-11-11 是周三
-const NOW = new Date("2026-11-11T09:00:00+08:00");
+// 2026-11-11 是周三。
+// 用本地时间构造函数（而不是带 +08:00 的 ISO 字符串）：业务代码里的
+// setHours/getHours/getDay 都按运行环境本地时区计算，测试跟着同一套语义，
+// 换到 UTC 机器上也不会因时差把"周三 10:00"算成别的钟点。
+const NOW = new Date(2026, 10, 11, 9, 0, 0);
 
 function course(partial: Partial<Course> & { id: string }): Course {
   return {
@@ -34,7 +37,7 @@ describe("courseOnDay", () => {
   });
 
   it("周四不出现", () => {
-    const thursday = new Date("2026-11-12T09:00:00+08:00");
+    const thursday = new Date(2026, 10, 12, 9, 0, 0);
     expect(courseOnDay(course({ id: "a" }), thursday)).toBe(false);
   });
 
@@ -85,14 +88,14 @@ describe("上课提醒", () => {
     const soon = nextClass([course({ id: "a" })], NOW); // 60 分钟后
     expect(shouldRemindClass(soon, NOW)).toBe(false);
 
-    const at = new Date("2026-11-11T09:25:00+08:00"); // 35 分钟后
+    const at = new Date(2026, 10, 11, 9, 25, 0); // 35 分钟后
     expect(shouldRemindClass(nextClass([course({ id: "a" })], at), at)).toBe(
       true,
     );
   });
 
   it("提醒文案带上教室和分钟数", () => {
-    const at = new Date("2026-11-11T09:25:00+08:00");
+    const at = new Date(2026, 10, 11, 9, 25, 0);
     const next = nextClass([course({ id: "a" })], at)!;
     const text = classReminderText(next);
     expect(text).toContain("教三-201");
