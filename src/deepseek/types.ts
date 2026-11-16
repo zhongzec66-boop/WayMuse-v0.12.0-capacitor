@@ -7,6 +7,8 @@ export type DeepSeekUsage = {
 export type DeepSeekMessage = {
   id: string;
   role: "user" | "assistant";
+  /** call-summary：通话结束的系统卡（旧数据没有这个字段） */
+  kind?: "call-summary";
   content: string;
   reasoning?: string;
   createdAt: number;

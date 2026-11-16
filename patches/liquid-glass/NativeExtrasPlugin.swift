@@ -44,10 +44,22 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
     private var task: SFSpeechRecognitionTask?
     private var recognizing = false
     private var tapInstalled = false
+    /// 本次识别是否真的在用端上模型
+    private var onDeviceActive = false
+    /// 是否已经因为端上不可用降级过（只降一次，避免死循环）
+    private var didFallback = false
+    private var currentLocale = "zh-CN"
+    /// 本轮 tap 收到的最大 RMS（≈0 说明麦克风没进音频）
+    private var rmsMax: Float = 0
+    private var inputSampleRate: Double = 0
+    private var inputChannels: Int = 0
+    private var authStatus = "unknown"
     /// 通话中打开：用 .voiceChat 换回声消除，代价是音质偏「电话音」
     private var inCall = false
     private var callAudioMode: AVAudioSession.Mode {
-        inCall ? .voiceChat : .measurement
+        // .measurement 会关闭输入处理（AGC/EQ），录音电平极低，
+        // 语音识别会一直 No speech detected。这里必须用 .default。
+        inCall ? .voiceChat : .default
     }
     private let eventStore = EKEventStore()
     private var player: AVAudioPlayer?
@@ -94,10 +106,19 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func startSpeech(_ call: CAPPluginCall) {
         let localeId = call.getString("locale") ?? "zh-CN"
-        let preferOnDevice = call.getBool("onDevice") ?? true
+        // 默认走服务器识别：端上模型没下载时会静默失败（partial 全空）
+        var preferOnDevice = call.getBool("onDevice") ?? false
+        var preferOverride: Bool? = nil
 
         if recognizing {
             stopInternal()
+        }
+        // 每次开新的一轮都重新允许降级一次
+        didFallback = false
+        currentLocale = localeId
+        rmsMax = 0
+        if let forced = call.getBool("onDeviceOverride") {
+            preferOverride = forced
         }
 
         SFSpeechRecognizer.requestAuthorization { status in
@@ -111,6 +132,7 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
                     return
                 }
                 DispatchQueue.main.async {
+                    if let forced = preferOverride { preferOnDevice = forced }
                     self.begin(localeId: localeId, preferOnDevice: preferOnDevice, call: call)
                 }
             }
@@ -146,10 +168,10 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    private func begin(localeId: String, preferOnDevice: Bool, call: CAPPluginCall) {
+    private func begin(localeId: String, preferOnDevice: Bool, call: CAPPluginCall?) {
         guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: localeId)),
               recognizer.isAvailable else {
-            call.reject("speech-unavailable")
+            call?.reject("speech-unavailable")
             return
         }
 
@@ -162,16 +184,48 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
 
             let request = SFSpeechAudioBufferRecognitionRequest()
             request.shouldReportPartialResults = true
+            // 双保险：端上必须「要求 + 设备支持」两个条件同时成立
             if preferOnDevice && recognizer.supportsOnDeviceRecognition {
                 request.requiresOnDeviceRecognition = true
+                self.onDeviceActive = true
+            } else {
+                request.requiresOnDeviceRecognition = false
+                self.onDeviceActive = false
             }
             self.request = request
 
             let input = engine.inputNode
             let format = input.inputFormat(forBus: 0)
+            self.inputSampleRate = format.sampleRate
+            self.inputChannels = Int(format.channelCount)
+            self.authStatus = "\(SFSpeechRecognizer.authorizationStatus().rawValue)"
+            self.notifyListeners("speechDebug", data: [
+                "phase": "start",
+                "category": session.category.rawValue,
+                "mode": session.mode.rawValue,
+                "sampleRate": format.sampleRate,
+                "channels": format.channelCount,
+                "locale": recognizer.locale.identifier,
+                "supportsOnDevice": recognizer.supportsOnDeviceRecognition,
+                "onDeviceActive": self.onDeviceActive,
+                "authStatus": self.authStatus
+            ])
             input.removeTap(onBus: 0)
             self.tapInstalled = true
             input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
+                // 记录最大电平：接近 0 = 麦克风/会话问题；正常 = 音频在流
+                if let channel = buffer.floatChannelData?[0] {
+                    let frames = Int(buffer.frameLength)
+                    var sum: Float = 0
+                    for i in 0..<frames {
+                        let v = channel[i]
+                        sum += v * v
+                    }
+                    if frames > 0 {
+                        let rms = (sum / Float(frames)).squareRoot()
+                        if rms > self.rmsMax { self.rmsMax = rms }
+                    }
+                }
                 request.append(buffer)
             }
 
@@ -195,7 +249,26 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
                     }
                 }
                 if let error {
+                    // 端上模型不可用（老机型 / 语言未下载）时自动降级一次：
+                    // 关掉 requiresOnDeviceRecognition 重新开始，不把错误抛给用户。
+                    if self.onDeviceActive && !self.didFallback {
+                        self.didFallback = true
+                        self.stopInternal()
+                        DispatchQueue.main.async {
+                            self.begin(localeId: self.currentLocale, preferOnDevice: false, call: nil)
+                        }
+                        return
+                    }
                     let message = error.localizedDescription
+                    self.notifyListeners("speechDebug", data: [
+                        "phase": "error",
+                        "rmsMax": Double(self.rmsMax),
+                        "sampleRate": self.inputSampleRate,
+                        "channels": self.inputChannels,
+                        "onDeviceActive": self.onDeviceActive,
+                        "didFallback": self.didFallback,
+                        "message": message
+                    ])
                     DispatchQueue.main.async {
                         self.notifyListeners("speechError", data: ["message": message])
                         self.stopInternal()
@@ -203,10 +276,16 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
                 }
             }
 
-            call.resolve()
+            call?.resolve()
         } catch {
             stopInternal()
-            call.reject("speech-start-failed: \(error.localizedDescription)")
+            if onDeviceActive && !didFallback {
+                didFallback = true
+                currentLocale = localeId
+                begin(localeId: localeId, preferOnDevice: false, call: call)
+                return
+            }
+            call?.reject("speech-start-failed: \(error.localizedDescription)")
         }
     }
 
@@ -365,6 +444,7 @@ public class NativeExtrasPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func stopInternal() {
+        onDeviceActive = false
         if engine.isRunning {
             engine.stop()
         }

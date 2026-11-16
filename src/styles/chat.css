@@ -34,23 +34,6 @@
    只靠模糊一旦失效就会像截图那样「文字透过导航条」。
    这里用与页面背景完全一致的 --bg-top 铺底，再让底缘渐隐，
    所以没有模糊时也是「内容自然溶解」，模糊只是 iOS 上的额外质感。 */
-.wr-chat-head::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 calc(var(--space-20) * -1);
-  z-index: -1;
-  background: var(--bg-top);
-  -webkit-backdrop-filter: var(--topbar-blur);
-  backdrop-filter: var(--topbar-blur);
-  -webkit-mask-image: linear-gradient(
-    180deg,
-    #000 0%,
-    #000 72%,
-    transparent 100%
-  );
-  mask-image: linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
-  pointer-events: none;
-}
 
 .wr-chat-head > * {
   pointer-events: auto;
@@ -168,8 +151,10 @@
   overflow-y: auto;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
-  padding: calc(var(--safe-top) + 162px) var(--page-pad)
-    calc(var(--content-bottom) + var(--safe-bottom) + 48px);
+  /* 顶部给头像胶囊留位，底部给输入栏+标签栏留位：
+     靠 padding 让最后一条消息完整露出，不盖渐隐遮罩 */
+  padding: calc(var(--safe-top) + 168px) var(--page-pad)
+    calc(var(--dock-clear) + var(--safe-bottom) + 24px);
   scroll-padding-block: 132px 150px;
 }
 
@@ -904,14 +889,14 @@
 .wr-ai-bubble.user {
   background: var(--chat-user-bg);
   color: var(--chat-user-ink);
-  border-bottom-right-radius: 5px;
+  border-bottom-right-radius: 6px;
 }
 
 .wr-ai-bubble.assistant {
   width: auto;
   max-width: 100%;
   border: var(--border-1) solid var(--chat-surface-line);
-  border-bottom-left-radius: 5px;
+  border-bottom-left-radius: 6px;
   background: var(--chat-surface);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
@@ -1130,7 +1115,10 @@
   }
 }
 
-/* Short conversational turns and user-confirmed plans. */
+/* 助手消息统一走 .wr-reply-parts 的白气泡（细边框 + 玻璃底）。
+   这里只把外层壳清零，避免出现"双层气泡"。
+   注意：不要把 .wr-reply-parts 本身清零——那样会变成文档流裸排，
+   和验收基准（白气泡 + 细边框）不符。 */
 .wr-ai-bubble.assistant {
   max-width: 100%;
   padding: 0;
@@ -1148,7 +1136,7 @@
   padding: 9px 13px;
   border: 1px solid var(--chat-surface-line);
   border-radius: var(--radius-18);
-  border-bottom-left-radius: 5px;
+  border-bottom-left-radius: 6px;
   background: var(--chat-surface);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
@@ -1274,7 +1262,7 @@
   padding: 8px 10px;
   border: 1px solid var(--chat-surface-line);
   border-radius: var(--radius-18);
-  border-bottom-right-radius: 5px;
+  border-bottom-right-radius: 6px;
   background: var(--chat-surface);
 }
 
@@ -1331,244 +1319,9 @@
 .wr-round-on {
   border-color: transparent;
   background: var(--primary);
-  color: var(--on-primary);
 }
 
-/* ── 语音通话浮层 ───────────────────────────────── */
-
-.wr-call {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-modal);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  padding: calc(var(--safe-top) + 48px) var(--page-pad)
-    calc(var(--safe-bottom) + 40px);
-  background: radial-gradient(
-    120% 80% at 50% 0%,
-    #dfeaf6 0%,
-    #eef2f7 45%,
-    #f7f0e7 100%
-  );
-  animation: wm-call-in var(--dur-3) var(--ease) both;
-}
-
-@keyframes wm-call-in {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.wr-call-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-16);
-  text-align: center;
-}
-
-.wr-call-face {
-  width: 132px;
-  height: 132px;
-  border-radius: 50%;
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.9),
-    0 18px 40px rgba(16, 36, 56, 0.14);
-}
-
-.wr-call-status {
-  margin: 0;
-  color: var(--ink);
-  font-size: var(--text-17);
-  font-weight: var(--weight-medium);
-}
-
-.wr-call-note {
-  max-width: 260px;
-  margin: 0;
-  color: var(--ink-3);
-  font-size: var(--text-12);
-  line-height: var(--leading-body);
-}
-
-.wr-call-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-20);
-}
-
-.wr-call-mic {
-  width: 72px;
-  height: 72px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--primary);
-  color: var(--on-primary);
-  box-shadow: 0 10px 24px rgba(37, 99, 168, 0.28);
-}
-
-.wr-call-mic:disabled {
-  opacity: 0.5;
-}
-
-.wr-call-mic.listening {
-  background: var(--danger);
-  animation: wm-call-pulse 1.6s ease-in-out infinite;
-}
-
-@keyframes wm-call-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(163, 58, 44, 0.25);
-  }
-  50% {
-    box-shadow: 0 0 0 14px rgba(163, 58, 44, 0);
-  }
-}
-
-.wr-call-hangup {
-  width: 52px;
-  height: 52px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--surface);
-  color: var(--danger);
-  box-shadow: var(--shadow-soft);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .wr-call,
-  .wr-call-mic.listening {
-    animation: none;
-  }
-}
-
-/* ── 通话：退出、波纹、处理中 ───────────────────── */
-
-.wr-call-close {
-  position: absolute;
-  top: calc(var(--safe-top) + 10px);
-  left: var(--page-pad);
-  height: var(--control-44);
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 0 14px 0 10px;
-  border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.72);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.9);
-  color: var(--ink-2);
-  font-size: var(--text-13);
-}
-
-.wr-call-stage {
-  position: relative;
-  width: 132px;
-  height: 132px;
-  display: grid;
-  place-items: center;
-}
-
-.wr-call-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 1.5px solid var(--primary);
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* 收音：三圈错开向外扩散 */
-.wr-call-stage.listening .wr-call-ring {
-  animation: wm-call-ripple 2.4s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
-}
-
-.wr-call-stage.listening .r2 {
-  animation-delay: 0.8s;
-}
-
-.wr-call-stage.listening .r3 {
-  animation-delay: 1.6s;
-}
-
-/* 说话：整体呼吸，不扩散 */
-.wr-call-stage.speaking .wr-call-ring {
-  border: none;
-  background: var(--primary-soft);
-  animation: wm-call-breath 1.7s ease-in-out infinite;
-}
-
-.wr-call-stage.speaking .r2 {
-  animation-delay: 0.35s;
-}
-
-.wr-call-stage.speaking .r3 {
-  animation-delay: 0.7s;
-}
-
-@keyframes wm-call-ripple {
-  0% {
-    opacity: 0.45;
-    transform: scale(1);
-  }
-  70% {
-    opacity: 0.08;
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.85);
-  }
-}
-
-@keyframes wm-call-breath {
-  0%,
-  100% {
-    opacity: 0.35;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.6;
-    transform: scale(1.22);
-  }
-}
-
-.wr-call-spinner {
-  display: inline-block;
-  width: 13px;
-  height: 13px;
-  margin-right: 6px;
-  border: 2px solid var(--primary);
-  border-top-color: transparent;
-  border-radius: 50%;
-  vertical-align: -2px;
-  animation: wm-spin 0.85s linear infinite;
-}
-
-@keyframes wm-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .wr-call-ring,
-  .wr-call-spinner {
-    animation: none;
-  }
-}
+/* 旧的全屏语音通话（.wr-call）已整段删除，只保留 CallSheet 一套。 */
 
 /* ── 空态：大头像占住视线中心 ───────────────────── */
 
@@ -1629,11 +1382,25 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* 建议多了要能滚，不能靠居中硬撑：以前是 center + 不滚动，
+     6 条建议时最后两条直接钻到输入框底下。 */
+  justify-content: flex-start;
   gap: var(--space-16);
-  padding: calc(var(--safe-top) + 118px) var(--page-pad)
-    calc(var(--content-bottom) + var(--safe-bottom) + var(--space-16));
+  padding: calc(var(--safe-top) + 96px) var(--page-pad)
+    calc(var(--dock-clear) + var(--space-24));
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
   pointer-events: none;
+}
+
+/* 内容不多时仍然居中：用自动外边距替代 justify-content */
+.wr-chat-empty > :first-child {
+  margin-top: auto;
+}
+
+.wr-chat-empty > :last-child {
+  margin-bottom: auto;
 }
 
 .wr-chat-empty > * {
@@ -2149,4 +1916,201 @@
 
 .wr-kb-note {
   color: var(--ink-3);
+}
+
+/* 浏览器模式：网页 Tab 栏也在 Dock 里，空态同样要多让出一行 */
+.wr-phone:not(:has(.wr-dock-anchor)):not(:has(.wr-dock-native)) .wr-chat-empty {
+  padding-bottom: calc(var(--dock-clear) + 76px + var(--space-16));
+}
+
+/* ── 悬浮头像胶囊 ───────────────────────────────
+   容器 pointer-events: none，子元素 auto：
+   胶囊不挡聊天区滚动，但头像和胶囊本身可点。 */
+.wr-chat-title {
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.wr-chat-title > * {
+  pointer-events: auto;
+}
+
+.wr-chat-orb {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--primary);
+  box-shadow: 0 6px 18px rgba(3, 111, 59, 0.22);
+}
+
+.wr-chat-cap-pill b {
+  font-size: var(--text-13);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ink);
+}
+
+.wr-chat-cap-pill small {
+  font-size: var(--text-12);
+  line-height: 1.2;
+  color: var(--ink-3);
+  max-width: 62vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 悬浮头像胶囊（无背板）────────────────────
+   顶栏不再垫任何色块，胶囊直接浮在聊天内容上。
+   .wr-chat-title 保持绝对居中，但必须透明。 */
+.wr-chat-title,
+.wr-chat-title:active {
+  background: transparent;
+}
+
+.wr-chat-title {
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding: 0;
+}
+
+.wr-chat-title > * {
+  pointer-events: auto;
+}
+
+.wr-chat-orb {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(3, 111, 59, 0.22);
+}
+
+.wr-chat-cap-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 压住头像下缘 8px */
+  margin-top: -8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.65);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  border: 0.5px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 14px rgba(16, 36, 56, 0.12);
+  max-width: 72vw;
+  overflow: hidden;
+}
+
+.wr-chat-cap-pill > b {
+  font-size: var(--text-13);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--ink);
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── 空态：底边直接让开 Dock，不靠 padding 兜 ──────────────
+   之前 inset:0 + 底部 padding，一旦内边距算少，最后一条建议就
+   钻到输入框和 Tab 栏底下。现在直接把容器底边抬到 Dock 之上。 */
+.wr-chat-empty {
+  inset: auto 0 var(--dock-clear) 0;
+  top: 0;
+  padding: calc(var(--safe-top) + 72px) var(--page-pad) var(--space-16);
+  justify-content: flex-start;
+}
+
+.wr-chat-empty > :first-child {
+  margin-top: auto;
+}
+
+.wr-chat-empty > :last-child {
+  margin-bottom: 0;
+}
+
+/* 浏览器模式：网页 Tab 栏也在 Dock 里，再多让一行 */
+.wr-phone:not(:has(.wr-dock-anchor)):not(:has(.wr-dock-native)) .wr-chat-empty {
+  bottom: calc(var(--dock-clear) + 76px);
+}
+
+/* ── 建议：2×2 紧凑网格，不再一列排下来 ──────────────────── */
+.wr-ai-empty {
+  width: 100%;
+  padding: var(--space-24) 0 var(--space-8);
+}
+
+.wr-ai-empty p {
+  margin-bottom: var(--space-12);
+}
+
+.wr-ai-suggestions {
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-8);
+  margin-top: 0;
+  width: 100%;
+}
+
+.wr-ai-suggestions button {
+  min-height: var(--control-48, 48px);
+  padding: var(--space-10, 10px) var(--space-12);
+  border-radius: var(--radius-12);
+  font-size: var(--text-13);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (max-width: 340px) {
+  .wr-ai-suggestions {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── 朗读按钮 ───────────────────────────────────────────── */
+.wr-voice-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 28px;
+  padding: 0 var(--space-8);
+  border: var(--border-1) solid var(--divider);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: var(--text-12);
+}
+
+.wr-voice-btn.playing {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+/* 朗读失败提示：一行灰字，不打断对话 */
+.wr-voice-hint {
+  margin: var(--space-8) 0 0;
+  color: var(--ink-3);
+  font-size: var(--text-12);
+  text-align: center;
 }

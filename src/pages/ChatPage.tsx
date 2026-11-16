@@ -1,13 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import {
   BookOpen,
-  CheckCircle2,
   Download,
-  Eye,
-  EyeOff,
   FileText,
   Globe,
-  KeyRound,
   Plus,
   RotateCcw,
   Settings,
@@ -15,12 +11,26 @@ import {
   X,
   Square,
   Trash2,
+  Phone,
   TriangleAlert,
+  Volume2,
 } from "lucide-react";
 import { ApiError, streamServerChat } from "../api";
+import CallSheet from "./CallSheet";
+import {
+  EXAM_INSTRUCTION,
+  SentenceSplitter,
+  VoicePlayer,
+  cleanForSpeech,
+  sceneInstruction,
+} from "../voice/tts";
 import { localSuggestions, parseReply, planTasks } from "../agent";
-import { matchSkills } from "../skills";
+import type { Assignment, Exam } from "../semester";
+import DeadlineProposalCard from "./DeadlineProposalCard";
+
 import { parseCourseText, toCourses } from "../courseImport";
+import { nextClass } from "../semester";
+import { academicWeek, readTermStart } from "../term";
 import type { ParsedCourse } from "../courseImport";
 import { BRAND } from "../brand";
 import BotAvatar from "../BotAvatar";
@@ -30,13 +40,8 @@ import { formatSearchContext, webSearch } from "../search";
 import type { SearchProvider } from "../search";
 import { storage, createMemory } from "../storage";
 import { newId } from "../id";
-import {
-  DeepSeekError,
-  listDeepSeekModels,
-  streamDeepSeekChat,
-} from "../deepseek/client";
-import { DEEPSEEK_MODELS } from "../deepseek/config";
-import { buildSystemPrompt } from "../deepseek/prompt";
+import { DeepSeekError } from "../deepseek/client";
+import { buildPromptVariables } from "../promptVariables";
 import MarkdownText from "../deepseek/Markdown";
 import { responseTokenBudget } from "../profile";
 import type { UserProfile } from "../profile";
@@ -97,21 +102,20 @@ type ConnectState = "idle" | "testing" | "ok" | "error";
 
 function describeError(error: unknown): string {
   if (error instanceof DeepSeekError) {
-    if (error.status === 401) return "API Key 无效或已过期（401）。";
-    if (error.status === 402)
-      return "账户余额不足（402），请到 DeepSeek 平台充值。";
-    if (error.status === 429) return "请求过于频繁（429），请稍后再试。";
-    if (error.status === 400) return `请求参数有误（400）：${error.message}`;
+    if (error.status === 401) return "登录状态失效了，重新打开一次 App 就好。";
+    if (error.status === 402) return "额度用完了，找我们充值后继续。";
+    if (error.status === 429) return "问得太快了，歇几秒再发。";
+    if (error.status === 400) return "这条消息没能发出去，换个说法再试。";
     if (error.status && error.status >= 500) {
-      return `DeepSeek 服务异常（${error.status}），请稍后重试。`;
+      return "服务器有点忙，过一会儿再试。";
     }
-    return error.message;
+    return "没连上，检查一下网络再发一次。";
   }
   if (error instanceof DOMException && error.name === "AbortError") {
     return "请求已取消。";
   }
   if (error instanceof TypeError) {
-    return "网络请求失败。检查网络、Base URL，或浏览器是否拦截了跨域请求。";
+    return "连不上服务器，检查一下网络（Wi-Fi / 流量）再发一次。";
   }
   return "请求失败，请稍后重试。";
 }
@@ -138,6 +142,10 @@ export default function ChatPage({
   tasks,
   onSettings,
   onTasksChange,
+  assignments,
+  onAssignmentsChange,
+  exams,
+  onExamsChange,
   onMemoriesChange,
   onCoursesChange,
   onViewPlans,
@@ -154,19 +162,15 @@ export default function ChatPage({
   tasks: Task[];
   onSettings: () => void;
   onTasksChange: (tasks: Task[]) => void;
+  assignments: Assignment[];
+  onAssignmentsChange: (assignments: Assignment[]) => void;
+  exams: Exam[];
+  onExamsChange: (exams: Exam[]) => void;
   onMemoriesChange: (memories: Memory[]) => void;
   onCoursesChange: (courses: Course[]) => void;
   onViewPlans: () => void;
 }) {
-  const [config, setConfig] = useState<DeepSeekConfig>(() =>
-    storage.getDeepSeekConfig(),
-  );
-  const [apiKey, setApiKey] = useState(() => storage.getDeepSeekKey());
-  const [rememberKey, setRememberKey] = useState(() =>
-    storage.getDeepSeekRemember(),
-  );
-  const [showKey, setShowKey] = useState(false);
-  const [showConfig, setShowConfig] = useState(false);
+  const [config] = useState<DeepSeekConfig>(() => storage.getDeepSeekConfig());
   /** 用户发来的课表：等确认后再写进课表 */
   const [expandedKb, setExpandedKb] = useState<string | null>(null);
   const [courseProposal, setCourseProposal] = useState<ParsedCourse[] | null>(
@@ -176,6 +180,118 @@ export default function ChatPage({
   const [imageCourseHint, setImageCourseHint] = useState(false);
   /** 这一轮命中了哪些技能，给用户一个可见的信号 */
   const [activeSkills, setActiveSkills] = useState<string[]>([]);
+  // 自动朗读只由设置里的开关控制；点喇叭朗读一次不会把它打开
+  const [autoRead] = useState(() => storage.getAutoRead());
+  const [voiceHint, setVoiceHint] = useState("");
+  // 播放状态只保留一份：哪条在播、播到哪一步。
+  // 以前是全局 boolean，所有按钮都跟着变「停止」，串扰。
+  const [voicePlay, setVoicePlay] = useState<{
+    status: "idle" | "loading" | "playing";
+    messageId: string | null;
+  }>({ status: "idle", messageId: null });
+  const voicePlayerRef = useRef<VoicePlayer | null>(null);
+  const [callOpen, setCallOpen] = useState(false);
+  const [callSubtitle, setCallSubtitle] = useState("");
+  const [callMuted, setCallMuted] = useState(false);
+  const [callExternal, setCallExternal] = useState<
+    "listening" | "thinking" | "speaking"
+  >("listening");
+  const callStartedAtRef = useRef(0);
+  const splitterRef = useRef<SentenceSplitter | null>(null);
+
+  /** 单例播放器：同一时间只允许一条音频在播 */
+  const player = () => {
+    if (!voicePlayerRef.current) {
+      voicePlayerRef.current = new VoicePlayer({
+        onEnd: () => {
+          setVoicePlay({ status: "idle", messageId: null });
+          setCallExternal("listening");
+          setCallSubtitle("");
+        },
+        onError: () => {
+          setVoiceHint("这句没读出来，点喇叭再试一次");
+          setVoicePlay({ status: "idle", messageId: null });
+        },
+        onSentence: (text) => {
+          setCallSubtitle(text);
+          setCallExternal("speaking");
+        },
+      });
+    }
+    return voicePlayerRef.current;
+  };
+
+  /** 打开通话浮窗：把最后一条助手回复读出来，字幕跟着句子走 */
+  const openCall = () => {
+    const lastReply = [...messages]
+      .reverse()
+      .find(
+        (m) =>
+          m.role === "assistant" &&
+          m.kind !== "call-summary" &&
+          m.content.trim(),
+      );
+    callStartedAtRef.current = Date.now();
+    setCallOpen(true);
+    setCallExternal("listening");
+    setCallSubtitle("");
+    if (!lastReply?.content.trim()) return;
+
+    const engine = player();
+    const text = parseReply(lastReply.content).text;
+    if (!cleanForSpeech(text)) return;
+    setCallExternal("speaking");
+    engine.stop();
+    engine.enqueue(cleanForSpeech(text), instructionFor(activeSkills));
+    engine.finish();
+  };
+
+  const hangupCall = (durationSec: number) => {
+    player().stop();
+    setCallOpen(false);
+    setCallExternal("listening");
+    setCallSubtitle("");
+    const minutes = Math.floor(durationSec / 60);
+    const summary: DeepSeekMessage = {
+      id: newId(),
+      role: "assistant",
+      kind: "call-summary",
+      content: JSON.stringify({
+        durationSec,
+        oneLine:
+          minutes > 0
+            ? `聊了 ${minutes} 分钟，记下你说的重点。`
+            : "简短聊了几句，记下你说的重点。",
+      }),
+      createdAt: Date.now(),
+    };
+    setMessages((current) => [...current, summary]);
+  };
+
+  const instructionFor = (skills: string[]) =>
+    skills.some((name) => /考试|冲刺|突击/.test(name))
+      ? EXAM_INSTRUCTION
+      : sceneInstruction();
+
+  /** 点喇叭：没开就顺手打开，然后用当前这条回复读一遍 */
+  const toggleRead = (messageId: string, text: string) => {
+    const engine = player();
+    // 必须在用户手势里解锁，否则移动端 WebView 会静音播放
+    void engine.unlock();
+    // 点的是正在播的那条 → 停；点的是另一条 → 先停再播新的，不排队
+    if (voicePlay.messageId === messageId && voicePlay.status !== "idle") {
+      engine.stop();
+      setVoicePlay({ status: "idle", messageId: null });
+      return;
+    }
+    if (voicePlay.status !== "idle") engine.stop();
+    setVoiceHint("");
+    const clean = cleanForSpeech(text);
+    if (!clean) return;
+    setVoicePlay({ status: "playing", messageId });
+    engine.enqueue(clean, instructionFor(activeSkills));
+    engine.finish();
+  };
   const [messages, setMessages] = useState<DeepSeekMessage[]>(() => {
     const saved = storage.getDeepSeekMessages();
     return saved.filter(
@@ -195,9 +311,9 @@ export default function ChatPage({
   );
   const [error, setError] = useState("");
   const [connectState, setConnectState] = useState<ConnectState>("idle");
-  const [connectText, setConnectText] = useState("");
-  const [models, setModels] = useState<string[]>([]);
-  const [usage, setUsage] = useState<DeepSeekUsage | null>(null);
+
+  // 用量只记录，不渲染（界面不显示 token / 耗时）
+  const [, setUsage] = useState<DeepSeekUsage | null>(null);
   // 只用于历史兼容：现在耗时挂在消息上，不再单独维护
   const [, setLatency] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -220,67 +336,6 @@ export default function ChatPage({
     [],
   );
 
-  const modelOptions = Array.from(
-    new Set([...DEEPSEEK_MODELS, ...models, config.model].filter(Boolean)),
-  );
-
-  const updateConfig = <K extends keyof DeepSeekConfig>(
-    key: K,
-    value: DeepSeekConfig[K],
-  ) => setConfig((current) => ({ ...current, [key]: value }));
-
-  const testConnection = async () => {
-    if (!apiKey.trim()) {
-      setConnectState("error");
-      setConnectText("先填写 API Key。");
-      return;
-    }
-    testAbortRef.current?.abort();
-    const controller = new AbortController();
-    testAbortRef.current = controller;
-    setConnectState("testing");
-    setConnectText("正在请求 /models…");
-    try {
-      const ids = await listDeepSeekModels({
-        baseUrl: config.baseUrl,
-        apiKey,
-        signal: controller.signal,
-      });
-      setModels(ids);
-      storage.setDeepSeekKey(apiKey, rememberKey);
-      setConnectState("ok");
-      setConnectText(
-        ids.length
-          ? `连接成功，可用模型：${ids.join("、")}`
-          : "连接成功，但 /models 没有返回模型。",
-      );
-    } catch (caught) {
-      if (controller.signal.aborted) return;
-      setConnectState("error");
-      setConnectText(describeError(caught));
-    }
-  };
-
-  const saveSettings = () => {
-    if (!apiKey.trim()) {
-      setConnectState("error");
-      setConnectText("先填写 API Key。");
-      return;
-    }
-    storage.setDeepSeekConfig(config);
-    storage.setDeepSeekKey(apiKey, rememberKey);
-    setShowConfig(false);
-    setConnectText("设置已保存到本机。");
-  };
-
-  const clearKey = () => {
-    storage.setDeepSeekKey("", false);
-    setApiKey("");
-    setRememberKey(false);
-    setConnectState("idle");
-    setConnectText("已清除本机保存的 API Key。");
-  };
-
   const sendMessage = async (
     text: string,
     history: DeepSeekMessage[],
@@ -289,8 +344,8 @@ export default function ChatPage({
     const content = text.trim() || (imageDataUrl ? "看看这张图" : "");
     if (!content || streaming) return;
 
-    // 技能命中：决定这一轮要不要加载专门的做事方法
-    setActiveSkills(matchSkills(content).map((skill) => skill.name));
+    // 技能命中改由服务端判断：这一轮先清空，等响应头回填名字
+    setActiveSkills([]);
 
     // 附件或直接粘贴的课表：先本地认一遍。
     // 认出来就问一句「要不要加进课表」，而不是替用户决定，也不是当普通消息忽略。
@@ -322,7 +377,8 @@ export default function ChatPage({
     }
 
     // 没有本地 Key 或带图片：走服务端代理（Key 在服务器，客户端只带令牌）
-    if (!apiKey.trim() || imageDataUrl) {
+    // 全量走服务端：客户端不再持有任何 Key
+    {
       const userMessage: DeepSeekMessage = {
         id: newId(),
         role: "user",
@@ -355,17 +411,14 @@ export default function ChatPage({
       try {
         let serverContent = "";
         await streamServerChat({
+          // system 由服务端按变量拼，模板不出客户端
+          variables: buildPromptVariables({
+            useContext: config.useContext,
+            profile,
+            context: { memories, courses, tasks },
+            webContext,
+          }),
           messages: [
-            {
-              role: "system",
-              content: buildSystemPrompt(
-                config,
-                profile,
-                { memories, courses, tasks },
-                webContext,
-                content,
-              ),
-            },
             ...history.map((message) => ({
               role: message.role,
               content: message.content,
@@ -394,6 +447,8 @@ export default function ChatPage({
           ),
           signal: controller.signal,
           onMeta: (meta) => {
+            // 服务端告诉我们这一轮命中了哪个技能，直接显示，不内置清单
+            if (meta.skillName) setActiveSkills([meta.skillName]);
             if (!meta.kbCount) return;
             setMessages((current) =>
               current.map((message) =>
@@ -405,6 +460,16 @@ export default function ChatPage({
           },
           onDelta: (delta) => {
             serverContent += delta;
+            if (autoRead) {
+              if (!splitterRef.current)
+                splitterRef.current = new SentenceSplitter();
+              const engine = player();
+              engine.setInstruction(instructionFor(activeSkills));
+              for (const sentence of splitterRef.current.push(delta)) {
+                setVoicePlay({ status: "playing", messageId: assistantId });
+                engine.enqueue(sentence);
+              }
+            }
             setMessages((current) =>
               current.map((message) =>
                 message.id === assistantId
@@ -431,11 +496,18 @@ export default function ChatPage({
           ),
         );
         setConnectState("ok");
-        setConnectText("服务端代理");
         setLatency(Math.round(performance.now() - startedAt));
+        if (autoRead && splitterRef.current) {
+          const engine = player();
+          for (const sentence of splitterRef.current.flush()) {
+            setVoicePlay({ status: "playing", messageId: assistantId });
+            engine.enqueue(sentence);
+          }
+          engine.finish();
+        }
       } catch (serverError) {
         if (serverError instanceof ApiError && serverError.status === 429) {
-          setError("今天的额度用完了，明天再来，或到设置里换成自己的 Key");
+          setError("今天的额度用完了，明天再来；需要更多额度可以找我们充值");
           setMessages((current) =>
             current.filter((message) => message.id !== assistantId),
           );
@@ -497,16 +569,6 @@ export default function ChatPage({
     let firstTokenAt: number | null = null;
 
     const payload: ChatRequestMessage[] = [
-      {
-        role: "system",
-        content: buildSystemPrompt(
-          config,
-          profile,
-          { memories, courses, tasks },
-          webContext,
-          content,
-        ),
-      },
       ...history
         .filter((message) => message.content.trim())
         .slice(-30)
@@ -541,6 +603,8 @@ export default function ChatPage({
           maxTokens: requestConfig.maxTokens,
           signal: controller.signal,
           onMeta: (meta) => {
+            // 服务端告诉我们这一轮命中了哪个技能，直接显示，不内置清单
+            if (meta.skillName) setActiveSkills([meta.skillName]);
             if (!meta.kbCount) return;
             setMessages((current) =>
               current.map((message) =>
@@ -581,13 +645,13 @@ export default function ChatPage({
         const parsedServerCourses = parseReply(serverContent).courses;
         if (parsedServerCourses.length) setCourseProposal(parsedServerCourses);
         setConnectState("ok");
-        setConnectText("服务端代理");
         setLatency(Math.round(performance.now() - startedAt));
         return;
       } catch (serverError) {
         // 配额用完：明确告诉用户，不要静默失败
-        if (serverError instanceof ApiError && serverError.status === 429) {
-          setError("今天的额度用完了，明天再来，或到设置里换成自己的 Key");
+        const status = (serverError as { status?: number } | null)?.status;
+        if (status === 429) {
+          setError("今天的额度用完了，明天再来；需要更多额度可以找我们充值");
           setMessages((current) =>
             current.filter(
               (message) =>
@@ -596,75 +660,7 @@ export default function ChatPage({
           );
           return;
         }
-        // 没有自带 Key 时，服务端失败就是失败
-        if (!apiKey.trim()) throw serverError;
-        // 有自带 Key：继续往下走直连模式
-      }
-
-      const result = await streamDeepSeekChat({
-        config: requestConfig,
-        apiKey,
-        messages: payload,
-        signal: controller.signal,
-        onDelta: (delta) => {
-          firstTokenAt ??= performance.now();
-          setMessages((current) =>
-            current.map((message) =>
-              message.id === assistantId
-                ? { ...message, content: message.content + delta }
-                : message,
-            ),
-          );
-        },
-        onReasoning: (delta) => {
-          firstTokenAt ??= performance.now();
-          setMessages((current) =>
-            current.map((message) =>
-              message.id === assistantId
-                ? {
-                    ...message,
-                    reasoning: `${message.reasoning ?? ""}${delta}`,
-                  }
-                : message,
-            ),
-          );
-        },
-      });
-
-      if (!result.content && !result.reasoning) {
-        setMessages((current) =>
-          current.filter((message) => message.id !== assistantId),
-        );
-        setError("模型没有返回内容，请检查模型名称或稍后重试。");
-      } else {
-        setMessages((current) =>
-          current.map((message) =>
-            message.id === assistantId
-              ? {
-                  ...message,
-                  content: result.content || "（模型只返回了思考过程）",
-                  reasoning: result.reasoning || undefined,
-                  model: result.model,
-                  usage: result.usage ?? undefined,
-                  latencyMs: Math.round(performance.now() - startedAt),
-                  finishReason: result.finishReason ?? undefined,
-                }
-              : message,
-          ),
-        );
-        setUsage(result.usage);
-        setLatency(Math.round(performance.now() - startedAt));
-        // 模型用 <courses> 块整理了课表 → 直接弹确认卡，不让它说「我没有工具」
-        const parsedCourses = parseReply(result.content || "").courses;
-        if (parsedCourses.length) setCourseProposal(parsedCourses);
-        if (firstTokenAt) {
-          setConnectState("ok");
-          setConnectText(
-            `首字 ${Math.round(firstTokenAt - startedAt)} ms · 完成 ${Math.round(
-              performance.now() - startedAt,
-            )} ms`,
-          );
-        }
+        throw serverError;
       }
     } catch (caught) {
       if (controller.signal.aborted) {
@@ -742,6 +738,22 @@ export default function ChatPage({
   const exportChat = () => {
     if (!messages.length) return;
     const lines = messages.map((message) => {
+      // 系统卡存的是 JSON，导出时换成一行可读文本，别把花括号带进 Markdown
+      if (message.kind === "call-summary") {
+        let brief = "语音通话";
+        try {
+          const parsed = JSON.parse(message.content) as {
+            durationSec?: number;
+            oneLine?: string;
+          };
+          const total = parsed.durationSec ?? 0;
+          brief += ` · ${Math.floor(total / 60)} 分 ${total % 60} 秒`;
+          if (parsed.oneLine) brief += ` · ${parsed.oneLine}`;
+        } catch {
+          // 坏数据就只写标题
+        }
+        return `## ${formatTime(message.createdAt)} · ${brief}`;
+      }
       const who = message.role === "user" ? "我" : agentName;
       const reasoning = message.reasoning
         ? `\n\n<details><summary>思考过程</summary>\n\n${message.reasoning}\n\n</details>`
@@ -798,23 +810,33 @@ export default function ChatPage({
       "最近总是拖延，有什么办法",
     ];
 
-    // 6 条：时段 3 + 年级 2 + 通用 1，按天错开起点，避免每次都一样
+    // 4 条：2×2 网格刚好一屏放得下，不用滚动也不会压到输入框
     const pool = [...timePool, ...gradePool, ...general];
     const offset = new Date().getDate() % pool.length;
     const rotated = [...pool.slice(offset), ...pool.slice(0, offset)];
-    return rotated.slice(0, 6);
+    return rotated.slice(0, 4);
   })();
 
+  // 胶囊里的一行：默认报下一节课，回复中报「正在回复…」
+  const upcoming = nextClass(
+    courses,
+    new Date(),
+    academicWeek(readTermStart()),
+  );
+  const nextClassLine = upcoming
+    ? `下一节 ${upcoming.course.name} ${String(upcoming.startsAt.getHours()).padStart(2, "0")}:${String(upcoming.startsAt.getMinutes()).padStart(2, "0")}`
+    : "";
+
+  // 模型在服务端，用户不用配任何东西：没出错就是「准备就绪」，
+  // 只有真出错才显示连接失败（以前这里写「未连接」，看起来像没配好）
   const statusLabel =
     connectState === "ok"
       ? "已连接"
       : connectState === "testing"
-        ? "测试中"
+        ? "发送中"
         : connectState === "error"
           ? "连接失败"
-          : apiKey
-            ? "待测试"
-            : "未连接";
+          : "准备就绪";
 
   // 标题菜单打开时要隐藏原生 chrome，否则会被原生输入框盖住
   useHideNativeChrome(Boolean(titleMenu));
@@ -873,9 +895,8 @@ export default function ChatPage({
           <span className="wr-chat-orb">
             <BotAvatar source={agentAvatar} replying={streaming} />
           </span>
-          <b>{agentName}</b>
-          <span className={`wr-chat-sub ${connectState}`}>
-            {streaming ? "正在回复…" : statusLabel}
+          <span className="wr-chat-cap-pill">
+            <b>{streaming ? "正在回复…" : nextClassLine || agentName}</b>
           </span>
         </button>
         {/* 右侧留白，保证标题严格居中 */}
@@ -884,7 +905,7 @@ export default function ChatPage({
 
       {/* 空态固定在可视区里，不参与滚动：
           以前它在滚动容器内，用户往下翻头像就没了，整页像一张长截图。 */}
-      {!showConfig && messages.length === 0 && (
+      {messages.length === 0 && (
         <div className="wr-chat-empty">
           <button
             className="wr-chat-hero"
@@ -901,18 +922,14 @@ export default function ChatPage({
             <small>{statusLabel}</small>
           </button>
           <div className="wr-ai-empty">
-            <p>
-              {apiKey
-                ? "直接说事，或者从下面挑一个"
-                : "连接 DeepSeek 后开始聊天。"}
-            </p>
-            {!apiKey && (
+            <p>直接说事，或者从下面挑一个</p>
+            {connectState === "error" && (
               <button
                 type="button"
                 className="wr-ai-primary"
                 onClick={onSettings}
               >
-                连接 DeepSeek
+                检查连接设置
               </button>
             )}
             <div className="wr-ai-suggestions">
@@ -967,9 +984,8 @@ export default function ChatPage({
             m.content.toLowerCase().includes(searchQuery.trim().toLowerCase()),
           ) && <p className="wr-chat-search-empty">没有找到相关聊天记录</p>}
 
-        {(apiKey || streaming) && (
+        {streaming && (
           <div className="wr-chat-status-line">
-            {apiKey && <span>{config.model}</span>}
             {streaming && (
               <button type="button" className="wr-chat-stop" onClick={stop}>
                 <Square size={13} /> 停止
@@ -978,166 +994,19 @@ export default function ChatPage({
           </div>
         )}
 
-        {showConfig && (
-          <section className="wr-ai-config">
-            <div className="wr-ai-config-head">
-              <div>
-                <b>连接 DeepSeek</b>
-                <small>配置只保存在本机；发送时才会请求 api.deepseek.com</small>
-              </div>
-              <KeyRound size={20} />
-            </div>
-
-            <label className="wr-ai-field">
-              <span>API Key</span>
-              <div className="wr-ai-key">
-                <input
-                  type={showKey ? "text" : "password"}
-                  value={apiKey}
-                  onChange={(event) => setApiKey(event.target.value)}
-                  placeholder="sk-…"
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-                <button
-                  type="button"
-                  aria-label={showKey ? "隐藏密钥" : "显示密钥"}
-                  onClick={() => setShowKey((value) => !value)}
-                >
-                  {showKey ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </label>
-            <label className="wr-ai-check">
-              <input
-                type="checkbox"
-                checked={rememberKey}
-                onChange={(event) => setRememberKey(event.target.checked)}
-              />
-              记住密钥（写入本机 localStorage）
-            </label>
-            <p className="wr-ai-warning">
-              默认只存本次会话。正式版应通过后端代理，不要把长期 Key 打进 App。
-            </p>
-
-            <label className="wr-ai-field">
-              <span>Base URL</span>
-              <input
-                value={config.baseUrl}
-                onChange={(event) =>
-                  updateConfig("baseUrl", event.target.value)
-                }
-                placeholder="https://api.deepseek.com"
-                spellCheck={false}
-              />
-            </label>
-            <label className="wr-ai-field">
-              <span>模型</span>
-              <input
-                list="wr-chat-models"
-                value={config.model}
-                onChange={(event) => updateConfig("model", event.target.value)}
-                spellCheck={false}
-              />
-              <datalist id="wr-chat-models">
-                {modelOptions.map((model) => (
-                  <option value={model} key={model} />
-                ))}
-              </datalist>
-            </label>
-
-            <p className="wr-ai-warning">
-              回复温度与长度由「设置 → 陪伴风格」决定：{profile.tone} · 温度{" "}
-              {profile.temperature.toFixed(1)} · {profile.responseLength}回复。
-            </p>
-
-            <label className="wr-ai-check">
-              <input
-                type="checkbox"
-                checked={config.thinking}
-                onChange={(event) =>
-                  updateConfig("thinking", event.target.checked)
-                }
-              />
-              深度思考（更慢，会返回思考过程）
-            </label>
-            {config.thinking && (
-              <label className="wr-ai-field">
-                <span>思考强度</span>
-                <select
-                  value={config.reasoningEffort}
-                  onChange={(event) =>
-                    updateConfig(
-                      "reasoningEffort",
-                      event.target.value as DeepSeekConfig["reasoningEffort"],
-                    )
-                  }
-                >
-                  <option value="low">low · 更快</option>
-                  <option value="high">high · 默认</option>
-                  <option value="max">max · 最充分</option>
-                </select>
-              </label>
-            )}
-
-            <label className="wr-ai-check">
-              <input
-                type="checkbox"
-                checked={config.useContext}
-                onChange={(event) =>
-                  updateConfig("useContext", event.target.checked)
-                }
-              />
-              带入本机资料（记忆 / 课程 / 任务）
-            </label>
-
-            <div className="wr-ai-config-actions">
-              <button
-                type="button"
-                className="wr-ai-primary"
-                onClick={() => void testConnection()}
-                disabled={connectState === "testing"}
-              >
-                {connectState === "testing" ? "测试中…" : "测试连接"}
-              </button>
-              <button
-                type="button"
-                className="wr-ai-secondary"
-                onClick={saveSettings}
-              >
-                保存并开始
-              </button>
-            </div>
-            <div className="wr-ai-config-actions">
-              <button type="button" className="wr-ai-ghost" onClick={clearKey}>
-                清除密钥
-              </button>
-              <button
-                type="button"
-                className="wr-ai-ghost danger"
-                onClick={() => setShowConfig(false)}
-              >
-                收起设置
-              </button>
-            </div>
-
-            {connectText && (
-              <p
-                className={`wr-ai-connect-note ${connectState}`}
-                role={connectState === "error" ? "alert" : "status"}
-              >
-                {connectState === "ok" && <CheckCircle2 size={16} />}
-                {connectState === "error" && <TriangleAlert size={16} />}
-                {connectText}
-              </p>
-            )}
-          </section>
+        {voiceHint && (
+          <p className="wr-voice-hint" role="status">
+            {voiceHint}
+          </p>
         )}
 
-        {!showConfig && messages.length > 0 && (
+        {messages.length > 0 && (
           <div className="wr-ai-toolbar">
             <span>{messages.length} 条消息</span>
             <div>
+              <button type="button" onClick={openCall}>
+                <Phone size={15} /> 语音通话
+              </button>
               <button type="button" onClick={exportChat}>
                 <Download size={15} /> 导出
               </button>
@@ -1148,7 +1017,7 @@ export default function ChatPage({
           </div>
         )}
 
-        {!showConfig && (
+        {
           <>
             {messages.length > 0 && (
               <div className="wr-chat-date">
@@ -1166,7 +1035,31 @@ export default function ChatPage({
                       .includes(searchQuery.trim().toLowerCase()),
                 )
                 .map((message) =>
-                  message.role === "user" ? (
+                  message.kind === "call-summary" ? (
+                    (() => {
+                      let summary: { durationSec?: number; oneLine?: string };
+                      try {
+                        summary = JSON.parse(message.content);
+                      } catch {
+                        summary = {};
+                      }
+                      const total = summary.durationSec ?? 0;
+                      const mm = Math.floor(total / 60);
+                      const ss = total % 60;
+                      return (
+                        <div className="wr-call-card" key={message.id}>
+                          <span className="wr-call-card-mark">
+                            <Phone size={14} />
+                          </span>
+                          <div className="wr-call-card-body">
+                            <strong>语音通话</strong>
+                            <em>{mm > 0 ? `${mm} 分 ${ss} 秒` : `${ss} 秒`}</em>
+                            {summary.oneLine ? <p>{summary.oneLine}</p> : null}
+                          </div>
+                        </div>
+                      );
+                    })()
+                  ) : message.role === "user" ? (
                     (() => {
                       const parsed = splitFileBlock(message.content);
                       return (
@@ -1293,12 +1186,41 @@ export default function ChatPage({
                           </div>
                         ) : null}
                         <div className="wr-ai-meta">
-                          {message.usage && (
-                            <span>{message.usage.total_tokens} tokens</span>
-                          )}
-                          {message.latencyMs && (
-                            <span>{message.latencyMs} ms</span>
-                          )}
+                          {message.content.trim() ? (
+                            <button
+                              type="button"
+                              className={
+                                voicePlay.messageId === message.id &&
+                                voicePlay.status !== "idle"
+                                  ? "wr-voice-btn playing"
+                                  : "wr-voice-btn"
+                              }
+                              onClick={() =>
+                                toggleRead(
+                                  message.id,
+                                  parseReply(message.content).text,
+                                )
+                              }
+                              aria-label={
+                                voicePlay.messageId === message.id &&
+                                voicePlay.status !== "idle"
+                                  ? "停止朗读"
+                                  : "朗读这条回复"
+                              }
+                            >
+                              {voicePlay.messageId === message.id &&
+                              voicePlay.status !== "idle" ? (
+                                <Square size={12} />
+                              ) : (
+                                <Volume2 size={12} />
+                              )}
+                              {voicePlay.messageId === message.id &&
+                              voicePlay.status !== "idle"
+                                ? "停止"
+                                : "朗读"}
+                            </button>
+                          ) : null}
+
                           {message.finishReason === "length" && (
                             <span className="danger">已截断</span>
                           )}
@@ -1409,10 +1331,33 @@ export default function ChatPage({
                       {(!streaming ||
                         message.id !== messages[messages.length - 1]?.id) &&
                         (() => {
+                          const proposals =
+                            parseReply(message.content).deadlines ?? [];
+                          if (!proposals.length) return null;
+                          return (
+                            <DeadlineProposalCard
+                              proposals={proposals}
+                              onAssignmentsChange={(items) =>
+                                onAssignmentsChange([
+                                  ...assignments,
+                                  ...items,
+                                ] as Assignment[])
+                              }
+                              onExamsChange={(items) =>
+                                onExamsChange([...exams, ...items] as Exam[])
+                              }
+                              onDismiss={() => undefined}
+                            />
+                          );
+                        })()}
+                      {(!streaming ||
+                        message.id !== messages[messages.length - 1]?.id) &&
+                        (() => {
                           const proposed = parseReply(
                             message.content,
                           ).memories.filter(
-                            (item) => !memories.some((m) => m.text === item),
+                            (item) =>
+                              !memories.some((m) => m.text === item.text),
                           );
                           if (!proposed.length) return null;
                           return (
@@ -1423,15 +1368,24 @@ export default function ChatPage({
                               <small>想记住这些 · 等你确认</small>
                               <ul>
                                 {proposed.map((item) => (
-                                  <li key={item}>{item}</li>
+                                  <li key={item.text}>
+                                    {item.text}
+                                    {item.kind === "emotion" && (
+                                      <em className="wr-memory-kind">情绪</em>
+                                    )}
+                                  </li>
                                 ))}
                               </ul>
                               <button
                                 className="wr-ai-primary"
                                 onClick={() =>
                                   onMemoriesChange([
-                                    ...proposed.map((text) =>
-                                      createMemory(text),
+                                    ...proposed.map((item) =>
+                                      createMemory(
+                                        item.text,
+                                        item.kind === "emotion" ? 3 : 2,
+                                        item.kind ?? "normal",
+                                      ),
                                     ),
                                     ...memories,
                                   ])
@@ -1448,9 +1402,9 @@ export default function ChatPage({
               <div ref={bottomRef} />
             </div>
           </>
-        )}
+        }
 
-        {!showConfig && error && (
+        {error && (
           <div className="wr-ai-error" role="alert">
             <TriangleAlert size={18} />
             <div>
@@ -1465,7 +1419,7 @@ export default function ChatPage({
 
         {/* 用户发来课表（粘贴的文字或文件）后，先问一句要不要加进课表，
             而不是替他做决定，也不是把课表内容当成普通聊天忽略掉。 */}
-        {!showConfig && courseProposal && (
+        {courseProposal && (
           <section className="wr-course-proposal" aria-label="课表导入确认">
             <small>看起来是课表 · 等你确认</small>
             <h3>把你发来的 {courseProposal.length} 门课加进课表？</h3>
@@ -1504,13 +1458,13 @@ export default function ChatPage({
           </section>
         )}
 
-        {!showConfig && activeSkills.length > 0 && (
+        {activeSkills.length > 0 && (
           <div className="wr-skill-chip" role="status">
             已启用：{activeSkills.join(" · ")}
           </div>
         )}
 
-        {!showConfig && imageCourseHint && (
+        {imageCourseHint && (
           <div className="wr-ai-error" role="status">
             <TriangleAlert size={18} />
             <div>
@@ -1522,16 +1476,22 @@ export default function ChatPage({
           </div>
         )}
 
-        {/* 每条消息自己带了耗时，这里只在有 token 用量时展示，避免同一个数字出现两次 */}
-        {!showConfig && usage && (
-          <div className="wr-ai-usage">
-            <span>
-              上次：{usage.prompt_tokens} 输入 / {usage.completion_tokens} 输出
-              / {usage.total_tokens} tokens
-            </span>
-          </div>
-        )}
+        {/* 用量与耗时只进日志/自检，不渲染到界面 */}
       </div>
+
+      <CallSheet
+        open={callOpen}
+        subtitle={callSubtitle}
+        heard={""}
+        muted={callMuted}
+        onToggleMute={() => setCallMuted((current) => !current)}
+        onCollapse={() => {
+          player().stop();
+          setCallOpen(false);
+        }}
+        onHangup={hangupCall}
+        externalState={callExternal}
+      />
     </>
   );
 }

@@ -24,7 +24,7 @@
   --text-28: 28px;
   --text-34: 34px;
   --leading-tight: 1.2;
-  --leading-chat: 1.38;
+  --leading-chat: 1.55;
   --leading-body: 1.5;
   --leading-relaxed: 1.7;
   --weight-regular: 400;
@@ -75,22 +75,26 @@
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
 
-  --bg-top: #cddceb;
-  --bg-mid: #eef2f7;
-  --bg-bottom: #f7f0e7;
+  /* 纸质奶白：不是纯白，带一点暖；三层渐变模拟纸张受光不均 */
+  --bg-top: #f8f3e8;
+  --bg-mid: #fbf7ee;
+  --bg-bottom: #fdfaf3;
   --bg-gradient: linear-gradient(
     180deg,
     var(--bg-top) 0%,
     var(--bg-mid) 52%,
     var(--bg-bottom) 100%
   );
+  /* 纸纹：内联 SVG 噪点，不额外带图片资源，重复平铺看不出接缝 */
+  --paper-texture: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScyMDAnIGhlaWdodD0nMjAwJz48ZmlsdGVyIGlkPSduJz48ZmVUdXJidWxlbmNlIHR5cGU9J2ZyYWN0YWxOb2lzZScgYmFzZUZyZXF1ZW5jeT0nMS4yJyBudW1PY3RhdmVzPScyJyBzdGl0Y2hUaWxlcz0nc3RpdGNoJy8+PGZlQ29sb3JNYXRyaXggdHlwZT0nc2F0dXJhdGUnIHZhbHVlcz0nMCcvPjwvZmlsdGVyPjxyZWN0IHdpZHRoPScyMDAnIGhlaWdodD0nMjAwJyBmaWx0ZXI9J3VybCgjbiknIG9wYWNpdHk9JzAuMTYnLz48L3N2Zz4=");
+  --bg-layer: var(--paper-texture), var(--bg-gradient);
 
   --glass-bg: rgba(255, 255, 255, 0.58);
   --glass-strong: rgba(255, 255, 255, 0.78);
   --glass-line: rgba(255, 255, 255, 0.7);
   --glass-shadow: 0 8px 28px rgba(16, 36, 56, 0.1);
   --glass-blur: blur(24px) saturate(1.5);
-  --glass-fallback: #f2f5f9;
+  --glass-fallback: #faf6ec;
   /* 冷白蓝主题：卡片改成纯白无边框 + 柔和投影，取代原来的半透明玻璃卡。 */
   --card-bg: #ffffff;
   --card-line: transparent;
@@ -102,9 +106,11 @@
   --topbar-blur: blur(22px) saturate(1.7);
   --chat-surface: rgba(255, 255, 255, 0.66);
   --chat-surface-line: rgba(255, 255, 255, 0.72);
-  --chat-user-bg: var(--primary);
-  --chat-user-ink: var(--on-primary);
-  --chat-max-user: 74%;
+  /* 用户气泡用品牌绿（头像取色），--primary 仍留给按钮与链接 */
+  --chat-brand: #036f3b;
+  --chat-user-bg: var(--chat-brand);
+  --chat-user-ink: #ffffff;
+  --chat-max-user: 78%;
   --chat-max-ai: 84%;
 
   --ink: #16202a;
@@ -115,16 +121,16 @@
   --on-primary: #ffffff;
   --on-accent: #241a0d;
 
-  --primary: #2563a8;
-  --primary-soft: rgba(37, 99, 168, 0.1);
-  --primary-line: rgba(37, 99, 168, 0.22);
+  --primary: #036f3b;
+  --primary-soft: rgba(3, 111, 59, 0.1);
+  --primary-line: rgba(3, 111, 59, 0.22);
   --accent: #d8823a;
   --accent-ink: #96551a;
   --accent-soft: rgba(216, 130, 58, 0.16);
   --danger: #a33a2c;
   --danger-soft: rgba(163, 58, 44, 0.1);
-  --success: #2563a8;
-  --success-soft: rgba(37, 99, 168, 0.1);
+  --success: #036f3b;
+  --success-soft: rgba(3, 111, 59, 0.1);
 
   --surface: rgba(255, 255, 255, 0.8);
   --surface-muted: rgba(255, 255, 255, 0.5);
@@ -193,15 +199,15 @@
     --on-primary: #08131f;
     --on-accent: #241a0d;
 
-    --primary: #7fb6e8;
-    --primary-soft: rgba(127, 182, 232, 0.14);
-    --primary-line: rgba(127, 182, 232, 0.26);
+    --primary: #6fbf8f;
+    --primary-soft: rgba(111, 191, 143, 0.16);
+    --primary-line: rgba(111, 191, 143, 0.3);
     --accent: #e0a25c;
     --accent-ink: #e0a25c;
     --accent-soft: rgba(224, 162, 92, 0.16);
     --danger-soft: rgba(224, 122, 106, 0.14);
-    --success: #7fb6e8;
-    --success-soft: rgba(127, 182, 232, 0.14);
+    --success: #6fbf8f;
+    --success-soft: rgba(111, 191, 143, 0.16);
 
     --surface: rgba(255, 255, 255, 0.08);
     --surface-muted: rgba(255, 255, 255, 0.05);

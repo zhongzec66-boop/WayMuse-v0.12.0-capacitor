@@ -34,6 +34,7 @@ import { backupFileName, createBackup, restoreBackup } from "./backup";
 import { useAccount } from "./useAccount";
 import { refreshInsights } from "./nativeInsights";
 import { academicWeek, isCourseInWeek, readTermStart } from "./term";
+import type { Assignment, Exam } from "./semester";
 import type { Course, Memory, Overlay, Page, Task } from "./types";
 import { useNativeTabs } from "./useNativeTabs";
 
@@ -63,10 +64,22 @@ export default function WayMuseReference() {
   // 键盘弹起时把被遮挡的高度写进 --kb-inset，弹层才能躲开键盘。
   useKeyboardInset();
   const [page, setPage] = useState<Page>("聊天");
+  // Duo 竖向胶囊：默认启用；?duo=0 可临时关掉用于对比
+  const [duoRail] = useState(() => {
+    if (typeof location === "undefined") return true;
+    return new URLSearchParams(location.search).get("duo") !== "0";
+  });
   const [overlay, setOverlay] = useState<Overlay>("");
+
+  useEffect(() => {
+    document.body.classList.toggle("wr-duo", duoRail);
+    return () => document.body.classList.remove("wr-duo");
+  }, [duoRail]);
   const [attachmentMenu, setAttachmentMenu] = useState(false);
   const [courseImportOpen, setCourseImportOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
+  // 登录页是铺满屏幕的浮层：原生 Tab 栏盖在 WebView 之上，必须让它让位
+  useHideNativeChrome(loginOpen);
   // 图片走视觉模型：选完直接发，先落到这里
   const [pendingImage, setPendingImage] = useState<{
     id: number;
@@ -94,6 +107,11 @@ export default function WayMuseReference() {
   const [showTip, setShowTip] = useState(true);
   const [chromeHidden, setChromeHidden] = useState(false);
   const [courses, setCourses] = useState<Course[]>(storage.getCourses);
+  // 学期结构化数据：作业与考试
+  const [assignments, setAssignments] = useState<Assignment[]>(
+    storage.getAssignments,
+  );
+  const [exams, setExams] = useState<Exam[]>(storage.getExams);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [hasEntered, setHasEntered] = useState(storage.getEntered);
   const [agentName, setAgentName] = useState(
@@ -146,6 +164,14 @@ export default function WayMuseReference() {
     if (!hasEntered) return;
     storage.setTasks(tasks);
   }, [tasks, hasEntered]);
+  useEffect(() => {
+    if (!hasEntered) return;
+    storage.setAssignments(assignments);
+  }, [assignments, hasEntered]);
+  useEffect(() => {
+    if (!hasEntered) return;
+    storage.setExams(exams);
+  }, [exams, hasEntered]);
   useEffect(() => {
     if (!hasEntered) return;
     storage.setProfile(profile);
@@ -392,6 +418,8 @@ export default function WayMuseReference() {
               tasks={tasks}
               todayCourses={todayCourses}
               calendarEvents={calendarEvents}
+              assignments={assignments}
+              exams={exams}
               courses={courses}
               setCourses={setCourses}
               setOverlay={setOverlay}
@@ -407,6 +435,10 @@ export default function WayMuseReference() {
               setTasks={setTasks}
               courses={courses}
               setCourses={setCourses}
+              assignments={assignments}
+              setAssignments={setAssignments}
+              exams={exams}
+              setExams={setExams}
               setOverlay={setOverlay}
             />
           )}
@@ -416,6 +448,7 @@ export default function WayMuseReference() {
               setShowTip={setShowTip}
               memories={memories}
               setMemories={setMemories}
+              tasks={tasks}
               nav={nav}
               setOverlay={setOverlay}
             />
@@ -435,6 +468,10 @@ export default function WayMuseReference() {
               tasks={tasks}
               onSettings={() => setOverlay("设置")}
               onTasksChange={setTasks}
+              assignments={assignments}
+              onAssignmentsChange={setAssignments}
+              exams={exams}
+              onExamsChange={setExams}
               onMemoriesChange={setMemories}
               onCoursesChange={setCourses}
               onViewPlans={() => nav("任务")}
@@ -498,23 +535,21 @@ export default function WayMuseReference() {
           <PrivacyPage onClose={() => setOverlay("设置")} />
         )}
         {loginOpen && (
-          <LoginPage
-            onClose={() => setLoginOpen(false)}
-            onLogin={() => {
-              setLoginOpen(false);
-              void account.reload();
-            }}
-          />
+          <div className="wr-login-overlay">
+            <LoginPage
+              onClose={() => setLoginOpen(false)}
+              onLogin={() => {
+                setLoginOpen(false);
+                void account.reload();
+              }}
+            />
+          </div>
         )}
         {courseImportOpen && (
           <CourseImportSheet
             existing={courses}
             onClose={() => setCourseImportOpen(false)}
             onSave={(list) => setCourses((current) => [...current, ...list])}
-            onOpenSettings={() => {
-              setCourseImportOpen(false);
-              setOverlay("设置");
-            }}
           />
         )}
         {overlay && overlay !== "设置" && overlay !== "隐私与数据" && (

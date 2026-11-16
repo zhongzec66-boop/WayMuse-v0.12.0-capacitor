@@ -22,61 +22,35 @@ export type Reply = {
   text: string;
   plans: Plan[];
   /** 值得写入“记忆”的事实，最多 3 条 */
-  memories: string[];
+  memories: { text: string; kind?: "emotion" | "normal" }[];
   /** 从课表文本里整理出的课程，等用户确认后写入 */
   courses: ParsedCourse[];
   /** 可点选的选项：渲染成按钮，点了直接作为回答发出 */
   choices: string[];
+  /** 提议的作业 / 考试：渲染成确认卡，点「对」才写入 */
+  deadlines?: DeadlineProposal[];
+};
+
+/** 模型提议的一条作业或考试。日期必须是 YYYY-MM-DD，时间 HH:mm。 */
+export type DeadlineProposal = {
+  kind: "assignment" | "exam";
+  title: string;
+  /** YYYY-MM-DD */
+  date: string;
+  /** HH:mm，可省略（作业默认 23:59，考试默认 09:00） */
+  time?: string;
+  /** 课程名（文本匹配，不要求 id） */
+  course?: string;
+  /** 作业占总成绩比例 */
+  weight?: number;
+  /** 考试范围 */
+  scope?: string;
 };
 
 /**
  * 输出协议：正文之外，允许两个契约块。
  * 前端会把它们从正文里剥掉，渲染成可确认的卡片。
  */
-export const PLAN_INSTRUCTION = `【回复协议】
-默认只回 2–3 句短话，每段一行，不写长篇报告，不连续追问。
-
-需要制定计划时，先给一句回应，再在回复末尾附上方案块（前端会渲染成卡片，
-不要在正文里重复步骤）：
-
-<plans>[{"title":"标题（≤24字）","summary":"一句话说明（≤40字）","steps":["步骤1","步骤2"],"deadline":"YYYY-MM-DD","time":"HH:mm","remindIn":秒数,"priority":"high|medium|low"}]</plans>
-
-- 每个方案 2–4 个步骤，步骤 ≤30 字。
-- 只有用户提到具体时间（明天考试、周五截止）时才写 deadline，否则省略。
-- 用户说了具体钟点（下午三点、21:30）就写 time（24 小时制 HH:mm）。
-- 用户说的是相对时间（5 秒后、20 分钟后提醒我）就用 remindIn（整数秒），
-  这时不要再猜 deadline，前端会按当前时间换算。这种请求必须给方案卡，
-  不要只在正文里答应。
-- priority 仅在明显紧急时给 high，其余可省略。
-
-如果对话里出现了值得长期记住的用户事实（专业、目标、偏好、重要日程），
-再附一个记忆块（最多 2 条，每条 ≤40 字）：
-
-<memories>["明年暑假想找第一份实习","周三下午在图书馆"]</memories>
-
-只建议，不声称已执行。用户点确认后才会写入计划或记忆。
-
-如果用户发来的是课表文字，并且希望存进课表，就在回复末尾附上课表块
-（前端会渲染成「要不要加入课表」的确认卡，你不需要说自己没有工具）：
-
-<courses>[{"name":"高等数学","weekday":1,"start":"08:00","end":"09:40","place":"教三-302","weeks":[1,3,5,7]}]</courses>
-
-- weekday：1-7 表示周一到周日。
-- start / end 用 HH:mm；只有节次时按常见作息换算（1-2 节 08:00-09:40，3-4 节 10:00-11:40，5-6 节 14:00-15:40，7-8 节 16:00-17:40，9-10 节 19:00-20:40）。
-- weeks 是可选的周次数组；用户没说就不要猜。
-- 正文里只说明你整理出了几门课、哪几处不确定，不要列出全部课程。
-
-【什么时候给选项】
-当用户需要做选择、或者你在出题（刷题/自测/选择题），不要让他打字，
-在正文末尾附一个选项块，前端会渲染成可点的按钮：
-
-<choices>["A. 2_student","B. int","C. _name","D. my-var"]</choices>
-
-- 2–4 个选项，每个 ≤14 字，按 A/B/C/D 或「先做数学」「先背单词」这种顺序写。
-- 如果是在做题，正文里只问题目，**不要在正文里重复选项**。
-- 只在你确实需要用户选一个的时候给；普通聊天追问不要用。
-- 用户点了按钮，就等于把该选项作为回答发给你，所以选项要能独立成立。`;
-
 function parsePriority(value: unknown): Priority | undefined {
   return value === "high" || value === "medium" || value === "low"
     ? value
@@ -151,7 +125,8 @@ export function parseReply(content: string): Reply {
   const memoriesBlock = extractBlock(plansBlock.rest, "memories");
   const coursesBlock = extractBlock(memoriesBlock.rest, "courses");
   const choicesBlock = extractBlock(coursesBlock.rest, "choices");
-  const text = choicesBlock.rest.trim();
+  const deadlinesBlock = extractBlock(choicesBlock.rest, "deadlines");
+  const text = deadlinesBlock.rest.trim();
 
   let plans: Plan[] = [];
   if (plansBlock.body) {
@@ -168,15 +143,33 @@ export function parseReply(content: string): Reply {
     }
   }
 
-  let memories: string[] = [];
+  let memories: { text: string; kind?: "emotion" | "normal" }[] = [];
   if (memoriesBlock.body) {
     try {
       const raw: unknown = JSON.parse(memoriesBlock.body);
       if (Array.isArray(raw)) {
+        // 兼容两种形状：纯字符串（老协议）和 {text, kind}（新协议）
         memories = raw
-          .filter((item): item is string => typeof item === "string")
-          .map((item) => item.trim().slice(0, 60))
-          .filter(Boolean)
+          .map((item) => {
+            if (typeof item === "string")
+              return { text: item.trim().slice(0, 60) };
+            if (item && typeof item === "object") {
+              const record = item as Record<string, unknown>;
+              if (typeof record.text !== "string") return null;
+              return {
+                text: record.text.trim().slice(0, 60),
+                kind:
+                  record.kind === "emotion"
+                    ? ("emotion" as const)
+                    : ("normal" as const),
+              };
+            }
+            return null;
+          })
+          .filter(
+            (item): item is { text: string; kind?: "emotion" | "normal" } =>
+              !!item && !!item.text,
+          )
           .slice(0, 3);
       }
     } catch {
@@ -215,7 +208,22 @@ export function parseReply(content: string): Reply {
     }
   }
 
-  return { text, plans, memories, courses, choices };
+  let deadlines: DeadlineProposal[] = [];
+  if (deadlinesBlock.body) {
+    try {
+      const raw: unknown = JSON.parse(deadlinesBlock.body);
+      if (Array.isArray(raw)) {
+        deadlines = raw
+          .slice(0, 5)
+          .map(parseDeadlineProposal)
+          .filter((item): item is DeadlineProposal => item !== null);
+      }
+    } catch {
+      deadlines = [];
+    }
+  }
+
+  return { text, plans, memories, courses, choices, deadlines };
 }
 
 export function planTasks(
@@ -286,7 +294,7 @@ export function localSuggestions(input: string): Reply {
           priority: "high",
         },
       ],
-      memories: [],
+      memories: [] as { text: string }[],
       courses: [],
       choices: [],
     };
@@ -307,7 +315,7 @@ export function localSuggestions(input: string): Reply {
           priority: "high",
         },
       ],
-      memories: [],
+      memories: [] as { text: string }[],
       courses: [],
       choices: [],
     };
@@ -340,7 +348,7 @@ export function localSuggestions(input: string): Reply {
           priority: "low",
         },
       ],
-      memories: [],
+      memories: [] as { text: string }[],
       courses: [],
       choices: [],
     };
@@ -361,7 +369,7 @@ export function localSuggestions(input: string): Reply {
           priority: "medium",
         },
       ],
-      memories: [],
+      memories: [] as { text: string }[],
       courses: [],
       choices: [],
     };
@@ -381,8 +389,60 @@ export function localSuggestions(input: string): Reply {
         priority: "medium",
       },
     ],
-    memories: [],
+    memories: [] as { text: string }[],
     courses: [],
     choices: [],
   };
+}
+
+/**
+ * 解析一条作业/考试提议。
+ *
+ * 只认显式日期：模型给「下周三」这种相对说法时，解析层没有「今天」的上下文，
+ * 硬猜一定会错。宁可丢掉，让正文去问。
+ */
+function parseDeadlineProposal(value: unknown): DeadlineProposal | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  const title = typeof record.title === "string" ? record.title.trim() : "";
+  const kind =
+    record.kind === "exam" || record.kind === "考试"
+      ? "exam"
+      : record.kind === "assignment" || record.kind === "作业"
+        ? "assignment"
+        : null;
+  if (!title || !kind) return null;
+  const date = typeof record.date === "string" ? record.date.trim() : "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const time =
+    typeof record.time === "string" &&
+    /^\d{1,2}:\d{2}$/.test(record.time.trim())
+      ? record.time.trim().padStart(5, "0")
+      : undefined;
+  const weightRaw = Number(record.weight);
+  const weight =
+    kind === "assignment" && Number.isFinite(weightRaw) && weightRaw > 0
+      ? Math.min(100, Math.round(weightRaw))
+      : undefined;
+  return {
+    kind,
+    title: title.slice(0, 80),
+    date,
+    ...(time ? { time } : {}),
+    ...(typeof record.course === "string" && record.course.trim()
+      ? { course: record.course.trim().slice(0, 40) }
+      : {}),
+    ...(weight !== undefined ? { weight } : {}),
+    ...(kind === "exam" &&
+    typeof record.scope === "string" &&
+    record.scope.trim()
+      ? { scope: record.scope.trim().slice(0, 100) }
+      : {}),
+  };
+}
+
+/** 把提议换成精确时刻；作业默认当天 23:59，考试默认 09:00 */
+export function proposalDueAt(proposal: DeadlineProposal): string {
+  const time = proposal.time ?? (proposal.kind === "exam" ? "09:00" : "23:59");
+  return new Date(`${proposal.date}T${time}:00`).toISOString();
 }

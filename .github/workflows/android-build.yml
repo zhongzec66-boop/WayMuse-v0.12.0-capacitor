@@ -20,6 +20,9 @@ permissions:
 
 jobs:
   build-android:
+    env:
+      # time-sensitive tests assume Asia/Shanghai; CI defaults to UTC
+      TZ: Asia/Shanghai
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -61,6 +64,7 @@ jobs:
         run: |
           npm run typecheck
           npm run lint
+          npm test
           npm run build
 
       - name: Copy web app into Android project

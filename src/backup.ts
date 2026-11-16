@@ -16,7 +16,8 @@ const PREFIX = "waymuse-demo-";
 /** 不在 PREFIX 下、但要一起备份的键 */
 const EXTRA_KEYS = ["term-start"];
 /** 默认不导出：属于凭证，丢了可以重填，泄露了很麻烦 */
-const SECRET_KEYS = ["deepseek-key", "search-key", "breeze-key"];
+// 客户端不再存模型 key；搜索 key 仍然只在本机，备份时排除
+const SECRET_KEYS = ["search-key"];
 
 export const BACKUP_SCHEMA = 3;
 

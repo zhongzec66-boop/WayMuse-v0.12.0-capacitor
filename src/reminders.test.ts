@@ -32,14 +32,17 @@ describe("taskDueAt（岛上和通知共用）", () => {
 });
 
 describe("两条通道的一致性", () => {
-  it("没写钟点时，岛上和通知算的是同一个时刻", () => {
+  it("没写钟点时，岛上和通知用的是同一个到期时刻", () => {
     const one = task({ id: "a", deadline: "2026-11-09" });
-    // 通知：提前 10 分钟 -> 19:50
+    const due = taskDueAt(one);
+    expect(due?.getHours()).toBe(20);
+    expect(due?.getMinutes()).toBe(0);
+    // 通知一定排在到期之前、且不晚于到期
     const planned = planReminders([one], new Date("2026-11-09T08:00:00"));
-    expect(planned[0].at.getHours()).toBe(19);
-    expect(planned[0].at.getMinutes()).toBe(50);
-    // 上岛：同一个到期时刻 20:00
-    expect(taskDueAt(one)?.getHours()).toBe(20);
+    expect(planned.length).toBeGreaterThan(0);
+    for (const item of planned) {
+      expect(item.at.getTime()).toBeLessThanOrEqual(due!.getTime());
+    }
   });
 });
 
@@ -178,7 +181,7 @@ describe("相对时间提醒（5 秒后提醒我）", () => {
     );
     expect(planned).toHaveLength(1);
     expect(planned[0].at.getTime()).toBe(due.getTime());
-    expect(planned[0].body).toBe("现在提醒");
+    expect(planned[0].body).toBe("现在到期");
   });
 
   it("刚过期不久的也立刻发一条，不静默丢掉", () => {

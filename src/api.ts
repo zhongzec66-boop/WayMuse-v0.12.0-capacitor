@@ -8,7 +8,7 @@
 import { Capacitor } from "@capacitor/core";
 
 /** 线上地址；本地调试可用 localStorage 覆盖 */
-const DEFAULT_BASE = "https://api.101-32-101-117.sslip.io";
+const DEFAULT_BASE = "https://waymuse.duckdns.org";
 
 const TOKEN_KEY = "waymuse-auth";
 const DEVICE_KEY = "waymuse-device-id";
@@ -260,6 +260,71 @@ export async function saveProfile(profile: {
   await authedRequest("/api/me/profile", { method: "POST", body: profile });
 }
 
+/* ── 课表截图识别 ──────────────────────────────────────── */
+
+export type ParsedCourseFromImage = {
+  name: string;
+  weekday: number;
+  start: string;
+  end: string;
+  place?: string;
+  weeks?: number[];
+};
+
+/**
+ * 课表截图 → 结构化课程。
+ *
+ * 和服务端聊天不同：这里要的是 JSON，不是聊天回复，
+ * 所以单独走 /api/course/parse-image（服务端用视觉模型抽字段）。
+ */
+export async function parseCourseImage(
+  imageDataUrl: string,
+): Promise<ParsedCourseFromImage[]> {
+  const result = await authedRequest<{
+    courses: ParsedCourseFromImage[];
+    usage?: number;
+  }>("/api/course/parse-image", {
+    method: "POST",
+    body: { imageDataUrl },
+  });
+  return result.courses ?? [];
+}
+
+/* ── 语音合成 ──────────────────────────────────────────── */
+
+/**
+ * 一句话 → mp3 字节。
+ *
+ * Key 在服务端，这里只带设备令牌；失败返回 null（调用方跳过这句）。
+ */
+export async function synthesizeSpeech(
+  text: string,
+  instruction: string,
+  signal?: AbortSignal,
+): Promise<ArrayBuffer | null> {
+  let session = readSession();
+  if (!session) session = await guestLogin();
+
+  const request = (token: string) =>
+    fetch(apiBase() + "/api/voice/tts", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ text, instruction }),
+      signal,
+    });
+
+  let response = await request(session.accessToken);
+  if (response.status === 401) {
+    const next = await refreshSession(session);
+    response = await request(next.accessToken);
+  }
+  if (!response.ok) return null;
+  return await response.arrayBuffer();
+}
+
 /* ── 聊天（SSE 代理）───────────────────────────────────── */
 
 export type ServerContentPart =
@@ -273,31 +338,60 @@ export type ServerChatMessage = {
 };
 
 export async function streamServerChat(options: {
+  /** 只包含 user / assistant；system 由服务端按变量拼，客户端不再发模板 */
   messages: ServerChatMessage[];
+  /** 提示词变量：本机数据（档案、记忆、课程、任务…） */
+  variables?: Record<string, unknown>;
   temperature?: number;
   maxTokens?: number;
   signal?: AbortSignal;
   onDelta: (delta: string) => void;
-  /** 服务端透出的元信息：命中条数 + 参考方向摘要 */
-  onMeta?: (meta: { kbCount: number; kbTags?: string[] }) => void;
+  /** 服务端透出的元信息：经验命中、以及命中的技能名 */
+  onMeta?: (meta: {
+    kbCount: number;
+    kbTags?: string[];
+    skillName?: string;
+  }) => void;
 }): Promise<void> {
   let session = readSession();
   if (!session) session = await guestLogin();
 
-  const run = async (token: string) =>
-    fetch(apiBase() + "/api/ai/chat", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        messages: options.messages,
-        temperature: options.temperature,
-        maxTokens: options.maxTokens,
-      }),
-      signal: options.signal,
-    });
+  // 移动网络下偶发一次 fetch 失败很常见，重试一次再报错，
+  // 用户看到「连不上」的次数会明显下降。
+  const retryOnce = async <T>(
+    fn: () => Promise<T>,
+    signal?: AbortSignal,
+  ): Promise<T> => {
+    try {
+      return await fn();
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      return await fn();
+    }
+  };
+
+  const run = (token: string) =>
+    retryOnce(
+      () =>
+        fetch(apiBase() + "/api/ai/chat", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            // 提示词模板在服务端，这里只带开关和变量
+            ...(options.variables ? { useServerPrompt: true } : {}),
+            ...(options.variables ? { variables: options.variables } : {}),
+            messages: options.messages,
+            temperature: options.temperature,
+            maxTokens: options.maxTokens,
+          }),
+          signal: options.signal,
+        }),
+      options.signal,
+    );
 
   let response = await run(session.accessToken);
   if (response.status === 401) {
@@ -322,6 +416,18 @@ export async function streamServerChat(options: {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+
+  // 服务端拼提示词时会把命中的技能名放在响应头里，客户端不需要内置清单
+  const skillHeader = response.headers.get("x-waymuse-skill-name");
+  if (skillHeader && options.onMeta) {
+    let skillName: string | undefined;
+    try {
+      skillName = decodeURIComponent(skillHeader).trim();
+    } catch {
+      skillName = skillHeader.trim();
+    }
+    if (skillName) options.onMeta({ kbCount: 0, skillName });
+  }
 
   // 命中条数通过响应头传过来（流开始前就能读到）
   const kbHeader = response.headers.get("x-waymuse-kb");

@@ -3,13 +3,19 @@ import { normalizeConfig } from "./deepseek/config";
 import type { DeepSeekConfig, DeepSeekMessage } from "./deepseek/types";
 import { normalizeProfile } from "./profile";
 import type { UserProfile } from "./profile";
-import type { Course, Memory, MemoryWeight, Task } from "./types";
+import type { Assignment, AssignmentStep, Exam, ReviewItem } from "./semester";
+import type {
+  Course,
+  Memory,
+  MemoryKind,
+  MemoryStatus,
+  MemoryWeight,
+  Task,
+} from "./types";
 import { newId } from "./id";
 
 const PREFIX = "waymuse-demo-";
 const SCHEMA_VERSION = 2;
-const DEEPSEEK_KEY_NAME = "deepseek-key";
-const DEEPSEEK_REMEMBER_NAME = "deepseek-remember";
 
 function readText(name: string, fallback: string): string {
   try {
@@ -66,6 +72,10 @@ function sanitizeTask(value: unknown): Task | null {
     typeof value.deadline === "string" && value.deadline.trim()
       ? value.deadline.trim()
       : undefined;
+  const completedAt =
+    typeof value.completedAt === "number" && value.completedAt > 0
+      ? value.completedAt
+      : undefined;
   const category =
     typeof value.category === "string" && value.category.trim()
       ? value.category.trim()
@@ -79,6 +89,7 @@ function sanitizeTask(value: unknown): Task | null {
     deadline,
     time,
     category,
+    ...(completedAt ? { completedAt } : {}),
   };
 }
 
@@ -120,6 +131,102 @@ function sanitizeCourse(value: unknown): Course | null {
   };
 }
 
+function sanitizeAssignment(value: unknown): Assignment | null {
+  if (!isRecord(value)) return null;
+  const title = typeof value.title === "string" ? value.title.trim() : "";
+  if (!title) return null;
+  const dueAt =
+    typeof value.dueAt === "string" && !Number.isNaN(Date.parse(value.dueAt))
+      ? value.dueAt
+      : "";
+  if (!dueAt) return null;
+  const weight =
+    typeof value.weightPercent === "number" &&
+    Number.isFinite(value.weightPercent)
+      ? Math.min(100, Math.max(0, Math.round(value.weightPercent)))
+      : undefined;
+  const status =
+    value.status === "doing" || value.status === "done" ? value.status : "todo";
+  const steps = Array.isArray(value.steps)
+    ? value.steps.reduce<AssignmentStep[]>((items, entry) => {
+        if (!isRecord(entry)) return items;
+        const label = typeof entry.label === "string" ? entry.label.trim() : "";
+        if (!label) return items;
+        items.push({
+          label: label.slice(0, 80),
+          minutes:
+            typeof entry.minutes === "number" &&
+            Number.isFinite(entry.minutes) &&
+            entry.minutes >= 0
+              ? Math.round(entry.minutes)
+              : 0,
+          done: entry.done === true,
+        });
+        return items;
+      }, [])
+    : undefined;
+  return {
+    id: typeof value.id === "string" && value.id ? value.id : newId(),
+    title: title.slice(0, 120),
+    ...(typeof value.courseId === "string" && value.courseId
+      ? { courseId: value.courseId }
+      : {}),
+    dueAt,
+    ...(weight !== undefined ? { weightPercent: weight } : {}),
+    status,
+    ...(steps && steps.length ? { steps } : {}),
+  };
+}
+
+function sanitizeReviewItem(value: unknown): ReviewItem | null {
+  if (!isRecord(value)) return null;
+  const topic = typeof value.topic === "string" ? value.topic.trim() : "";
+  const date = typeof value.date === "string" ? value.date.trim() : "";
+  if (!topic || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  return { date, topic: topic.slice(0, 120), done: value.done === true };
+}
+
+function sanitizeExam(value: unknown): Exam | null {
+  if (!isRecord(value)) return null;
+  const at =
+    typeof value.at === "string" && !Number.isNaN(Date.parse(value.at))
+      ? value.at
+      : "";
+  if (!at) return null;
+  const progress =
+    typeof value.progressPercent === "number" &&
+    Number.isFinite(value.progressPercent)
+      ? Math.min(100, Math.max(0, Math.round(value.progressPercent)))
+      : undefined;
+  const reviewPlan = Array.isArray(value.reviewPlan)
+    ? value.reviewPlan.reduce<ReviewItem[]>((items, entry) => {
+        const item = sanitizeReviewItem(entry);
+        if (item) items.push(item);
+        return items;
+      }, [])
+    : undefined;
+  return {
+    id: typeof value.id === "string" && value.id ? value.id : newId(),
+    ...(typeof value.courseId === "string" && value.courseId
+      ? { courseId: value.courseId }
+      : {}),
+    at,
+    ...(typeof value.scope === "string" && value.scope.trim()
+      ? { scope: value.scope.trim().slice(0, 300) }
+      : {}),
+    ...(progress !== undefined ? { progressPercent: progress } : {}),
+    ...(reviewPlan && reviewPlan.length ? { reviewPlan } : {}),
+  };
+}
+
+function readAssignments(): Assignment[] {
+  return readList("assignments", sanitizeAssignment, []);
+}
+
+function readExams(): Exam[] {
+  return readList("exams", sanitizeExam, []);
+}
+
 function readList<T>(
   name: string,
   sanitize: (value: unknown) => T | null,
@@ -156,6 +263,8 @@ function sanitizeMemory(value: unknown, index: number): Memory | null {
           text: text.slice(0, 120),
           weight: 2,
           createdAt: LEGACY_MEMORY_BASE + index,
+          kind: "normal" as const,
+          status: "consolidated" as const,
         }
       : null;
   }
@@ -164,12 +273,26 @@ function sanitizeMemory(value: unknown, index: number): Memory | null {
   if (!text) return null;
   const weight: MemoryWeight =
     value.weight === 1 || value.weight === 3 ? value.weight : 2;
+  // 迁移只做一次：kind 与 status 在同一处补齐，旧数据不分两次搬。
+  // 旧条目没有 kind：按 weight 判定（3 = 重要的情绪类），否则算普通事实。
+  // 旧条目没有 status：存量本来就是长期记忆，直接算已巩固。
+  const kind: MemoryKind =
+    value.kind === "emotion" || value.kind === "habit"
+      ? value.kind
+      : weight === 3
+        ? "emotion"
+        : "normal";
+  const status: MemoryStatus =
+    value.status === "pending" ? "pending" : "consolidated";
   return {
     id: typeof value.id === "string" && value.id ? value.id : newId(),
     text: text.slice(0, 120),
     weight,
     createdAt:
       typeof value.createdAt === "number" ? value.createdAt : Date.now(),
+    kind,
+    status,
+    ...(value.source === "inferred" ? { source: "inferred" as const } : {}),
   };
 }
 
@@ -202,42 +325,24 @@ function readMemories(): Memory[] {
   return current;
 }
 
-export function createMemory(text: string, weight: MemoryWeight = 2): Memory {
+export function createMemory(
+  text: string,
+  weight: MemoryWeight = 2,
+  kind: MemoryKind = "normal",
+): Memory {
   return {
     id: newId(),
     text: text.trim().slice(0, 120),
     weight,
     createdAt: Date.now(),
+    // 新记的事先进海马体，等复盘或下次打开再沉淀
+    kind,
+    status: "pending",
   };
 }
 
 function readTasks(fallback: Task[]): Task[] {
   return readList("tasks", sanitizeTask, fallback);
-}
-
-function readSessionText(name: string): string {
-  try {
-    return sessionStorage.getItem(PREFIX + name) || "";
-  } catch {
-    return "";
-  }
-}
-
-function writeKey(key: string, remember: boolean): void {
-  try {
-    localStorage.removeItem(PREFIX + DEEPSEEK_KEY_NAME);
-    sessionStorage.removeItem(PREFIX + DEEPSEEK_KEY_NAME);
-    if (!key) {
-      localStorage.removeItem(PREFIX + DEEPSEEK_REMEMBER_NAME);
-      return;
-    }
-    const target = remember ? localStorage : sessionStorage;
-    target.setItem(PREFIX + DEEPSEEK_KEY_NAME, key);
-    if (remember) localStorage.setItem(PREFIX + DEEPSEEK_REMEMBER_NAME, "1");
-    else localStorage.removeItem(PREFIX + DEEPSEEK_REMEMBER_NAME);
-  } catch {
-    // Keep the key in component state if storage is blocked.
-  }
 }
 
 function sanitizeDeepSeekUsage(value: unknown) {
@@ -296,6 +401,16 @@ function readDeepSeekMessages(): DeepSeekMessage[] {
 }
 
 export const storage = {
+  /** 自动朗读新回复（默认关；点喇叭朗读一次不会打开它） */
+  getAutoRead: () => readText("voice-auto", "") === "1",
+  setAutoRead: (value: boolean) => writeText("voice-auto", value ? "1" : ""),
+
+  getVoiceEnabled: () => readText("voice-on", "") === "1",
+  setVoiceEnabled: (value: boolean) => {
+    if (value) localStorage.setItem(PREFIX + "voice-on", "1");
+    else localStorage.removeItem(PREFIX + "voice-on");
+  },
+
   getEntered: () => readText("entered", "") === "1",
   setEntered: (entered: boolean) => {
     try {
@@ -315,8 +430,28 @@ export const storage = {
   setCourses: (courses: Course[]) => writeJson("courses", courses),
   getMemories: readMemories,
   setMemories: (memories: Memory[]) => writeJson("memories", memories),
+  getDismissedHabitKeys: (): string[] => {
+    const value = readJson("dismissed-habit-keys");
+    return Array.isArray(value)
+      ? value
+          .filter((item): item is string => typeof item === "string")
+          .slice(-200)
+      : [];
+  },
+  setDismissedHabitKeys: (keys: string[]) =>
+    writeJson("dismissed-habit-keys", keys.slice(-200)),
+  getLastConsolidatedAt: (): number => {
+    const value = readJson("last-consolidated-at");
+    return typeof value === "number" ? value : 0;
+  },
+  setLastConsolidatedAt: (at: number) => writeJson("last-consolidated-at", at),
   getTasks: readTasks,
   setTasks: (tasks: Task[]) => writeJson("tasks", tasks),
+  getAssignments: readAssignments,
+  setAssignments: (assignments: Assignment[]) =>
+    writeJson("assignments", assignments),
+  getExams: readExams,
+  setExams: (exams: Exam[]) => writeJson("exams", exams),
   getProfile: (): UserProfile => {
     const profile = normalizeProfile(readJson("profile"));
     if (!profile.callName) {
@@ -333,10 +468,6 @@ export const storage = {
     normalizeConfig(readJson("deepseek-config")),
   setDeepSeekConfig: (config: DeepSeekConfig) =>
     writeJson("deepseek-config", config),
-  getDeepSeekKey: () =>
-    readSessionText(DEEPSEEK_KEY_NAME) || readText(DEEPSEEK_KEY_NAME, ""),
-  getDeepSeekRemember: () => readText(DEEPSEEK_REMEMBER_NAME, "") === "1",
-  setDeepSeekKey: writeKey,
   /* ── 三份可编辑的人格/记忆文件 ── */
   getDoc: (id: string) => readText(`doc-${id}`, ""),
   setDoc: (id: string, text: string) => writeText(`doc-${id}`, text),
@@ -356,7 +487,6 @@ export const storage = {
     try {
       localStorage.removeItem(PREFIX + "deepseek-config");
       localStorage.removeItem(PREFIX + "deepseek-messages");
-      writeKey("", false);
     } catch {
       // Nothing else to clear when storage is unavailable.
     }

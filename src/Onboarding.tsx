@@ -1,5 +1,4 @@
 import { BRAND } from "./brand";
-import { storage } from "./storage";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import {
@@ -46,7 +45,6 @@ export default function Onboarding({
   onFinish: (profile: UserProfile) => void;
 }) {
   const [step, setStep] = useState(0);
-  const [apiKey, setApiKey] = useState(() => storage.getDeepSeekKey());
   const [profile, setProfile] = useState<UserProfile>({ ...DEFAULT_PROFILE });
   const [entering, setEntering] = useState(false);
   const steps = 7;
@@ -65,10 +63,6 @@ export default function Onboarding({
 
   const next = () => {
     if (step === steps - 1) {
-      // 先把 Key 存下来，再进入主界面
-      if (apiKey.trim()) {
-        storage.setDeepSeekKey(apiKey.trim(), true);
-      }
       setEntering(true);
       const finalProfile: UserProfile = {
         ...profile,
@@ -350,25 +344,13 @@ export default function Onboarding({
         {step === 6 && (
           <>
             <BotAvatar className="wr-onboard-emblem small" />
-            <h1>填写 API Key</h1>
+            <h1>已经可以用了</h1>
             <p>
-              这一步只做一次。Key 只存在这台手机上，也会直接发给 DeepSeek，
-              不经过任何中间服务器。
+              模型由 {BRAND} 统一提供，不需要你申请 Key、也不用绑定任何账号，
+              打开就能聊。
             </p>
-            <label className="wr-onboard-field">
-              <span>DeepSeek Key</span>
-              <input
-                type="password"
-                value={apiKey}
-                placeholder="sk-..."
-                autoComplete="off"
-                spellCheck={false}
-                onChange={(event) => setApiKey(event.target.value)}
-              />
-            </label>
             <p className="wr-onboard-hint">
-              DeepSeek Key 在 platform.deepseek.com 申请。
-              暂时不填也能进，之后随时可以在设置里补。
+              额度按账号计算，不够了可以找我们加。你的聊天记录只留在这台手机上。
             </p>
           </>
         )}
