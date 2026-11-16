@@ -8,6 +8,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import type { Course, Task } from "./types";
+import { remainingAfter, selectTopTasks } from "./todayTop3";
 
 /**
  * 今日简报卡。
@@ -67,14 +68,8 @@ export default function BriefCard({
     (course) => toMinutes(course.start) > nowMinutes,
   );
 
-  const open = tasks.filter((task) => !task.done);
-  const overdue = open
-    .filter((task) => task.deadline && task.deadline < todayKey)
-    .sort((a, b) => (a.deadline ?? "").localeCompare(b.deadline ?? ""));
-  const scheduled = open
-    .filter((task) => task.deadline && task.deadline >= todayKey)
-    .sort((a, b) => (a.deadline ?? "").localeCompare(b.deadline ?? ""));
-  const top = overdue[0] ?? scheduled[0] ?? open[0];
+  // 选取规则抽到 src/todayTop3.ts（纯函数 + 单测），这里只负责展示
+  const { top, display, openCount } = selectTopTasks(tasks, todayKey);
 
   let chip = { icon: Sparkles, label: "今天 · 空档" };
   let title = "今天没有硬安排";
@@ -130,14 +125,12 @@ export default function BriefCard({
     };
     title = top.text;
     lead =
-      open.length > 1
-        ? `还剩 ${open.length - 1} 个任务，咱们先专注搞定这件。`
+      remainingAfter(openCount) > 0
+        ? `还剩 ${remainingAfter(openCount)} 个任务，咱们先专注搞定这件。`
         : "只剩这一件，做完就清空。";
     steps = [
       { text: top.text, meta: "最优先", state: "live" },
-      ...open
-        .filter((task) => task.id !== top.id)
-        .slice(0, 2)
+      ...display.slice(1, 3)
         .map<Step>((task) => ({
           text: task.text,
           meta: task.deadline ? relative(task.deadline, todayKey) : "未设截止",
