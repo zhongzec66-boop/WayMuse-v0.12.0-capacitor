@@ -17,9 +17,13 @@ swift test --package-path ios/WayMuseContracts
 |---|---|---|
 | `Sources/WayMuseContracts/TopTask.swift` | 契约模型（id / text / done / deadline） | 完成 |
 | `Sources/WayMuseContracts/TopTaskSelector.swift` | 「今日三件」选取规则 | 完成 |
+| `Sources/WayMuseContracts/ReplyModel.swift` | 回复模型（Plan / MemoryEntry / ParsedCourse / DeadlineProposal） | 完成 |
+| `Sources/WayMuseContracts/ReplyParser.swift` | 协议块解析（plans / memories / courses / choices / deadlines） | 完成 |
+| `Sources/WayMuseContracts/CourseRecordParser.swift` | 单条课程记录规范化（weekday 折算、节次换算） | 完成 |
 | `Tests/.../Top3ContractTests.swift` | 用共享 fixture 逐条跑 11 条用例 | 完成 |
+| `Tests/.../ReplyParserTests.swift` | 协议块解析行为测试（11 条） | 完成 |
 | `Tests/.../Fixtures/top3-cases.json` | 从 `docs/contract/` 复制的**同一份**用例 | 完成 |
-| `Tests/.../Fixtures/course-parse-cases.json` | 课程解析 4 条用例 | **待移植** |
+| `Tests/.../Fixtures/course-parse-cases.json` | 课程解析 4 条用例 | **待移植**（文字解析 `parseCourseText` 未写） |
 
 ## 为什么是独立 Package，而不是塞进 App target
 
@@ -50,8 +54,8 @@ targets:
 
 ## 待办
 
-1. `parseCourseText` 的 4 条用例移植（含「第3-4节 → 10:00-11:40」的换算、不可识别行进 `failedLines`）。
-2. 回复协议块解析（`plans`/`memories`/`courses`/`choices`/`deadlines`）也属于纯逻辑，适合放进这里。
-3. 接入 App 后，把 `TodayView` 的数据源换成本包输出。
+1. `parseCourseText`（**文字**课表解析）的 4 条用例移植——`parseCourseRecord`（单条记录）已完成，缺的是「一段文字切多行 + 节次换算 + failedLines 统计」。
+2. APIClient：URLSession + SSE 行缓冲 + 401 refresh / 429 不重试 / 5xx 退避一次。
+3. 接入 App 后，把 `TodayView` 与聊天卡片的数据源换成这个包。
 
 参考：`docs/API-CONTRACT.md`、`docs/contract/`、`src/todayTop3.ts`。
