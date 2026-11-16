@@ -20,6 +20,10 @@ swift test --package-path ios/WayMuseContracts
 | `Sources/WayMuseContracts/ReplyModel.swift` | 回复模型（Plan / MemoryEntry / ParsedCourse / DeadlineProposal） | 完成 |
 | `Sources/WayMuseContracts/ReplyParser.swift` | 协议块解析（plans / memories / courses / choices / deadlines） | 完成 |
 | `Sources/WayMuseContracts/CourseRecordParser.swift` | 单条课程记录规范化（weekday 折算、节次换算） | 完成 |
+| `Sources/WayMuseContracts/APIError.swift` | 错误体解析 + 重试/续期判定（401/429/5xx） | 完成 |
+| `Sources/WayMuseContracts/SSE.swift` | SSE 行缓冲（跨 chunk 拼行）+ chunk 增量解析 | 完成 |
+| `Sources/WayMuseContracts/APIClient.swift` | 认证 / SSE 聊天 / TTS；网络层可注入 | 完成 |
+| `Tests/.../APIClientTests.swift` | SSE、重试策略、假网络层下的登录/续期/聊天/TTS（13 条） | 完成 |
 | `Tests/.../Top3ContractTests.swift` | 用共享 fixture 逐条跑 11 条用例 | 完成 |
 | `Tests/.../ReplyParserTests.swift` | 协议块解析行为测试（11 条） | 完成 |
 | `Tests/.../Fixtures/top3-cases.json` | 从 `docs/contract/` 复制的**同一份**用例 | 完成 |
@@ -55,7 +59,8 @@ targets:
 ## 待办
 
 1. `parseCourseText`（**文字**课表解析）的 4 条用例移植——`parseCourseRecord`（单条记录）已完成，缺的是「一段文字切多行 + 节次换算 + failedLines 统计」。
-2. APIClient：URLSession + SSE 行缓冲 + 401 refresh / 429 不重试 / 5xx 退避一次。
-3. 接入 App 后，把 `TodayView` 与聊天卡片的数据源换成这个包。
+2. `APIClient.chat` 还没把响应头（`x-waymuse-kb` / `-kb-tags` / `-skill`）透出来；`URLSessionTransport` 现在的 `streamLines` 只给行。要用「命中了几条学长经验」时再扩。
+3. 附件上传（multipart）与 `/api/me`、`/api/me/quota` 还没做。
+4. 接入 App 后，把 `TodayView` 与聊天卡片的数据源换成这个包。
 
 参考：`docs/API-CONTRACT.md`、`docs/contract/`、`src/todayTop3.ts`。
