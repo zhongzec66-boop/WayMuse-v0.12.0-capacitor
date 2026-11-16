@@ -56,6 +56,15 @@ targets:
 - `today` 是本地日期键，按**字符串**比较；`deadline` 缺失或空串都算「无截止」（对齐 JS 里 `task.deadline && ...`）。
 - `display`：`[top] + 原数组里除 top 外未完成的`，顺序不变。
 
+## 验证状态
+
+| 时间 | 环境 | ref | 结果 |
+|---|---|---|---|
+| 2026-11-16 | macOS（小张张侠 Codex 的 Mac，Xcode 27.2） | `e24882a` | `swift test` **35/35 通过，0 失败** |
+
+> 编写这个包的机器是 Windows，没有 Swift 工具链，所以**本机从未编译过**；
+> 上表的结论来自对方 Mac 的实跑。改动后请在 Mac 上重跑 `swift test` 再更新此表。
+
 ## 待办
 
 1. `parseCourseText`（**文字**课表解析）的 4 条用例移植——`parseCourseRecord`（单条记录）已完成，缺的是「一段文字切多行 + 节次换算 + failedLines 统计」。
