@@ -47,7 +47,7 @@ struct MainShell: View {
                     HStack(spacing: 0) {
                         expandedSidebar
                             .frame(width: min(330, fullWidth * 0.32))
-                        content
+                        content(for: page, duoInset: 84)
                             .overlay(alignment: .topLeading) {
                                 Button { showingSettings = true } label: {
                                     Image(systemName: "gearshape")
@@ -57,7 +57,7 @@ struct MainShell: View {
                                 .accessibilityLabel("设置")
                                 .padding(16)
                             }
-                        duoRail
+                            .overlay(alignment: .trailing) { duoRail }
                     }
                 } else {
                     VStack(spacing: 0) {
@@ -79,7 +79,7 @@ struct MainShell: View {
         content(for: page)
     }
 
-    private func content(for selectedPage: WayPage) -> some View {
+    private func content(for selectedPage: WayPage, duoInset: CGFloat = 0) -> some View {
         VStack(spacing: 0) {
             if selectedPage != .chat {
               HStack {
@@ -93,7 +93,7 @@ struct MainShell: View {
 
             Group {
                 switch selectedPage {
-                case .chat: ChatView()
+                case .chat: ChatView(duoInset: duoInset)
                 case .today: PlaceholderPage(title: "Today", detail: "今日计划正在接入真实数据。")
                 case .courses: PlaceholderPage(title: "计划", detail: "计划与课表正在接入真实数据。")
                 case .memories: PlaceholderPage(title: "记忆", detail: "记忆管理正在接入真实数据。")

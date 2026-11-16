@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ChatView: View {
+    let duoInset: CGFloat
     @EnvironmentObject private var session: ChatSession
     @State private var draft = ""
     private let brand = Color(red: 3.0 / 255, green: 111.0 / 255, blue: 59.0 / 255)
@@ -40,6 +41,7 @@ struct ChatView: View {
                         }
                     }
                     .padding(16)
+                    .padding(.trailing, duoInset)
                 }
                 .background(paper)
                 .onChange(of: session.messages.count) { _ in
@@ -86,6 +88,7 @@ struct ChatView: View {
             .padding(.vertical, 7)
             .modifier(ComposerGlass())
             .padding(.horizontal, 12)
+            .padding(.trailing, duoInset)
             .padding(.vertical, 8)
             .background(paper)
         }
