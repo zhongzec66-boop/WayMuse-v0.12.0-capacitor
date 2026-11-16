@@ -31,14 +31,14 @@ public struct SSELineBuffer {
         // 用 Character 找 "\n" 会漏掉所有 CRLF 行。必须按 Unicode 标量找。
         while true {
             let scalars = pending.unicodeScalars
-            guard let newline = scalars.firstIndex(of: "\n"),
-                  let lineEnd = newline.samePosition(in: pending) else { break }
+            guard let newline = scalars.firstIndex(of: "\n") else { break }
 
             let nextScalarIndex = scalars.index(after: newline)
-            guard let nextStart = nextScalarIndex.samePosition(in: pending) else { break }
 
-            var line = String(pending[..<lineEnd])
-            pending = String(pending[nextStart...])
+            // 直接按标量视图切片：不能先 samePosition(in: pending) 再切，
+            // 因为 CRLF 中间的 LF 不是 Character 边界，映射会失败并提前退出。
+            var line = String(scalars[..<newline])
+            pending = String(scalars[nextScalarIndex...])
 
             if line.hasSuffix("\r") { line.removeLast() }
             guard let event = Self.event(from: line) else { continue }
