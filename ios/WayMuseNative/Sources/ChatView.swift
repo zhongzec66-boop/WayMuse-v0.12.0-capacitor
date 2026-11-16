@@ -9,11 +9,8 @@ struct ChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if session.isSending || !draft.isEmpty {
-                HStack(spacing: 8) {
-                    WayAvatar(state: session.isSending ? .thinking : .typing, size: 32)
-                    statusPill
-                }
+            if session.isSending {
+                statusPill
                     .padding(.top, 10)
                     .padding(.bottom, 4)
             }
@@ -100,7 +97,11 @@ struct ChatView: View {
 
     private var welcome: some View {
         VStack(spacing: 0) {
-            WayAvatar(state: session.isSending ? .thinking : (draft.isEmpty ? .idle : .typing), size: 56)
+            Text("●  ●")
+                .font(.system(size: 19, weight: .heavy))
+                .foregroundStyle(.white)
+                .frame(width: 56, height: 56)
+                .background(brand, in: Circle())
                 .zIndex(1)
             statusPill
                 .padding(.top, -12)
