@@ -1,0 +1,94 @@
+name: Build unsigned native IPA
+
+# 原生 SwiftUI 壳（ios/WayMuseNative）的 unsigned IPA。
+# 目的：不依赖任何人的本机 Mac —— 手动触发一次就能下载产物去自签。
+# 与 ios-build.yml 的区别：那条编的是 Capacitor 工程（ios/App/App.xcodeproj），
+# 这条编的是 XcodeGen 现生成的原生工程（ios/WayMuseNative/WayMuseNative.xcodeproj）。
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "要构建的 ref（留空则用触发时选择的分支）"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  build-native:
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref != '' && inputs.ref || github.ref }}
+          fetch-depth: 1
+
+      - name: Show commit
+        run: |
+          echo "ref=${{ inputs.ref }}"
+          git rev-parse HEAD
+          git log -1 --pretty='%h %s'
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: ios/WayMuseNative
+        run: |
+          xcodegen generate
+          ls -d *.xcodeproj
+
+      - name: Build unsigned
+        working-directory: ios/WayMuseNative
+        run: |
+          xcodebuild \
+            -project WayMuseNative.xcodeproj \
+            -scheme WayMuseNative \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY='' \
+            build
+
+      - name: Package unsigned IPA
+        working-directory: ios/WayMuseNative
+        run: |
+          set -euo pipefail
+          APP="build/DerivedData/Build/Products/Release-iphoneos/WayMuseNative.app"
+          test -d "$APP"
+          rm -rf build/ipa
+          mkdir -p build/ipa/Payload
+          cp -R "$APP" build/ipa/Payload/
+          (cd build/ipa && ditto -c -k --sequesterRsrc --keepParent Payload "$GITHUB_WORKSPACE/WayMuse-native-unsigned.ipa")
+
+          IPA="$GITHUB_WORKSPACE/WayMuse-native-unsigned.ipa"
+          echo "--- 结构自检 ---"
+          unzip -l "$IPA" | grep -q 'Payload/WayMuseNative.app/Info.plist'
+
+          if unzip -l "$IPA" | grep -q '_CodeSignature'; then
+            echo "::error::包内仍有 _CodeSignature 残留，不是 unsigned 包"
+            exit 1
+          fi
+
+          echo "--- 版本信息 ---"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' build/ipa/Payload/WayMuseNative.app/Info.plist
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/ipa/Payload/WayMuseNative.app/Info.plist
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' build/ipa/Payload/WayMuseNative.app/Info.plist
+          echo "--- 校验 ---"
+          ls -l "$IPA"
+          shasum -a 256 "$IPA"
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v6
+        with:
+          name: WayMuse-native-unsigned-IPA
+          path: WayMuse-native-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 7
