@@ -110,10 +110,10 @@ struct MainShell: View {
             ForEach(WayPage.allCases) { item in
                 Button { page = item } label: {
                     Image(systemName: item.symbol)
-                        .font(.system(size: 22, weight: .medium))
+                        .font(.system(size: 24, weight: .medium))
                         .foregroundStyle(page == item ? Color.accentColor : Color.secondary)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 44)
+                        .frame(height: 50)
                         .background(page == item ? Color.accentColor.opacity(0.13) : .clear, in: Capsule())
                 }
                 .buttonStyle(.plain)
@@ -121,10 +121,10 @@ struct MainShell: View {
                 .accessibilityAddTraits(page == item ? .isSelected : [])
             }
         }
-        .padding(6)
-        .frame(height: 56)
+        .padding(7)
+        .frame(height: 64)
         .modifier(TabGlass())
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 12)
         .padding(.bottom, 12)
     }
 
@@ -266,14 +266,12 @@ struct MainShell: View {
             ForEach(WayPage.allCases) { item in
                 tabButton(item, vertical: true)
             }
-            Spacer(minLength: 0)
         }
-        .padding(.top, duoStatusClearance)
-        .padding(.bottom, 12)
-        .frame(width: 84)
-        .frame(maxHeight: .infinity)
+        .padding(6)
         .modifier(RailGlass())
-        .overlay(alignment: .leading) { Divider() }
+        .padding(.top, duoStatusClearance)
+        .frame(width: 84)
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     private func tabButton(_ item: WayPage, vertical: Bool) -> some View {
@@ -311,9 +309,9 @@ private struct RailGlass: ViewModifier {
     @ViewBuilder
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
-            content.glassEffect(.regular, in: Rectangle())
+            content.glassEffect(.regular, in: Capsule())
         } else {
-            content.background(.ultraThinMaterial)
+            content.background(.ultraThinMaterial, in: Capsule())
         }
     }
 }
