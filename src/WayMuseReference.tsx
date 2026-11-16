@@ -64,6 +64,16 @@ export default function WayMuseReference() {
   // 键盘弹起时把被遮挡的高度写进 --kb-inset，弹层才能躲开键盘。
   useKeyboardInset();
   const [page, setPage] = useState<Page>("聊天");
+  const [wideWeb, setWideWeb] = useState(
+    () => Capacitor.getPlatform() === "web" && window.matchMedia("(min-width: 1100px)").matches,
+  );
+  useEffect(() => {
+    if (Capacitor.getPlatform() !== "web") return;
+    const query = window.matchMedia("(min-width: 1100px)");
+    const update = () => setWideWeb(query.matches);
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
   const [overlay, setOverlay] = useState<Overlay>("");
   const [attachmentMenu, setAttachmentMenu] = useState(false);
   const [courseImportOpen, setCourseImportOpen] = useState(false);
@@ -444,7 +454,27 @@ export default function WayMuseReference() {
             />
           )}
           {page === "聊天" && (
-            <ChatPage
+            <>
+              {wideWeb && (
+                <aside className="wr-desktop-today" aria-label="今日概览">
+                  <TodayPage
+                    profileName={profileName}
+                    date={date}
+                    tasks={tasks}
+                    todayCourses={todayCourses}
+                    calendarEvents={calendarEvents}
+                    assignments={assignments}
+                    exams={exams}
+                    courses={courses}
+                    setCourses={setCourses}
+                    setOverlay={setOverlay}
+                    onImportCourses={() => setCourseImportOpen(true)}
+                    nav={nav}
+                  />
+                </aside>
+              )}
+              <section className="wr-desktop-chat" aria-label="对话">
+                <ChatPage
               key={overlay}
               agentName={agentName}
               agentAvatar={agentAvatar}
@@ -465,7 +495,9 @@ export default function WayMuseReference() {
               onMemoriesChange={setMemories}
               onCoursesChange={setCourses}
               onViewPlans={() => nav("任务")}
-            />
+                />
+              </section>
+            </>
           )}
           {page === "角色" && (
             <PersonaPage
