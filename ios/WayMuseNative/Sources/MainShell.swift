@@ -250,7 +250,7 @@ struct MainShell: View {
     }
 
     private var duoRail: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 10) {
             Button {
                 session.startNewConversation()
                 page = .chat
@@ -260,15 +260,14 @@ struct MainShell: View {
                     .frame(width: 56, height: 48)
             }
             .accessibilityLabel("新对话")
-
-            Divider().padding(.horizontal, 10)
+            .modifier(RailGlass())
+            .padding(.bottom, 6)
 
             ForEach(WayPage.allCases) { item in
                 tabButton(item, vertical: true)
+                    .modifier(RailGlass())
             }
         }
-        .padding(6)
-        .modifier(RailGlass())
         .padding(.top, duoStatusClearance)
         .frame(width: 84)
         .frame(maxHeight: .infinity, alignment: .top)
