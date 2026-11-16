@@ -118,8 +118,26 @@ describe("dedupeCourses", () => {
     expect(kept).toHaveLength(1);
   });
 
-  it("不同周次不算重复（weeks 不参与键）", () => {
-    const { kept } = dedupeCourses([parsed({ weeks: [2, 4] })], [existing({ weeks: [1, 3] })]);
+  it("不同周次不算重复：单双周两门课要能并存", () => {
+    const { kept, removed } = dedupeCourses(
+      [parsed({ weeks: [2, 4] })],
+      [existing({ weeks: [1, 3] })],
+    );
+    expect(kept).toHaveLength(1);
+    expect(removed).toBe(0);
+  });
+
+  it("同周次但顺序不同算重复（[3,1] 与 [1,3]）", () => {
+    const { kept, removed } = dedupeCourses(
+      [parsed({ weeks: [3, 1] })],
+      [existing({ weeks: [1, 3] })],
+    );
+    expect(kept).toHaveLength(0);
+    expect(removed).toBe(1);
+  });
+
+  it("缺省 weeks 与空数组视为同一门课（都是每周都上）", () => {
+    const { kept } = dedupeCourses([parsed({ weeks: [] })], [existing()]);
     expect(kept).toHaveLength(0);
   });
 });

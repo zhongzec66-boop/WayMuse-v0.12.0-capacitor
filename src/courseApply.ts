@@ -62,19 +62,23 @@ export function validateCourses(input: ParsedCourse[]): {
   return { valid, issues };
 }
 
-/** 同一份导入里 + 与已有课程之间，按 名称+周几+开始时间 去重 */
+/**
+ * 同一份导入里 + 与已有课程之间去重。
+ *
+ * 键 = 名称 + 周几 + 开始时间 + 周次。
+ * 周次必须进键：同一门课分单双周（weeks: [1,3] 与 [2,4]）是两条独立课程，
+ * 不能因为名字和周几相同就被合并掉。缺省 weeks（每周都上）按空数组处理。
+ */
 export function dedupeCourses(
   input: ParsedCourse[],
   existing: Course[] = [],
 ): { kept: ParsedCourse[]; removed: number } {
-  const seen = new Set(
-    existing.map((course) => `${course.name}|${course.weekday}|${course.start}`),
-  );
+  const seen = new Set(existing.map((course) => courseKey(course)));
   const kept: ParsedCourse[] = [];
   let removed = 0;
 
   for (const course of input) {
-    const key = `${course.name}|${course.weekday}|${course.start}`;
+    const key = courseKey(course);
     if (seen.has(key)) {
       removed += 1;
       continue;
@@ -84,6 +88,17 @@ export function dedupeCourses(
   }
 
   return { kept, removed };
+}
+
+/** 去重键：周次排序后再拼，保证 [1,3] 与 [3,1] 视为同一门课 */
+function courseKey(course: {
+  name: string;
+  weekday: number;
+  start: string;
+  weeks?: number[];
+}): string {
+  const weeks = [...(course.weeks ?? [])].sort((a, b) => a - b).join(",");
+  return `${course.name}|${course.weekday}|${course.start}|${weeks}`;
 }
 
 /** 校验 + 去重一次做完，入口层只需要调这一个 */
