@@ -29,11 +29,10 @@ struct MainShell: View {
             let expanded = geometry.size.width >= 900
             Group {
                 if expanded {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 0) {
                         content
                         duoRail
                     }
-                    .padding(8)
                 } else {
                     VStack(spacing: 0) {
                         content
@@ -41,7 +40,7 @@ struct MainShell: View {
                     }
                 }
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Color(red: 248.0 / 255, green: 243.0 / 255, blue: 232.0 / 255).ignoresSafeArea())
         }
     }
 
@@ -52,27 +51,9 @@ struct MainShell: View {
                 Text(page.rawValue)
                     .font(.title2.weight(.semibold))
                 Spacer()
-                Menu {
-                    Button {
-                        session.startNewConversation()
-                        page = .chat
-                    } label: {
-                        Label("新对话", systemImage: "square.and.pencil")
-                    }
-                    Button { page = .settings } label: {
-                        Label("设置", systemImage: "gearshape")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.title3)
-                }
-                .accessibilityLabel("更多工具")
-            }
-            .padding(.horizontal, 18)
-            .frame(height: 52)
-              .modifier(NativeGlass())
-
-              Divider()
+              }
+              .padding(.horizontal, 18)
+              .frame(height: 52)
             }
 
             Group {
@@ -86,7 +67,7 @@ struct MainShell: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(Color(.systemBackground))
+        .background(Color(red: 248.0 / 255, green: 243.0 / 255, blue: 232.0 / 255))
     }
 
     private var bottomTabs: some View {
@@ -104,6 +85,18 @@ struct MainShell: View {
 
     private var duoRail: some View {
         VStack(spacing: 8) {
+            Button {
+                session.startNewConversation()
+                page = .chat
+            } label: {
+                Image(systemName: "square.and.pencil")
+                    .font(.system(size: 20))
+                    .frame(width: 56, height: 48)
+            }
+            .accessibilityLabel("新对话")
+
+            Divider().padding(.horizontal, 10)
+
             ForEach(WayPage.allCases) { item in
                 tabButton(item, vertical: true)
             }
@@ -111,7 +104,8 @@ struct MainShell: View {
         }
         .padding(.vertical, 12)
         .frame(width: 68)
-        .modifier(NativeGlass())
+        .frame(maxHeight: .infinity)
+        .background(.ultraThinMaterial)
         .overlay(alignment: .leading) { Divider() }
     }
 

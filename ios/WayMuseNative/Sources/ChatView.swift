@@ -3,28 +3,26 @@ import SwiftUI
 struct ChatView: View {
     @EnvironmentObject private var session: ChatSession
     @State private var draft = ""
+    private let brand = Color(red: 3.0 / 255, green: 111.0 / 255, blue: 59.0 / 255)
+    private let paper = Color(red: 248.0 / 255, green: 243.0 / 255, blue: 232.0 / 255)
 
     var body: some View {
         VStack(spacing: 0) {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 14) {
-                        if session.messages.isEmpty {
-                            Text("今天想聊些什么？")
-                                .font(.title3.weight(.medium))
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity)
-                                .padding(.top, 64)
-                        }
+                        if session.messages.isEmpty { welcome }
                         ForEach(session.messages) { message in
                             if !message.text.isEmpty {
                                 HStack {
                                     if message.role == .user { Spacer(minLength: 36) }
                                     Text(message.text)
                                         .textSelection(.enabled)
-                                        .padding(12)
-                                        .background(message.role == .user ? Color.accentColor.opacity(0.15) : Color(.secondarySystemBackground))
-                                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 13)
+                                        .background(message.role == .user ? brand : Color.white)
+                                        .foregroundStyle(message.role == .user ? Color.white : Color.primary)
+                                        .clipShape(RoundedRectangle(cornerRadius: 22))
                                     if message.role == .assistant { Spacer(minLength: 36) }
                                 }
                                 .id(message.id)
@@ -38,6 +36,7 @@ struct ChatView: View {
                     }
                     .padding(16)
                 }
+                .background(paper)
                 .onChange(of: session.messages.count) { _ in
                     if let last = session.messages.last { proxy.scrollTo(last.id, anchor: .bottom) }
                 }
@@ -51,25 +50,59 @@ struct ChatView: View {
                     .padding(.top, 8)
             }
 
-            HStack(alignment: .bottom, spacing: 10) {
-                TextField("发消息", text: $draft)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 9)
-                    .background(Color(.secondarySystemBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 18))
+            HStack(alignment: .center, spacing: 10) {
+                Menu {
+                    Button {
+                        session.startNewConversation()
+                    } label: {
+                        Label("新对话", systemImage: "square.and.pencil")
+                    }
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 20, weight: .light))
+                        .frame(width: 30, height: 34)
+                }
+                .accessibilityLabel("更多操作")
+                TextField("点击输入", text: $draft)
+                    .padding(.vertical, 10)
                 Button {
                     let outgoing = draft
                     draft = ""
                     Task { await session.send(outgoing) }
                 } label: {
                     Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 29))
+                        .font(.system(size: 30))
                 }
                 .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || session.isSending)
                 .accessibilityLabel("发送")
             }
-            .padding(12)
-            .background(Color(.systemBackground))
+            .foregroundStyle(brand)
+            .padding(.horizontal, 15)
+            .padding(.vertical, 7)
+            .background(Color.white.opacity(0.86))
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(Color.black.opacity(0.08)))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(paper)
         }
+        .background(paper)
+    }
+
+    private var welcome: some View {
+        VStack(spacing: 16) {
+            Text("●  ●")
+                .font(.system(size: 19, weight: .heavy))
+                .foregroundStyle(.white)
+                .frame(width: 68, height: 68)
+                .background(brand, in: Circle())
+            Text("WayMuse")
+                .font(.headline)
+            Text("今天想聊些什么？")
+                .font(.title3.weight(.medium))
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 92)
     }
 }
