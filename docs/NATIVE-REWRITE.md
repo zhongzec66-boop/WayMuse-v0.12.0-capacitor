@@ -16,7 +16,9 @@
 | 网页/iPad 版 | 同一套 React | 需要决定：保留、还是也改原生（iPad Catalyst 或 SwiftUI 自适应） |
 | Android | Capacitor + WebView | 需要决定：同步重写（Kotlin/Compose）还是保留现状 |
 
-**这不是"适配"，是重写。** 现有 105 个前端文件里，只有 `src/api.ts` 的接口契约、`src/courseImport.ts` 的解析规则、`src/todayTop3.ts` 的选取规则、`src/semantic` 类的纯逻辑可以直接翻译成 Swift；界面部分（`ChatPage` 1396 行、`TaskPage` 533 行等）是重做。
+**这不是"适配"，是重写。** 现有 `src/` 下 112 个文件里，只有接口契约（`api.ts`）、课表解析规则（`courseImport.ts`）、三件选取规则（`todayTop3.ts`）、提醒时间计算等纯逻辑可以直接翻译成 Swift；界面部分（`ChatPage` 约 1400 行、`TaskPage` 约 540 行）是重做。
+
+> 行数口径：以 `git show <ref>:file | wc -l` 为准，会随分支变化；本文不再写死具体行数，避免 Swift 侧按错数估工时。
 
 ---
 

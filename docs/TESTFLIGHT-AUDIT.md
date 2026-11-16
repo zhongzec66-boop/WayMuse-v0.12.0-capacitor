@@ -37,7 +37,9 @@
 | 4 | 建 TestFlight 内部测试组并加测试员邮箱 | 内部测试无需审核 |
 | 5 | Archive → Distribute → Upload | 同一次操作还要选「上传到 App Store Connect」 |
 
-**权限边界（Codex 提醒、我确认成立）**：App Store Connect 里的用户角色（Developer / App Manager 等）**不等于**开发者账号的证书与描述文件权限。仅被邀请进 ASC，不代表能在本地签名打包。要能 Archive，必须是该开发者团队的成员（并在 Xcode 登录该 Apple ID）。
+**权限边界（Codex 提醒、我确认成立）**：App Store Connect 里的用户角色（Developer / App Manager 等）**不等于**开发者账号的证书与描述文件权限。仅被邀请进 ASC，不代表能在本地用团队证书签名。
+
+**签名路径不是唯一的**：本地 Xcode 登录团队账号是一种；CI / 委托签名（证书 + 描述文件 + App Store Connect API Key 放进 Secrets）同样可行。本文以「本地手动 Archive」为**首包最短路径**，不是硬性要求；后续应评估 CI 签名以降低对账号持有人的依赖。
 
 ---
 
@@ -69,7 +71,7 @@
 
 ## 五、结论与建议顺序
 
-1. **先只做内测**：对方 Mac 上 Archive 上传，我们不做 CI 签名（避免证书管理与密钥扩散）。
+1. **先只做内测**：首包用最短路径（对方 Mac 上 Archive 上传）；CI 签名作为后续优化项评估，不是禁区。
 2. **首包前只补两件产品项**：账号注销 + 隐私政策 URL。其余（备案、推送、HealthKit）不进首包。
 3. 我这边已完成且只需复核的：版本号对齐、`sync-version.cjs` 防漂移、导出合规声明、本核查文档。
 4. 相关 PR：#5（TestFlight 准备）。
